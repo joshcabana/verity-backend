@@ -1,0 +1,393 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Session } from '@prisma/client';
+import { createHash, randomUUID } from 'crypto';
+import {
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  WebSocketGateway,
+  WebSocketServer,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { PrismaService } from '../prisma/prisma.service';
+import { REDIS_CLIENT, RedisClient } from '../common/redis.provider';
+
+const QUEUE_KEYS_SET = 'queue:keys';
+const QUEUE_ZSET_PREFIX = 'queue:zset:';
+const USER_QUEUE_PREFIX = 'queue:user:';
+const USER_LOCK_PREFIX = 'queue:lock:';
+const USER_MATCHED_PREFIX = 'queue:matched:';
+
+const LOCK_TTL_MS = 3000;
+const QUEUE_TTL_MS = 5 * 60 * 1000;
+const MATCHED_TTL_MS = 60 * 60 * 1000;
+
+export type QueueJoinInput = {
+  region: string;
+  preferences?: Record<string, unknown>;
+};
+
+type QueueEntryState = {
+  queueKey: string;
+  joinedAt: number;
+};
+
+type QueuePair = {
+  userA: string;
+  userB: string;
+  scoreA: number;
+  scoreB: number;
+};
+
+@Injectable()
+export class QueueService {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
+  ) {}
+
+  async joinQueue(
+    userId: string,
+    input: QueueJoinInput,
+  ): Promise<{ status: 'queued' | 'already_queued'; queueKey: string; position: number | null }> {
+    const queueKey = this.buildQueueKey(input.region, input.preferences);
+    const queueUserKey = this.userQueueKey(userId);
+
+    const lockValue = await this.acquireLock(userId);
+    if (!lockValue) {
+      const existing = await this.redis.get(queueUserKey);
+      if (existing) {
+        const state = JSON.parse(existing) as QueueEntryState;
+        const position = await this.redis.zrank(this.queueZsetKey(state.queueKey), userId);
+        return { status: 'already_queued', queueKey: state.queueKey, position };
+      }
+      throw new ConflictException('Queue operation in progress');
+    }
+
+    try {
+      const existing = await this.redis.get(queueUserKey);
+      if (existing) {
+        const state = JSON.parse(existing) as QueueEntryState;
+        const position = await this.redis.zrank(this.queueZsetKey(state.queueKey), userId);
+        return { status: 'already_queued', queueKey: state.queueKey, position };
+      }
+
+      const updated = await this.prisma.user.updateMany({
+        where: { id: userId, tokenBalance: { gte: 1 } },
+        data: { tokenBalance: { decrement: 1 } },
+      });
+
+      if (updated.count !== 1) {
+        throw new BadRequestException('Insufficient token balance');
+      }
+
+      const joinedAt = Date.now();
+      try {
+        const results = await this.redis
+          .multi()
+          .zadd(this.queueZsetKey(queueKey), joinedAt, userId)
+          .set(
+            queueUserKey,
+            JSON.stringify({ queueKey, joinedAt } satisfies QueueEntryState),
+            'PX',
+            QUEUE_TTL_MS,
+          )
+          .sadd(QUEUE_KEYS_SET, queueKey)
+          .exec();
+
+        if (!results) {
+          throw new Error('Redis transaction failed');
+        }
+      } catch (error) {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { tokenBalance: { increment: 1 } },
+        });
+        throw error;
+      }
+
+      const position = await this.redis.zrank(this.queueZsetKey(queueKey), userId);
+      return { status: 'queued', queueKey, position };
+    } finally {
+      await this.releaseLock(this.userLockKey(userId), lockValue);
+    }
+  }
+
+  async leaveQueue(
+    userId: string,
+  ): Promise<{ status: 'left' | 'not_queued' | 'already_matched'; refunded: boolean }> {
+    const queueUserKey = this.userQueueKey(userId);
+    return this.withUserLock(userId, async () => {
+      const stateRaw = await this.redis.get(queueUserKey);
+      if (!stateRaw) {
+        return { status: 'not_queued', refunded: false };
+      }
+
+      const state = JSON.parse(stateRaw) as QueueEntryState;
+      const zsetKey = this.queueZsetKey(state.queueKey);
+      const matched = await this.redis.get(this.userMatchedKey(userId));
+
+      const removed = await this.redis.zrem(zsetKey, userId);
+      await this.redis.del(queueUserKey);
+      await this.cleanupQueueKey(state.queueKey);
+
+      if (removed === 1 && !matched) {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { tokenBalance: { increment: 1 } },
+        });
+        return { status: 'left', refunded: true };
+      }
+
+      return { status: matched ? 'already_matched' : 'left', refunded: false };
+    });
+  }
+
+  async popPair(queueKey: string): Promise<QueuePair | null> {
+    const zsetKey = this.queueZsetKey(queueKey);
+    const popped = await this.redis.zpopmin(zsetKey, 2);
+
+    if (popped.length < 4) {
+      return null;
+    }
+
+    return {
+      userA: popped[0] as string,
+      scoreA: Number(popped[1]),
+      userB: popped[2] as string,
+      scoreB: Number(popped[3]),
+    };
+  }
+
+  async validatePair(queueKey: string, pair: QueuePair): Promise<{ userA: string; userB: string } | null> {
+    const zsetKey = this.queueZsetKey(queueKey);
+    const [stateA, stateB] = await this.redis.mget(
+      this.userQueueKey(pair.userA),
+      this.userQueueKey(pair.userB),
+    );
+
+    if (!stateA && !stateB) {
+      return null;
+    }
+
+    if (!stateA) {
+      await this.redis.zadd(zsetKey, pair.scoreB, pair.userB);
+      return null;
+    }
+
+    if (!stateB) {
+      await this.redis.zadd(zsetKey, pair.scoreA, pair.userA);
+      return null;
+    }
+
+    return { userA: pair.userA, userB: pair.userB };
+  }
+
+  async createSession(userAId: string, userBId: string, queueKey: string): Promise<Session> {
+    const [region] = queueKey.split(':');
+    return this.prisma.session.create({
+      data: {
+        userAId,
+        userBId,
+        region,
+        queueKey,
+      },
+    });
+  }
+
+  async markMatched(userAId: string, userBId: string, sessionId: string) {
+    await this.redis
+      .multi()
+      .del(this.userQueueKey(userAId), this.userQueueKey(userBId))
+      .set(this.userMatchedKey(userAId), sessionId, 'PX', MATCHED_TTL_MS)
+      .set(this.userMatchedKey(userBId), sessionId, 'PX', MATCHED_TTL_MS)
+      .exec();
+  }
+
+  async cleanupQueueKey(queueKey: string) {
+    const remaining = await this.redis.zcard(this.queueZsetKey(queueKey));
+    if (remaining === 0) {
+      await this.redis.srem(QUEUE_KEYS_SET, queueKey);
+    }
+  }
+
+  async lockUsers(userIds: string[]): Promise<Map<string, string> | null> {
+    const locks = new Map<string, string>();
+    for (const userId of userIds) {
+      const lockValue = await this.acquireLock(userId);
+      if (!lockValue) {
+        await this.releaseUserLocks(locks);
+        return null;
+      }
+      locks.set(userId, lockValue);
+    }
+    return locks;
+  }
+
+  async releaseUserLocks(locks: Map<string, string>) {
+    for (const [userId, lockValue] of locks) {
+      await this.releaseLock(this.userLockKey(userId), lockValue);
+    }
+  }
+
+  async requeuePair(queueKey: string, pair: QueuePair) {
+    await this.redis.zadd(
+      this.queueZsetKey(queueKey),
+      pair.scoreA,
+      pair.userA,
+      pair.scoreB,
+      pair.userB,
+    );
+  }
+
+  buildQueueKey(regionRaw: string, preferences?: Record<string, unknown>): string {
+    const region = regionRaw?.trim().toLowerCase();
+    if (!region) {
+      throw new BadRequestException('Region is required');
+    }
+    const stable = stableStringify(preferences ?? {});
+    const hash = createHash('sha256').update(stable).digest('hex').slice(0, 12);
+    return `${region}:${hash}`;
+  }
+
+  private queueZsetKey(queueKey: string) {
+    return `${QUEUE_ZSET_PREFIX}${queueKey}`;
+  }
+
+  private userQueueKey(userId: string) {
+    return `${USER_QUEUE_PREFIX}${userId}`;
+  }
+
+  private userMatchedKey(userId: string) {
+    return `${USER_MATCHED_PREFIX}${userId}`;
+  }
+
+  private async withUserLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+    const lockKey = this.userLockKey(userId);
+    const lockValue = await this.acquireLock(userId);
+    if (!lockValue) {
+      throw new ConflictException('Queue operation in progress');
+    }
+
+    try {
+      return await fn();
+    } finally {
+      await this.releaseLock(lockKey, lockValue);
+    }
+  }
+
+  private userLockKey(userId: string) {
+    return `${USER_LOCK_PREFIX}${userId}`;
+  }
+
+  private async acquireLock(userId: string): Promise<string | null> {
+    const lockKey = this.userLockKey(userId);
+    const lockValue = randomUUID();
+    const acquired = await this.redis.set(lockKey, lockValue, 'NX', 'PX', LOCK_TTL_MS);
+    return acquired ? lockValue : null;
+  }
+
+  private async releaseLock(lockKey: string, lockValue: string) {
+    const script =
+      'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
+    await this.redis.eval(script, 1, lockKey, lockValue);
+  }
+}
+
+@WebSocketGateway({ namespace: '/queue', cors: { origin: true, credentials: true } })
+export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer()
+  server!: Server;
+
+  private readonly jwt: JwtService;
+  private readonly logger = new Logger(QueueGateway.name);
+
+  constructor(private readonly queueService: QueueService) {
+    this.jwt = new JwtService({ secret: this.accessSecret });
+  }
+
+  async handleConnection(client: Socket) {
+    const token = this.extractToken(client);
+    if (!token) {
+      client.disconnect(true);
+      return;
+    }
+
+    try {
+      const payload = this.jwt.verify(token, { secret: this.accessSecret }) as { sub?: string };
+      if (!payload?.sub) {
+        throw new UnauthorizedException('Invalid token');
+      }
+      client.data.userId = payload.sub;
+      client.join(this.userRoom(payload.sub));
+    } catch {
+      client.disconnect(true);
+    }
+  }
+
+  async handleDisconnect(client: Socket) {
+    const userId = client.data.userId as string | undefined;
+    if (userId) {
+      try {
+        await this.queueService.leaveQueue(userId);
+      } catch (error) {
+        this.logger.warn(`Failed to leave queue on disconnect: ${error}`);
+      }
+    }
+  }
+
+  emitMatch(userAId: string, userBId: string, session: Session) {
+    this.server.to(this.userRoom(userAId)).emit('match', {
+      sessionId: session.id,
+      partnerId: userBId,
+      queueKey: session.queueKey,
+      matchedAt: session.createdAt,
+    });
+    this.server.to(this.userRoom(userBId)).emit('match', {
+      sessionId: session.id,
+      partnerId: userAId,
+      queueKey: session.queueKey,
+      matchedAt: session.createdAt,
+    });
+  }
+
+  private userRoom(userId: string) {
+    return `user:${userId}`;
+  }
+
+  private extractToken(client: Socket): string | null {
+    const authHeader = client.handshake.headers.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.slice(7);
+    }
+    const authToken = client.handshake.auth?.token;
+    if (typeof authToken === 'string') {
+      return authToken;
+    }
+    return null;
+  }
+
+  private get accessSecret(): string {
+    return process.env.JWT_ACCESS_SECRET ?? process.env.JWT_SECRET ?? 'dev_access_secret';
+  }
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  const entries = keys.map((key) => `"${key}":${stableStringify(record[key])}`);
+  return `{${entries.join(',')}}`;
+}
