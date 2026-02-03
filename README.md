@@ -1,61 +1,202 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Verity Backend — Australia-First Deployment
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Verity is a real-time matching + video platform. This guide is optimized for **Australia-only** hosting with a **Canberra-first** posture and a **Sydney fallback** so you never get blocked by region approvals.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Recommendation**
+Sydney (Australia East) is the most reliable default today. Australia Central (Canberra) is excellent when approved, but is a restricted region. The infra is identical in both; you only swap the region parameter file.
 
-## Description
+## Deployment Options (Australia)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Component | Canberra (Azure Australia Central) | Sydney Fallback (Azure Australia East) |
+| --- | --- | --- |
+| API + Worker | Azure Container Apps | Azure Container Apps |
+| Postgres | Azure Database for PostgreSQL (Flexible Server) | Azure Database for PostgreSQL (Flexible Server) |
+| Redis | Azure Cache for Redis | Azure Cache for Redis |
+| Secrets | Azure Key Vault (optional) | Azure Key Vault (optional) |
+| CI/CD | GitHub Actions (manual) | GitHub Actions (manual) |
 
-## Project setup
+If Australia Central is unavailable, use `infra/azure/params.sydney-fallback.json` and continue with the exact same deployment.
 
-```bash
-$ npm install
-```
+## Architecture Summary
 
-## Compile and run the project
+- **API**: NestJS container listening on port 3000.
+- **Worker**: Background container running `node dist/queue/matching.worker.js`.
+- **Postgres**: Prisma-backed primary DB.
+- **Redis**: Queue state + locks + session coordination.
+- **Key Vault**: Stores secrets, accessed via managed identity.
 
-```bash
-# development
-$ npm run start
+## Environment Variables
 
-# watch mode
-$ npm run start:dev
+All env vars are documented in `verity-backend/.env.production.example`.
 
-# production mode
-$ npm run start:prod
-```
+Key variables used by the backend:
+- `DATABASE_URL`, `REDIS_URL`
+- `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
+- `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `AGORA_TOKEN_TTL_SECONDS`
+- `HIVE_STREAM_URL`, `HIVE_SCREENSHOT_URL`, `HIVE_API_KEY`, `HIVE_WEBHOOK_SECRET`
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PLUS`, `STRIPE_PRICE_PRO`
+- `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`
 
-## Run tests
+## Docker (Backend)
+
+Build and run locally:
 
 ```bash
-# unit tests
-$ npm run test
+cd verity-backend
+npm ci
+npm run build
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker build -t verity-api:local .
+docker run --rm -p 3000:3000 --env-file .env.production.example verity-api:local
 ```
+
+## Azure Deployment (Canberra or Sydney)
+
+Infra is defined in Bicep under `infra/azure`.
+
+### 1) Prerequisites
+
+- Azure CLI installed and logged in.
+- Access to Australia Central if deploying Canberra.
+- A resource group created in your target region.
+
+```bash
+az group create -n verity-au -l australiaCentral
+# or
+az group create -n verity-au -l australiaEast
+```
+
+### 2) Deploy Infrastructure
+
+Use the Canberra or Sydney parameter file, then override secrets at deploy time.
+
+```bash
+az deployment group create \
+  --resource-group verity-au \
+  --template-file infra/azure/main.bicep \
+  --parameters @infra/azure/params.canberra.json \
+  --parameters postgresAdminPassword=REPLACE_ME jwtSecret=REPLACE_ME jwtAccessSecret=REPLACE_ME jwtRefreshSecret=REPLACE_ME \
+  --parameters stripeSecretKey=REPLACE_ME stripeWebhookSecret=REPLACE_ME stripePriceStarter=REPLACE_ME stripePricePlus=REPLACE_ME stripePricePro=REPLACE_ME \
+  --parameters agoraAppId=REPLACE_ME agoraAppCertificate=REPLACE_ME hiveApiKey=REPLACE_ME hiveWebhookSecret=REPLACE_ME
+```
+
+Note: `acrName`, `postgresServerName`, `redisName`, and `keyVaultName` must be globally unique.
+
+Swap to Sydney by using `infra/azure/params.sydney-fallback.json`.
+
+### 3) Build and Push Image
+
+```bash
+az acr build --registry <acrName> --image verity-api:latest --file verity-backend/Dockerfile verity-backend
+```
+
+### 4) Update Container Apps
+
+```bash
+az containerapp update --name <apiName> --resource-group verity-au --image <acrName>.azurecr.io/verity-api:latest
+az containerapp update --name <workerName> --resource-group verity-au --image <acrName>.azurecr.io/verity-api:latest
+```
+
+### 5) Run Migrations
+
+Run from a trusted machine or CI where Prisma is available:
+
+```bash
+cd verity-backend
+DATABASE_URL=... npx prisma migrate deploy
+```
+
+### 6) Verify
+
+```bash
+curl https://api.yourveritydomain.com/health
+```
+
+## CI (Manual, 0 Risk)
+
+Manual workflow lives at `.github/workflows/deploy-azure.yml`.
+It builds, deploys, and updates the container apps.
+The workflow is `workflow_dispatch` only and does not auto‑deploy.
+
+Secrets are stored in Azure Key Vault and accessed by the Container Apps via a user-assigned managed identity.
+
+## Key Vault RBAC & Rotation
+
+- Optional RBAC mode is available via `keyVaultUseRbac` in the Azure params file.
+- If enabled, the app identity is granted the **Key Vault Secrets User** role.
+- Your deployment principal must have permission to write secrets (e.g., **Key Vault Secrets Officer**).
+
+Rotation (recommended):
+1. Update secret values in your params file.
+2. Redeploy Bicep to create new secret versions.
+3. Restart Container Apps to pick up the new versions.
+
+## Front Door (Optional)
+
+Front Door can provide a managed TLS endpoint and WAF, but it is a **global service** and may route outside Australia. If strict in-country routing is required, leave it disabled and use direct Container Apps FQDN or regional load balancer.
+
+Enable WAF + rate limits by setting:
+- `enableFrontDoorWaf: true`
+- `frontDoorRateLimit` (requests/min)
+- `frontDoorRateLimitExemptPaths` (default includes `/webhooks/stripe` and `/webhooks/hive`)
+
+## Deployment Checklist (Australia)
+
+Use this to avoid surprises on first launch.
+
+### Prerequisites
+
+- Azure subscription with access to Australia Central or Australia East.
+- Azure CLI installed and logged in.
+- Domain ready (DNS managed in Cloudflare or Azure DNS).
+- Stripe, Agora, and Hive credentials available.
+
+### Secrets Inventory
+
+Required secrets (store in Key Vault via Bicep params):
+- `DATABASE_URL`
+- `REDIS_URL`
+- `JWT_SECRET`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `AGORA_APP_CERTIFICATE`
+- `HIVE_API_KEY`
+- `HIVE_WEBHOOK_SECRET`
+
+Non-secret values (safe as plain env vars):
+- `API_URL`
+- `WS_URL`
+- `APP_URL`
+- `AGORA_APP_ID`
+- `AGORA_TOKEN_TTL_SECONDS`
+- `HIVE_STREAM_URL`
+- `HIVE_SCREENSHOT_URL`
+- `STRIPE_SUCCESS_URL`
+- `STRIPE_CANCEL_URL`
+- `STRIPE_PRICE_STARTER`
+- `STRIPE_PRICE_PLUS`
+- `STRIPE_PRICE_PRO`
+
+### First Deployment Steps
+
+1. Create resource group in `australiaCentral` (or `australiaEast` fallback).
+2. Fill in `infra/azure/params.canberra.json` (or `params.sydney-fallback.json`) with unique names.
+3. Run Bicep deployment with secrets override.
+4. Build and push container image to ACR.
+5. Update Container Apps to use the new image.
+6. Run `npx prisma migrate deploy`.
+7. Verify `/health` endpoint.
+
+### Post-Deploy Checks
+
+- `/health` returns `status: ok`.
+- WebSocket connects to `WS_URL`.
+- Stripe webhook endpoint reachable from Stripe.
+- Redis and Postgres connectivity from Container Apps.
+
+## Platform Features (Backend)
 
 ## Token Rotation & Verification
 
@@ -70,9 +211,8 @@ $ npm run test:cov
 
 - `POST /queue/join` deducts one token and places the user into a Redis sorted set keyed by `region` + preferences.
 - `DELETE /queue/leave` removes the user and refunds the token if no match was made.
-- A background worker pops FIFO pairs from Redis every 500ms and creates a `Session`.
+- A background worker pops FIFO pairs from Redis and creates a `Session`.
 - Matches emit a `match` event over the `/queue` WebSocket namespace to each user room.
-- Refresh fairness is FIFO within each `region:preferences` key.
 
 ## Video Call Flow & Timer
 
@@ -92,7 +232,7 @@ $ npm run test:cov
 
 ## Identity Reveal & Chat
 
-- `GET /matches` returns mutual matches with full partner profiles (anonymous fields only).
+- `GET /matches` returns mutual matches with full partner profiles.
 - `GET /matches/:id/messages` and `POST /matches/:id/messages` provide persistent chat history and delivery.
 - Chat messages are stored in PostgreSQL and delivered in real time via `/chat` WebSocket events.
 - Access is limited to match participants; identity data is revealed only after mutual match.
@@ -112,43 +252,3 @@ $ npm run test:cov
 - Violations immediately terminate the session and log `ModerationEvent` rows.
 - Repeat offenders (3+ violations in 24h) are banned via Redis TTL and receive `moderation:action` events.
 - Optional screenshot fallback can be configured via `HIVE_SCREENSHOT_URL`.
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
