@@ -189,6 +189,11 @@ Non-secret values (safe as plain env vars):
 6. Run `npx prisma migrate deploy`.
 7. Verify `/health` endpoint.
 
+Staging helpers:
+- `scripts/generate-staging-params.sh`
+- `scripts/preflight-env.sh`
+- `scripts/deploy-staging.sh`
+
 ### Post-Deploy Checks
 
 - `/health` returns `status: ok`.
