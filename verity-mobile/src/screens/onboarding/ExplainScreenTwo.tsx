@@ -1,0 +1,86 @@
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import ThemedButton from '../../components/ThemedButton';
+import ThemedScreen from '../../components/ThemedScreen';
+import { useTheme } from '../../theme/ThemeProvider';
+import { spacing, typography } from '../../theme/tokens';
+
+export default function ExplainScreenTwo() {
+  const navigation = useNavigation();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  return (
+    <ThemedScreen>
+      <View style={styles.hero}>
+        <Text style={styles.title}>Tokens keep things fair</Text>
+        <Text style={styles.subtitle}>
+          Each time you go live, one token is used. If no match is found, you get it back.
+        </Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.bullet}>• Go live instantly from Home</Text>
+        <Text style={styles.bullet}>• Match within seconds worldwide</Text>
+        <Text style={styles.bullet}>• Balance always visible in-app</Text>
+      </View>
+
+      <View style={styles.buttonRow}>
+        <ThemedButton
+          label="Back"
+          variant="outline"
+          onPress={() => navigation.goBack()}
+          style={[styles.button, styles.buttonSpacing]}
+        />
+        <ThemedButton
+          label="Next"
+          onPress={() => navigation.navigate('ProfileSetup' as never)}
+          style={styles.button}
+          testID="onboarding-next-2"
+        />
+      </View>
+    </ThemedScreen>
+  );
+}
+
+const createStyles = (colors: { text: string; muted: string; border: string; card: string }) =>
+  StyleSheet.create({
+    hero: {
+      marginTop: spacing.xl,
+      marginBottom: spacing.lg,
+    },
+    title: {
+      fontSize: typography.xl,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: spacing.sm,
+    },
+    subtitle: {
+      fontSize: typography.sm,
+      color: colors.muted,
+      lineHeight: 20,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+    },
+    bullet: {
+      color: colors.text,
+      fontSize: typography.sm,
+      marginBottom: spacing.sm,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      marginTop: spacing.xl,
+    },
+    button: {
+      flex: 1,
+    },
+    buttonSpacing: {
+      marginRight: spacing.sm,
+    },
+  });

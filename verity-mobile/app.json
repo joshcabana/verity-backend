@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Verity",
+    "slug": "verity-mobile",
+    "version": "1.0.0",
+    "scheme": "verity",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      [
+        "@stripe/stripe-react-native",
+        {}
+      ]
+    ]
+  }
+}

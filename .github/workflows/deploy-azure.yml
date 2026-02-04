@@ -1,0 +1,87 @@
+name: Deploy Azure (Australia)
+
+on:
+  workflow_dispatch:
+    inputs:
+      paramFile:
+        description: "Path to Bicep parameters file"
+        required: true
+        default: "infra/azure/params.sydney-fallback.json"
+      runMigrations:
+        description: "Run Prisma migrations"
+        required: true
+        default: "false"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      RESOURCE_GROUP: ${{ secrets.AZURE_RG }}
+      ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
+      API_APP_NAME: ${{ secrets.AZURE_API_APP_NAME }}
+      WORKER_APP_NAME: ${{ secrets.AZURE_WORKER_APP_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install Container Apps extension
+        run: az extension add --name containerapp --upgrade
+
+      - name: Deploy infrastructure (Bicep)
+        run: |
+          set -euo pipefail
+          az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/azure/main.bicep \
+            --parameters @"${{ inputs.paramFile }}" \
+            --parameters apiImage="$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}" \
+            --parameters workerImage="$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}" \
+            --parameters postgresAdminPassword='${{ secrets.POSTGRES_ADMIN_PASSWORD }}' \
+            --parameters jwtSecret='${{ secrets.JWT_SECRET }}' \
+            --parameters jwtAccessSecret='${{ secrets.JWT_ACCESS_SECRET }}' \
+            --parameters jwtRefreshSecret='${{ secrets.JWT_REFRESH_SECRET }}' \
+            --parameters stripeSecretKey='${{ secrets.STRIPE_SECRET_KEY }}' \
+            --parameters stripeWebhookSecret='${{ secrets.STRIPE_WEBHOOK_SECRET }}' \
+            --parameters stripePriceStarter='${{ secrets.STRIPE_PRICE_STARTER }}' \
+            --parameters stripePricePlus='${{ secrets.STRIPE_PRICE_PLUS }}' \
+            --parameters stripePricePro='${{ secrets.STRIPE_PRICE_PRO }}' \
+            --parameters agoraAppId='${{ secrets.AGORA_APP_ID }}' \
+            --parameters agoraAppCertificate='${{ secrets.AGORA_APP_CERTIFICATE }}' \
+            --parameters hiveApiKey='${{ secrets.HIVE_API_KEY }}' \
+            --parameters hiveWebhookSecret='${{ secrets.HIVE_WEBHOOK_SECRET }}'
+
+      - name: Build and push image (ACR)
+        run: |
+          set -euo pipefail
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "verity-api:${{ github.sha }}" \
+            --file verity-backend/Dockerfile \
+            verity-backend
+
+      - name: Update container apps to latest image
+        run: |
+          set -euo pipefail
+          az containerapp update \
+            --name "$API_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}"
+
+          az containerapp update \
+            --name "$WORKER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}"
+
+      - name: Run Prisma migrations
+        if: ${{ inputs.runMigrations == 'true' }}
+        run: |
+          set -euo pipefail
+          cd verity-backend
+          npm ci
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
