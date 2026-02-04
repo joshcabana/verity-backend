@@ -64,6 +64,10 @@ export class QueueService {
     queueKey: string;
     position: number | null;
   }> {
+    const banned = await this.redis.get(this.userBanKey(userId));
+    if (banned) {
+      throw new UnauthorizedException('Account is temporarily suspended');
+    }
     const queueKey = this.buildQueueKey(input.region, input.preferences);
     const queueUserKey = this.userQueueKey(userId);
 
@@ -300,6 +304,10 @@ export class QueueService {
 
   private userMatchedKey(userId: string) {
     return `${USER_MATCHED_PREFIX}${userId}`;
+  }
+
+  private userBanKey(userId: string) {
+    return `moderation:ban:${userId}`;
   }
 
   private async withUserLock<T>(

@@ -182,4 +182,27 @@ describe('Compliance (e2e)', () => {
     expect(deletedUser).toBeNull();
     expect(deletedReport).toBeNull();
   });
+
+  it('blocks queue join when user is banned', async () => {
+    const signup = await request(app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .send({ dateOfBirth: '1990-01-01' })
+      .expect(201);
+
+    const user = signup.body.user;
+    const token = signup.body.accessToken as string;
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { tokenBalance: 1 },
+    });
+
+    await redis.set(`moderation:ban:${user.id}`, '1', 'PX', 60 * 60 * 1000);
+
+    await request(app.getHttpServer())
+      .post('/queue/join')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ region: 'au', preferences: {} })
+      .expect(401);
+  });
 });
