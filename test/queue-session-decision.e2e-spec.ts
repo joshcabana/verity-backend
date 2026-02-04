@@ -110,11 +110,17 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       };
       const matchingWorker = app.get(MatchingWorker);
       matchingWorker?.onModuleDestroy?.();
+      const workerTimer = (matchingWorker as { timer?: NodeJS.Timeout }).timer;
+      if (workerTimer) {
+        clearInterval(workerTimer);
+      }
       const sessionService = app.get(SessionService);
       sessionService?.onModuleDestroy?.();
       closeGateway(app.get(VideoGateway));
       closeGateway(app.get(ChatGateway));
       closeGateway(app.get(QueueGateway));
+      const httpServer = app.getHttpServer();
+      await new Promise<void>((resolve) => httpServer?.close(() => resolve()));
       await app.close();
     }
     if (redis) {
