@@ -5,7 +5,12 @@ import Redis from 'ioredis';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { ChatGateway } from '../src/chat/chat.gateway';
 import { REDIS_CLIENT, type RedisClient } from '../src/common/redis.provider';
+import { QueueGateway } from '../src/queue/queue.service';
+import { MatchingWorker } from '../src/queue/matching.worker';
+import { SessionService } from '../src/session/session.service';
+import { VideoGateway } from '../src/video/video.gateway';
 
 describe('Queue -> Session -> Decision (e2e)', () => {
   let app: INestApplication<App> | null = null;
@@ -26,6 +31,28 @@ describe('Queue -> Session -> Decision (e2e)', () => {
 
   afterAll(async () => {
     if (app) {
+      const closeGateway = (gateway: { server?: unknown } | undefined) => {
+        const target = gateway?.server as
+          | { close?: () => void; server?: { close?: () => void } }
+          | undefined;
+        if (!target) {
+          return;
+        }
+        if (typeof target.close === 'function') {
+          target.close();
+          return;
+        }
+        if (typeof target.server?.close === 'function') {
+          target.server.close();
+        }
+      };
+      const matchingWorker = app.get(MatchingWorker);
+      matchingWorker?.onModuleDestroy?.();
+      const sessionService = app.get(SessionService);
+      sessionService?.onModuleDestroy?.();
+      closeGateway(app.get(VideoGateway));
+      closeGateway(app.get(ChatGateway));
+      closeGateway(app.get(QueueGateway));
       const appRedis = app.get<RedisClient>(REDIS_CLIENT);
       await appRedis.quit();
       appRedis.disconnect();
