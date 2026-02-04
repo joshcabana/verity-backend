@@ -5,9 +5,10 @@ import Redis from 'ioredis';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { REDIS_CLIENT, type RedisClient } from '../src/common/redis.provider';
 
 describe('Queue -> Session -> Decision (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication<App> | null = null;
   let prisma: PrismaClient;
   let redis: Redis;
 
@@ -24,9 +25,15 @@ describe('Queue -> Session -> Decision (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      const appRedis = app.get<RedisClient>(REDIS_CLIENT);
+      await appRedis.quit();
+      appRedis.disconnect();
+      await app.close();
+    }
     await prisma.$disconnect();
     await redis.quit();
+    redis.disconnect();
   });
 
   beforeEach(async () => {
