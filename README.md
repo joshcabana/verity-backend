@@ -217,6 +217,17 @@ Staging helpers:
 
 ## E2E Checklist (Manual)
 
+### Local E2E Setup (Quick)
+
+For a fresh local database, Prisma migrations currently assume baseline tables
+already exist. For local/E2E runs, use `db push` to sync schema:
+
+```bash
+DATABASE_URL=... npx prisma db push --accept-data-loss
+```
+
+In production/CI, continue using `npx prisma migrate deploy`.
+
 1. `POST /auth/signup-anonymous` returns access token and sets refresh cookie.
 2. `GET /tokens/balance` returns token balance (seed tokens if needed).
 3. `POST /queue/join` succeeds and triggers a queue match event.

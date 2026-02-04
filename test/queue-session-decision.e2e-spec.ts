@@ -11,6 +11,66 @@ import { QueueGateway } from '../src/queue/queue.service';
 import { MatchingWorker } from '../src/queue/matching.worker';
 import { SessionService } from '../src/session/session.service';
 import { VideoGateway } from '../src/video/video.gateway';
+import { VideoService } from '../src/video/video.service';
+
+class NoopQueueGateway {
+  emitMatch() {
+    return;
+  }
+}
+
+class NoopChatGateway {
+  emitMessage() {
+    return;
+  }
+}
+
+class NoopVideoGateway {
+  server = {
+    to: () => ({ emit: () => undefined }),
+  };
+
+  emitSessionStart() {
+    return;
+  }
+
+  emitSessionEnd() {
+    return;
+  }
+}
+
+class FakeVideoService {
+  buildSessionTokens(sessionId: string, userIds: string[]) {
+    const expiresAt = new Date(Date.now() + 60_000);
+    const byUser = Object.fromEntries(
+      userIds.map((userId, index) => [
+        userId,
+        {
+          rtcToken: `test-rtc-${userId}`,
+          rtmToken: `test-rtm-${userId}`,
+          rtcUid: index + 1,
+          rtmUserId: userId,
+        },
+      ]),
+    );
+
+    return {
+      channelName: `test_${sessionId}`,
+      expiresAt,
+      byUser,
+    };
+  }
+}
+
+class NoopMatchingWorker {
+  onModuleInit() {
+    return;
+  }
+
+  onModuleDestroy() {
+    return;
+  }
+}
 
 describe('Queue -> Session -> Decision (e2e)', () => {
   let app: INestApplication<App> | null = null;
@@ -20,10 +80,21 @@ describe('Queue -> Session -> Decision (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(QueueGateway)
+      .useClass(NoopQueueGateway)
+      .overrideProvider(ChatGateway)
+      .useClass(NoopChatGateway)
+      .overrideProvider(VideoGateway)
+      .useClass(NoopVideoGateway)
+      .overrideProvider(VideoService)
+      .useClass(FakeVideoService)
+      .overrideProvider(MatchingWorker)
+      .useClass(NoopMatchingWorker)
+      .compile();
 
     app = moduleFixture.createNestApplication();
-    await app.listen(0, '127.0.0.1');
+    await app.init();
 
     prisma = new PrismaClient();
     redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
