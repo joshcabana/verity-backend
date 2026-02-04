@@ -68,3 +68,10 @@
 - Purchase deep links use `verity://tokens/success` or `verity://tokens/cancel` and refresh the balance.
 - Balance refresh hits `GET /tokens/balance` and updates the stored `tokenBalance`.
 - Configure `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` for the Stripe provider.
+
+## Frontend Unit Tests
+
+- Unit/component tests live in `src/**/__tests__`; flow tests remain in `tests/__tests__`.
+- Run tests from `verity-mobile` with `npm test`.
+- For coverage, run `npm test -- --coverage` and target ≥80% component coverage.
+- API calls are mocked with MSW (`msw` dev dependency) via `setupTests.js`. Add per-test handlers with `server.use(rest.get(...))`.

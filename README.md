@@ -228,6 +228,30 @@ scripts/e2e-local-run.sh
 scripts/e2e-local-run.sh all clean
 ```
 
+## Running E2E Tests
+
+Flow tests live in `test/e2e/` and expect Postgres + Redis. The Docker helpers
+set `DATABASE_URL` and `REDIS_URL` automatically.
+
+Run a single flow test (keeps containers running):
+
+```bash
+scripts/e2e-local-run.sh
+npm run test:e2e -- --runTestsByPath test/e2e/auth.flow.spec.ts
+```
+
+Run the full flow suite:
+
+```bash
+scripts/e2e-local-run.sh all clean
+npm run test:e2e -- --runTestsByPath \\
+  test/e2e/auth.flow.spec.ts \\
+  test/e2e/matching-and-video.flow.spec.ts \\
+  test/e2e/match-and-chat.flow.spec.ts \\
+  test/e2e/payments.flow.spec.ts \\
+  test/e2e/moderation.flow.spec.ts
+```
+
 ### Legal Drafts (Australia-First Beta)
 
 Draft policies live in `docs/legal/`:
@@ -361,3 +385,8 @@ scripts/e2e-local-run.sh all clean
 - Run unit tests only: `npm test`
 - Run unit tests with coverage: `npm run test:cov`
 - End-to-end tests remain in: `npm run test:e2e`
+
+## Moderation Accuracy Testing
+
+- Run moderation accuracy tests: `npm test -- --runTestsByPath test/moderation/accuracy.spec.ts`
+- Mock payloads live in: `test/moderation/mock-payloads.ts`
