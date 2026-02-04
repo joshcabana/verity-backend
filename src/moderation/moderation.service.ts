@@ -5,10 +5,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { Session } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
-import { REDIS_CLIENT, RedisClient } from '../common/redis.provider';
+import { REDIS_CLIENT } from '../common/redis.provider';
+import type { RedisClient } from '../common/redis.provider';
 import { VideoGateway } from '../video/video.gateway';
 
 const VIOLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -79,16 +79,25 @@ export class ModerationService {
       });
 
       if (!response.ok) {
-        await ModerationService.requestScreenshotFallback(input.sessionId, input.channelName);
+        await ModerationService.requestScreenshotFallback(
+          input.sessionId,
+          input.channelName,
+        );
       }
     } catch {
-      await ModerationService.requestScreenshotFallback(input.sessionId, input.channelName);
+      await ModerationService.requestScreenshotFallback(
+        input.sessionId,
+        input.channelName,
+      );
     } finally {
       clearTimeout(timeout);
     }
   }
 
-  private static async requestScreenshotFallback(sessionId: string, channelName: string) {
+  private static async requestScreenshotFallback(
+    sessionId: string,
+    channelName: string,
+  ) {
     const url = process.env.HIVE_SCREENSHOT_URL;
     if (!url) {
       return;
@@ -99,7 +108,9 @@ export class ModerationService {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          authorization: process.env.HIVE_API_KEY ? `Bearer ${process.env.HIVE_API_KEY}` : '',
+          authorization: process.env.HIVE_API_KEY
+            ? `Bearer ${process.env.HIVE_API_KEY}`
+            : '',
         },
         body: JSON.stringify({
           sessionId,
@@ -112,7 +123,11 @@ export class ModerationService {
     }
   }
 
-  verifyWebhookSignature(rawBody: Buffer, signature?: string, timestamp?: string) {
+  verifyWebhookSignature(
+    rawBody: Buffer,
+    signature?: string,
+    timestamp?: string,
+  ) {
     const secret = process.env.HIVE_WEBHOOK_SECRET;
     if (!secret) {
       throw new BadRequestException('Hive webhook secret not configured');
@@ -132,7 +147,9 @@ export class ModerationService {
       }
     }
 
-    const rawSig = signature.startsWith('sha256=') ? signature.slice(7) : signature;
+    const rawSig = signature.startsWith('sha256=')
+      ? signature.slice(7)
+      : signature;
     const computed = createHmac('sha256', secret).update(rawBody).digest('hex');
 
     const a = Buffer.from(rawSig, 'hex');
@@ -166,11 +183,14 @@ export class ModerationService {
     await Promise.all(offenderIds.map((id) => this.logModerationEvent(id)));
     await Promise.all(
       offenderIds.map((id) =>
-        this.applyModerationAction(id, payload.reason ?? payload.severity ?? 'violation'),
+        this.applyModerationAction(
+          id,
+          payload.reason ?? payload.severity ?? 'violation',
+        ),
       ),
     );
 
-    await this.sessionService.endSession(session as Session, 'ended');
+    await this.sessionService.endSession(session, 'ended');
     return { received: true };
   }
 
@@ -207,7 +227,13 @@ export class ModerationService {
 
     if (count >= BAN_THRESHOLD) {
       const cooldownKey = this.banCooldownKey(userId);
-      const allowed = await this.redis.set(cooldownKey, '1', 'NX', 'PX', BAN_RATE_LIMIT_MS);
+      const allowed = await this.redis.set(
+        cooldownKey,
+        '1',
+        'PX',
+        BAN_RATE_LIMIT_MS,
+        'NX',
+      );
       if (allowed) {
         await this.redis.set(this.banKey(userId), '1', 'PX', BAN_TTL_MS);
         this.emitModerationAction(userId, 'ban', reason);
@@ -218,14 +244,20 @@ export class ModerationService {
     this.emitModerationAction(userId, 'warn', reason);
   }
 
-  private emitModerationAction(userId: string, action: 'warn' | 'ban', reason: string) {
+  private emitModerationAction(
+    userId: string,
+    action: 'warn' | 'ban',
+    reason: string,
+  ) {
     if (!this.videoGateway.server) {
       return;
     }
-    this.videoGateway.server.to(this.userRoom(userId)).emit('moderation:action', {
-      action,
-      reason,
-    });
+    this.videoGateway.server
+      .to(this.userRoom(userId))
+      .emit('moderation:action', {
+        action,
+        reason,
+      });
   }
 
   private userRoom(userId: string) {

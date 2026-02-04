@@ -28,13 +28,17 @@ class FakePrismaService {
 
   moderationEvent = {
     create: async ({ data }: { data: { userId: string } }) => {
-      this.moderationEvents.push({ userId: data.userId, createdAt: new Date() });
+      this.moderationEvents.push({
+        userId: data.userId,
+        createdAt: new Date(),
+      });
       return data;
     },
     count: async ({ where }: any) => {
       return this.moderationEvents.filter(
         (event) =>
-          event.userId === where.userId && event.createdAt >= where.createdAt.gte,
+          event.userId === where.userId &&
+          event.createdAt >= where.createdAt.gte,
       ).length;
     },
   };

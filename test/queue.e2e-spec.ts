@@ -47,8 +47,14 @@ describe('Queue (e2e)', () => {
     const tokenA = signupA.body.accessToken as string;
     const tokenB = signupB.body.accessToken as string;
 
-    await prisma.user.update({ where: { id: userA.id }, data: { tokenBalance: 1 } });
-    await prisma.user.update({ where: { id: userB.id }, data: { tokenBalance: 1 } });
+    await prisma.user.update({
+      where: { id: userA.id },
+      data: { tokenBalance: 1 },
+    });
+    await prisma.user.update({
+      where: { id: userB.id },
+      data: { tokenBalance: 1 },
+    });
 
     await Promise.all([
       request(app.getHttpServer())
@@ -87,7 +93,9 @@ describe('Queue (e2e)', () => {
       select: { tokenBalance: true, id: true },
     });
 
-    const balanceById = new Map(updatedA ? [[updatedA.id, updatedA.tokenBalance]] : []);
+    const balanceById = new Map(
+      updatedA ? [[updatedA.id, updatedA.tokenBalance]] : [],
+    );
     if (updatedB) {
       balanceById.set(updatedB.id, updatedB.tokenBalance);
     }

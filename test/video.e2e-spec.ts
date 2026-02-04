@@ -1,6 +1,9 @@
 import { Session } from '@prisma/client';
 import { SessionService } from '../src/session/session.service';
-import { SessionEndPayload, SessionStartPayload } from '../src/video/video.gateway';
+import {
+  SessionEndPayload,
+  SessionStartPayload,
+} from '../src/video/video.gateway';
 import { VideoService } from '../src/video/video.service';
 
 class FakeRedis {

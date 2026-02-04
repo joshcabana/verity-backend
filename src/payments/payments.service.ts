@@ -16,14 +16,15 @@ const TOKEN_PACKS = [
   { id: 'pro', tokens: 30, priceEnv: 'STRIPE_PRICE_PRO' },
 ] as const;
 
-type PackId = (typeof TOKEN_PACKS)[number]['id'];
-
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
   private readonly stripe: Stripe;
 
-  constructor(private readonly prisma: PrismaService, stripeClient?: Stripe) {
+  constructor(
+    private readonly prisma: PrismaService,
+    stripeClient?: Stripe,
+  ) {
     const apiKey = process.env.STRIPE_SECRET_KEY ?? '';
     this.stripe =
       stripeClient ??
@@ -77,7 +78,7 @@ export class PaymentsService {
       return { received: true };
     }
 
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object;
     if (session.payment_status !== 'paid') {
       return { received: true };
     }
@@ -94,7 +95,9 @@ export class PaymentsService {
 
     const tokens = Number.parseInt(tokensRaw, 10);
     if (!Number.isFinite(tokens) || tokens <= 0) {
-      this.logger.warn(`Invalid token count in metadata for session ${session.id}`);
+      this.logger.warn(
+        `Invalid token count in metadata for session ${session.id}`,
+      );
       return { received: true };
     }
 
@@ -131,7 +134,10 @@ export class PaymentsService {
     return { received: true };
   }
 
-  verifyStripeSignature(payload: Buffer | string, signature: string | string[] | undefined) {
+  verifyStripeSignature(
+    payload: Buffer | string,
+    signature: string | string[] | undefined,
+  ) {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) {
       throw new BadRequestException('Stripe webhook secret not configured');

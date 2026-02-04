@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { IsObject, IsOptional, IsString } from 'class-validator';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { QueueService } from './queue.service';
 
 class JoinQueueDto {

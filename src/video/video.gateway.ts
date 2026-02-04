@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   OnGatewayConnection,
@@ -10,7 +6,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import type { Server, Socket } from 'socket.io';
 
 export type SessionStartPayload = {
   sessionId: string;
@@ -30,7 +26,10 @@ export type SessionEndPayload = {
 };
 
 @Injectable()
-@WebSocketGateway({ namespace: '/video', cors: { origin: true, credentials: true } })
+@WebSocketGateway({
+  namespace: '/video',
+  cors: { origin: true, credentials: true },
+})
 export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
@@ -39,7 +38,7 @@ export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(private readonly jwt: JwtService) {}
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: Socket) {
     const token = this.extractToken(client);
     if (!token) {
       client.disconnect(true);
@@ -47,12 +46,15 @@ export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      const payload = this.jwt.verify(token, { secret: this.accessSecret }) as { sub?: string };
+      const payload = this.jwt.verify<{ sub?: string }>(token, {
+        secret: this.accessSecret,
+      });
       if (!payload?.sub) {
         throw new UnauthorizedException('Invalid token');
       }
-      client.data.userId = payload.sub;
-      client.join(this.userRoom(payload.sub));
+      const data = client.data as { userId?: string };
+      data.userId = payload.sub;
+      void client.join(this.userRoom(payload.sub));
     } catch (error) {
       this.logger.warn(`Video socket auth failed: ${error}`);
       client.disconnect(true);
@@ -60,9 +62,10 @@ export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
-    const userId = client.data.userId as string | undefined;
+    const data = client.data as { userId?: string };
+    const userId = data.userId;
     if (userId) {
-      client.leave(this.userRoom(userId));
+      void client.leave(this.userRoom(userId));
     }
   }
 
@@ -79,11 +82,15 @@ export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private extractToken(client: Socket): string | null {
-    const authHeader = client.handshake.headers.authorization;
+    const handshake = client.handshake as {
+      headers?: { authorization?: unknown };
+      auth?: { token?: unknown };
+    };
+    const authHeader = handshake.headers?.authorization;
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       return authHeader.slice(7);
     }
-    const authToken = client.handshake.auth?.token;
+    const authToken = handshake.auth?.token;
     if (typeof authToken === 'string') {
       return authToken;
     }
@@ -91,6 +98,10 @@ export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private get accessSecret(): string {
-    return process.env.JWT_ACCESS_SECRET ?? process.env.JWT_SECRET ?? 'dev_access_secret';
+    return (
+      process.env.JWT_ACCESS_SECRET ??
+      process.env.JWT_SECRET ??
+      'dev_access_secret'
+    );
   }
 }

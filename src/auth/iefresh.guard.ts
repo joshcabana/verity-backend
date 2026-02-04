@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Request } from 'express';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -22,7 +27,9 @@ function parseCookies(header?: string): Record<string, string> {
 export class RefreshGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();
-    const cookies = (req as { cookies?: Record<string, string> }).cookies ?? parseCookies(req.headers.cookie);
+    const cookies =
+      (req as { cookies?: Record<string, string> }).cookies ??
+      parseCookies(req.headers.cookie);
     const token = cookies[REFRESH_COOKIE_NAME];
 
     if (!token) {

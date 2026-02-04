@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Session } from '@prisma/client';
+import type { Session } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 import {
   OnGatewayConnection,
@@ -15,9 +15,11 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import type { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
-import { REDIS_CLIENT, RedisClient } from '../common/redis.provider';
+import { REDIS_CLIENT } from '../common/redis.provider';
+import type { RedisClient } from '../common/redis.provider';
+import { SessionService } from '../session/session.service';
 
 const QUEUE_KEYS_SET = 'queue:keys';
 const QUEUE_ZSET_PREFIX = 'queue:zset:';
@@ -51,12 +53,17 @@ export class QueueService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
+    private readonly sessionService: SessionService,
   ) {}
 
   async joinQueue(
     userId: string,
     input: QueueJoinInput,
-  ): Promise<{ status: 'queued' | 'already_queued'; queueKey: string; position: number | null }> {
+  ): Promise<{
+    status: 'queued' | 'already_queued';
+    queueKey: string;
+    position: number | null;
+  }> {
     const queueKey = this.buildQueueKey(input.region, input.preferences);
     const queueUserKey = this.userQueueKey(userId);
 
@@ -65,7 +72,10 @@ export class QueueService {
       const existing = await this.redis.get(queueUserKey);
       if (existing) {
         const state = JSON.parse(existing) as QueueEntryState;
-        const position = await this.redis.zrank(this.queueZsetKey(state.queueKey), userId);
+        const position = await this.redis.zrank(
+          this.queueZsetKey(state.queueKey),
+          userId,
+        );
         return { status: 'already_queued', queueKey: state.queueKey, position };
       }
       throw new ConflictException('Queue operation in progress');
@@ -75,7 +85,10 @@ export class QueueService {
       const existing = await this.redis.get(queueUserKey);
       if (existing) {
         const state = JSON.parse(existing) as QueueEntryState;
-        const position = await this.redis.zrank(this.queueZsetKey(state.queueKey), userId);
+        const position = await this.redis.zrank(
+          this.queueZsetKey(state.queueKey),
+          userId,
+        );
         return { status: 'already_queued', queueKey: state.queueKey, position };
       }
 
@@ -113,16 +126,20 @@ export class QueueService {
         throw error;
       }
 
-      const position = await this.redis.zrank(this.queueZsetKey(queueKey), userId);
+      const position = await this.redis.zrank(
+        this.queueZsetKey(queueKey),
+        userId,
+      );
       return { status: 'queued', queueKey, position };
     } finally {
       await this.releaseLock(this.userLockKey(userId), lockValue);
     }
   }
 
-  async leaveQueue(
-    userId: string,
-  ): Promise<{ status: 'left' | 'not_queued' | 'already_matched'; refunded: boolean }> {
+  async leaveQueue(userId: string): Promise<{
+    status: 'left' | 'not_queued' | 'already_matched';
+    refunded: boolean;
+  }> {
     const queueUserKey = this.userQueueKey(userId);
     return this.withUserLock(userId, async () => {
       const stateRaw = await this.redis.get(queueUserKey);
@@ -159,14 +176,17 @@ export class QueueService {
     }
 
     return {
-      userA: popped[0] as string,
+      userA: popped[0],
       scoreA: Number(popped[1]),
-      userB: popped[2] as string,
+      userB: popped[2],
       scoreB: Number(popped[3]),
     };
   }
 
-  async validatePair(queueKey: string, pair: QueuePair): Promise<{ userA: string; userB: string } | null> {
+  async validatePair(
+    queueKey: string,
+    pair: QueuePair,
+  ): Promise<{ userA: string; userB: string } | null> {
     const zsetKey = this.queueZsetKey(queueKey);
     const [stateA, stateB] = await this.redis.mget(
       this.userQueueKey(pair.userA),
@@ -190,9 +210,13 @@ export class QueueService {
     return { userA: pair.userA, userB: pair.userB };
   }
 
-  async createSession(userAId: string, userBId: string, queueKey: string): Promise<Session> {
+  async createSession(
+    userAId: string,
+    userBId: string,
+    queueKey: string,
+  ): Promise<Session> {
     const [region] = queueKey.split(':');
-    return this.prisma.session.create({
+    const session = await this.prisma.session.create({
       data: {
         userAId,
         userBId,
@@ -200,6 +224,8 @@ export class QueueService {
         queueKey,
       },
     });
+    void this.sessionService.handleSessionCreated(session);
+    return session;
   }
 
   async markMatched(userAId: string, userBId: string, sessionId: string) {
@@ -247,7 +273,10 @@ export class QueueService {
     );
   }
 
-  buildQueueKey(regionRaw: string, preferences?: Record<string, unknown>): string {
+  buildQueueKey(
+    regionRaw: string,
+    preferences?: Record<string, unknown>,
+  ): string {
     const region = regionRaw?.trim().toLowerCase();
     if (!region) {
       throw new BadRequestException('Region is required');
@@ -269,7 +298,10 @@ export class QueueService {
     return `${USER_MATCHED_PREFIX}${userId}`;
   }
 
-  private async withUserLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  private async withUserLock<T>(
+    userId: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
     const lockKey = this.userLockKey(userId);
     const lockValue = await this.acquireLock(userId);
     if (!lockValue) {
@@ -290,7 +322,13 @@ export class QueueService {
   private async acquireLock(userId: string): Promise<string | null> {
     const lockKey = this.userLockKey(userId);
     const lockValue = randomUUID();
-    const acquired = await this.redis.set(lockKey, lockValue, 'NX', 'PX', LOCK_TTL_MS);
+    const acquired = await this.redis.set(
+      lockKey,
+      lockValue,
+      'PX',
+      LOCK_TTL_MS,
+      'NX',
+    );
     return acquired ? lockValue : null;
   }
 
@@ -301,7 +339,10 @@ export class QueueService {
   }
 }
 
-@WebSocketGateway({ namespace: '/queue', cors: { origin: true, credentials: true } })
+@WebSocketGateway({
+  namespace: '/queue',
+  cors: { origin: true, credentials: true },
+})
 export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
@@ -313,7 +354,7 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.jwt = new JwtService({ secret: this.accessSecret });
   }
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: Socket) {
     const token = this.extractToken(client);
     if (!token) {
       client.disconnect(true);
@@ -321,19 +362,23 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      const payload = this.jwt.verify(token, { secret: this.accessSecret }) as { sub?: string };
+      const payload = this.jwt.verify<{ sub?: string }>(token, {
+        secret: this.accessSecret,
+      });
       if (!payload?.sub) {
         throw new UnauthorizedException('Invalid token');
       }
-      client.data.userId = payload.sub;
-      client.join(this.userRoom(payload.sub));
+      const data = client.data as { userId?: string };
+      data.userId = payload.sub;
+      void client.join(this.userRoom(payload.sub));
     } catch {
       client.disconnect(true);
     }
   }
 
   async handleDisconnect(client: Socket) {
-    const userId = client.data.userId as string | undefined;
+    const data = client.data as { userId?: string };
+    const userId = data.userId;
     if (userId) {
       try {
         await this.queueService.leaveQueue(userId);
@@ -363,11 +408,15 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private extractToken(client: Socket): string | null {
-    const authHeader = client.handshake.headers.authorization;
+    const handshake = client.handshake as {
+      headers?: { authorization?: unknown };
+      auth?: { token?: unknown };
+    };
+    const authHeader = handshake.headers?.authorization;
     if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       return authHeader.slice(7);
     }
-    const authToken = client.handshake.auth?.token;
+    const authToken = handshake.auth?.token;
     if (typeof authToken === 'string') {
       return authToken;
     }
@@ -375,7 +424,11 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private get accessSecret(): string {
-    return process.env.JWT_ACCESS_SECRET ?? process.env.JWT_SECRET ?? 'dev_access_secret';
+    return (
+      process.env.JWT_ACCESS_SECRET ??
+      process.env.JWT_SECRET ??
+      'dev_access_secret'
+    );
   }
 }
 

@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { VerifyPhoneDto } from './dto/verify-phone.dto';
@@ -24,10 +24,11 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, accessToken, refreshToken } = await this.authService.signupAnonymous(
-      this.getUserAgent(req),
-      this.getIpAddress(req),
-    );
+    const { user, accessToken, refreshToken } =
+      await this.authService.signupAnonymous(
+        this.getUserAgent(req),
+        this.getIpAddress(req),
+      );
 
     this.authService.setRefreshCookie(res, refreshToken);
     return { user, accessToken };
@@ -71,7 +72,10 @@ export class AuthController {
 
   @Post('logout-all')
   @UseGuards(AuthGuard('jwt'))
-  async logoutAll(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async logoutAll(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const userId = this.getUserId(req);
     await this.authService.logoutAll(userId);
     this.authService.clearRefreshCookie(res);
@@ -112,7 +116,9 @@ export class UsersController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   async getMe(@Req() req: Request) {
-    const user = req.user as { sub?: string; id?: string; userId?: string } | undefined;
+    const user = req.user as
+      | { sub?: string; id?: string; userId?: string }
+      | undefined;
     const userId = user?.sub ?? user?.id ?? user?.userId;
     if (!userId) {
       throw new UnauthorizedException('Invalid access token');

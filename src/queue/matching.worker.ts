@@ -1,5 +1,12 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { REDIS_CLIENT, RedisClient } from '../common/redis.provider';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import { REDIS_CLIENT } from '../common/redis.provider';
+import type { RedisClient } from '../common/redis.provider';
 import { QueueGateway, QueueService } from './queue.service';
 
 const QUEUE_KEYS_SET = 'queue:keys';
@@ -61,15 +68,26 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
         continue;
       }
 
-      const locks = await this.queueService.lockUsers([valid.userA, valid.userB]);
+      const locks = await this.queueService.lockUsers([
+        valid.userA,
+        valid.userB,
+      ]);
       if (!locks) {
         await this.queueService.requeuePair(queueKey, pair);
         continue;
       }
 
       try {
-        const session = await this.queueService.createSession(valid.userA, valid.userB, queueKey);
-        await this.queueService.markMatched(valid.userA, valid.userB, session.id);
+        const session = await this.queueService.createSession(
+          valid.userA,
+          valid.userB,
+          queueKey,
+        );
+        await this.queueService.markMatched(
+          valid.userA,
+          valid.userB,
+          session.id,
+        );
         this.gateway.emitMatch(valid.userA, valid.userB, session);
       } finally {
         await this.queueService.releaseUserLocks(locks);

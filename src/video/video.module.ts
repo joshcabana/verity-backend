@@ -6,7 +6,13 @@ import { VideoGateway } from './video.gateway';
 import { VideoService } from './video.service';
 
 @Module({
-  providers: [VideoService, VideoGateway, SessionService, JwtService, redisProvider],
+  providers: [
+    VideoService,
+    VideoGateway,
+    SessionService,
+    JwtService,
+    redisProvider,
+  ],
   exports: [VideoService, SessionService, VideoGateway],
 })
 export class VideoModule {}

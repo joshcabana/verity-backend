@@ -1,5 +1,5 @@
 import { Body, Controller, Headers, Post, Req, Res } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { PaymentsService } from './payments.service';
 
 @Controller('webhooks/stripe')
@@ -14,7 +14,10 @@ export class StripeWebhookController {
     @Body() body?: unknown,
   ) {
     const payload = req.rawBody ?? Buffer.from(JSON.stringify(body ?? {}));
-    const event = this.paymentsService.verifyStripeSignature(payload, signature);
+    const event = this.paymentsService.verifyStripeSignature(
+      payload,
+      signature,
+    );
     await this.paymentsService.handleStripeWebhookEvent(event);
     return res.status(200).json({ received: true });
   }

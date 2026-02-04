@@ -14,11 +14,19 @@ export class ModerationWebhookController {
     @Body() body?: unknown,
   ) {
     const rawBody =
-      req.rawBody ?? Buffer.from(typeof body === 'string' ? body : JSON.stringify(body ?? {}));
+      req.rawBody ??
+      Buffer.from(typeof body === 'string' ? body : JSON.stringify(body ?? {}));
 
-    this.moderationService.verifyWebhookSignature(rawBody, signature, timestamp);
+    this.moderationService.verifyWebhookSignature(
+      rawBody,
+      signature,
+      timestamp,
+    );
 
-    const payload = typeof body === 'string' ? JSON.parse(body) : (body ?? {});
-    return this.moderationService.handleWebhook(payload as any);
+    const payload =
+      typeof body === 'string' ? (JSON.parse(body) as unknown) : (body ?? {});
+    return this.moderationService.handleWebhook(
+      payload as Parameters<ModerationService['handleWebhook']>[0],
+    );
   }
 }

@@ -71,7 +71,11 @@ class FakePrismaService {
         ) ?? null
       );
     },
-    create: async ({ data }: { data: { userAId: string; userBId: string } }) => {
+    create: async ({
+      data,
+    }: {
+      data: { userAId: string; userBId: string };
+    }) => {
       const match = { id: `match-${this.matches.length + 1}`, ...data };
       this.matches.push(match);
       return match;
@@ -135,13 +139,19 @@ describe('Match decision (e2e)', () => {
     await service.endSession(session, 'timeout');
 
     await service.submitChoice(session.id, session.userAId, 'MATCH');
-    const result = await service.submitChoice(session.id, session.userBId, 'MATCH');
+    const result = await service.submitChoice(
+      session.id,
+      session.userBId,
+      'MATCH',
+    );
 
     expect(result.status).toBe('resolved');
     expect(result.outcome).toBe('mutual');
     expect(prisma.matches).toHaveLength(1);
 
-    const mutualEvents = gateway.events.filter((event) => event.event === 'match:mutual');
+    const mutualEvents = gateway.events.filter(
+      (event) => event.event === 'match:mutual',
+    );
     expect(mutualEvents).toHaveLength(2);
   });
 
@@ -170,13 +180,19 @@ describe('Match decision (e2e)', () => {
     prisma.sessions.set(session.id, session);
     await service.endSession(session, 'timeout');
 
-    const result = await service.submitChoice(session.id, session.userAId, 'PASS');
+    const result = await service.submitChoice(
+      session.id,
+      session.userAId,
+      'PASS',
+    );
 
     expect(result.status).toBe('resolved');
     expect(result.outcome).toBe('non_mutual');
     expect(prisma.matches).toHaveLength(0);
 
-    const softEvents = gateway.events.filter((event) => event.event === 'match:non_mutual');
+    const softEvents = gateway.events.filter(
+      (event) => event.event === 'match:non_mutual',
+    );
     expect(softEvents).toHaveLength(2);
   });
 
@@ -211,7 +227,9 @@ describe('Match decision (e2e)', () => {
     const decision = await redis.get(`session:decision:${session.id}`);
     expect(decision).toBeTruthy();
 
-    const softEvents = gateway.events.filter((event) => event.event === 'match:non_mutual');
+    const softEvents = gateway.events.filter(
+      (event) => event.event === 'match:non_mutual',
+    );
     expect(softEvents).toHaveLength(2);
   });
 });

@@ -117,7 +117,11 @@ export class AuthService {
         where: { id: tokenId },
       });
 
-      if (!stored || stored.userId !== payload.sub || stored.familyId !== payload.fid) {
+      if (
+        !stored ||
+        stored.userId !== payload.sub ||
+        stored.familyId !== payload.fid
+      ) {
         if (stored?.familyId) {
           await this.revokeFamilyTx(tx, stored.familyId, now);
         }
@@ -143,7 +147,11 @@ export class AuthService {
       }
 
       const nextTokenId = randomUUID();
-      const nextToken = await this.createRefreshToken(payload.sub, payload.fid, nextTokenId);
+      const nextToken = await this.createRefreshToken(
+        payload.sub,
+        payload.fid,
+        nextTokenId,
+      );
 
       const updated = await tx.refreshToken.updateMany({
         where: { id: stored.id, revokedAt: null },
@@ -202,7 +210,11 @@ export class AuthService {
     const now = new Date();
     const familyId = options.familyId ?? randomUUID();
     const refreshTokenId = randomUUID();
-    const refreshToken = await this.createRefreshToken(userId, familyId, refreshTokenId);
+    const refreshToken = await this.createRefreshToken(
+      userId,
+      familyId,
+      refreshTokenId,
+    );
 
     await this.prisma.refreshToken.create({
       data: {
@@ -233,7 +245,11 @@ export class AuthService {
     );
   }
 
-  private async createRefreshToken(userId: string, familyId: string, tokenId: string) {
+  private async createRefreshToken(
+    userId: string,
+    familyId: string,
+    tokenId: string,
+  ) {
     return this.jwt.signAsync(
       { sub: userId, fid: familyId, typ: 'refresh' },
       {
@@ -249,7 +265,12 @@ export class AuthService {
       const payload = await this.jwt.verifyAsync<RefreshPayload>(token, {
         secret: this.refreshSecret,
       });
-      if (payload.typ !== 'refresh' || !payload.sub || !payload.fid || !payload.jti) {
+      if (
+        payload.typ !== 'refresh' ||
+        !payload.sub ||
+        !payload.fid ||
+        !payload.jti
+      ) {
         throw new UnauthorizedException('Invalid refresh token');
       }
       return payload;
@@ -262,11 +283,19 @@ export class AuthService {
   }
 
   private get accessSecret(): string {
-    return process.env.JWT_ACCESS_SECRET ?? process.env.JWT_SECRET ?? 'dev_access_secret';
+    return (
+      process.env.JWT_ACCESS_SECRET ??
+      process.env.JWT_SECRET ??
+      'dev_access_secret'
+    );
   }
 
   private get refreshSecret(): string {
-    return process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET ?? 'dev_refresh_secret';
+    return (
+      process.env.JWT_REFRESH_SECRET ??
+      process.env.JWT_SECRET ??
+      'dev_refresh_secret'
+    );
   }
 
   private getRefreshCookieOptions(): CookieOptions {
@@ -283,7 +312,9 @@ export class AuthService {
   }
 
   private refreshExpiry(now: Date): Date {
-    return new Date(now.getTime() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+    return new Date(
+      now.getTime() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
+    );
   }
 
   private hashToken(token: string): string {
@@ -302,7 +333,8 @@ export class AuthService {
 
   private isUniqueViolation(error: unknown): boolean {
     return (
-      error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
     );
   }
 
@@ -317,7 +349,11 @@ export class AuthService {
     );
   }
 
-  private async revokeFamilyTx(tx: Prisma.TransactionClient, familyId: string, now: Date) {
+  private async revokeFamilyTx(
+    tx: Prisma.TransactionClient,
+    familyId: string,
+    now: Date,
+  ) {
     await tx.refreshToken.updateMany({
       where: { familyId, revokedAt: null },
       data: { revokedAt: now, lastUsedAt: now },

@@ -29,7 +29,11 @@ class FakePrismaService {
 
   tokenTransaction = {
     findUnique: async ({ where }: any) => {
-      return this.transactions.find((tx) => tx.stripeEventId === where.stripeEventId) ?? null;
+      return (
+        this.transactions.find(
+          (tx) => tx.stripeEventId === where.stripeEventId,
+        ) ?? null
+      );
     },
     create: async ({ data }: any) => {
       this.transactions.push({ stripeEventId: data.stripeEventId });
@@ -45,7 +49,10 @@ class FakePrismaService {
 class FakeStripe {
   checkout = {
     sessions: {
-      create: async () => ({ id: 'cs_test', url: 'https://stripe.test/checkout' }),
+      create: async () => ({
+        id: 'cs_test',
+        url: 'https://stripe.test/checkout',
+      }),
     },
   };
   webhooks = {

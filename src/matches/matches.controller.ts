@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { IsString, MaxLength, MinLength } from 'class-validator';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { ChatService } from '../chat/chat.service';
 import { MatchesService } from './matches.service';
 
@@ -60,7 +60,9 @@ export class MatchesController {
   }
 
   private getUserId(req: Request): string {
-    const user = req.user as { sub?: string; id?: string; userId?: string } | undefined;
+    const user = req.user as
+      | { sub?: string; id?: string; userId?: string }
+      | undefined;
     const userId = user?.sub ?? user?.id ?? user?.userId;
     if (!userId) {
       throw new UnauthorizedException('Invalid access token');

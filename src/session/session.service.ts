@@ -6,11 +6,11 @@ import {
   Logger,
   NotFoundException,
   OnModuleDestroy,
-  OnModuleInit,
 } from '@nestjs/common';
-import { Session } from '@prisma/client';
+import type { Session } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { REDIS_CLIENT, RedisClient } from '../common/redis.provider';
+import { REDIS_CLIENT } from '../common/redis.provider';
+import type { RedisClient } from '../common/redis.provider';
 import { VideoGateway } from '../video/video.gateway';
 import { VideoService } from '../video/video.service';
 
@@ -27,7 +27,7 @@ type ChoiceResult =
   | { status: 'resolved'; outcome: 'mutual' | 'non_mutual'; matchId?: string };
 
 @Injectable()
-export class SessionService implements OnModuleInit, OnModuleDestroy {
+export class SessionService implements OnModuleDestroy {
   private readonly logger = new Logger(SessionService.name);
   private readonly timers = new Map<string, NodeJS.Timeout>();
   private readonly choiceTimers = new Map<string, NodeJS.Timeout>();
@@ -38,16 +38,6 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     private readonly videoGateway: VideoGateway,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
   ) {}
-
-  onModuleInit() {
-    this.prisma.$use(async (params, next) => {
-      const result = await next(params);
-      if (params.model === 'Session' && params.action === 'create') {
-        void this.handleSessionCreated(result as Session);
-      }
-      return result;
-    });
-  }
 
   onModuleDestroy() {
     for (const timer of this.timers.values()) {
@@ -62,7 +52,13 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
 
   async handleSessionCreated(session: Session) {
     const lockKey = this.sessionLockKey(session.id);
-    const lockAcquired = await this.redis.set(lockKey, '1', 'NX', 'PX', SESSION_LOCK_TTL_MS);
+    const lockAcquired = await this.redis.set(
+      lockKey,
+      '1',
+      'PX',
+      SESSION_LOCK_TTL_MS,
+      'NX',
+    );
     if (!lockAcquired) {
       return;
     }
@@ -76,7 +72,12 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
         session.userBId,
       ]);
 
-      await this.persistSessionState(session, tokens.channelName, startAt, endAt);
+      await this.persistSessionState(
+        session,
+        tokens.channelName,
+        startAt,
+        endAt,
+      );
 
       const payloadBase = {
         sessionId: session.id,
@@ -102,16 +103,30 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
         rtm: { token: userBTokens.rtmToken, userId: userBTokens.rtmUserId },
       });
 
-      this.scheduleSessionEnd(session.id, session.userAId, session.userBId, endAt);
+      this.scheduleSessionEnd(
+        session.id,
+        session.userAId,
+        session.userBId,
+        endAt,
+      );
     } catch (error) {
       this.logger.error(`Failed to start session ${session.id}: ${error}`);
       await this.endSession(session, 'token_error');
     }
   }
 
-  async endSession(session: Session, reason: 'timeout' | 'ended' | 'token_error' = 'timeout') {
+  async endSession(
+    session: Session,
+    reason: 'timeout' | 'ended' | 'token_error' = 'timeout',
+  ) {
     const endedKey = this.sessionEndedKey(session.id);
-    const alreadyEnded = await this.redis.set(endedKey, '1', 'NX', 'PX', SESSION_STATE_TTL_MS);
+    const alreadyEnded = await this.redis.set(
+      endedKey,
+      '1',
+      'PX',
+      SESSION_STATE_TTL_MS,
+      'NX',
+    );
     if (!alreadyEnded) {
       return;
     }
@@ -122,7 +137,10 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       this.timers.delete(session.id);
     }
 
-    await this.redis.del(this.sessionActiveKey(session.userAId), this.sessionActiveKey(session.userBId));
+    await this.redis.del(
+      this.sessionActiveKey(session.userAId),
+      this.sessionActiveKey(session.userBId),
+    );
 
     const endedAt = new Date().toISOString();
     this.videoGateway.emitSessionEnd(session.userAId, {
@@ -137,10 +155,20 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     });
 
     const deadline = await this.ensureChoiceDeadline(session.id);
-    this.scheduleChoiceTimeout(session.id, session.userAId, session.userBId, deadline);
+    this.scheduleChoiceTimeout(
+      session.id,
+      session.userAId,
+      session.userBId,
+      deadline,
+    );
   }
 
-  private scheduleSessionEnd(sessionId: string, userAId: string, userBId: string, endAt: Date) {
+  private scheduleSessionEnd(
+    sessionId: string,
+    userAId: string,
+    userBId: string,
+    endAt: Date,
+  ) {
     const delay = Math.max(0, endAt.getTime() - Date.now());
     const timer = setTimeout(() => {
       void this.endSession(
@@ -175,13 +203,34 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       endAt: endAt.toISOString(),
     };
 
-    await this.redis.set(this.sessionStateKey(session.id), JSON.stringify(state), 'PX', SESSION_STATE_TTL_MS);
-    await this.redis.set(this.sessionActiveKey(session.userAId), session.id, 'PX', SESSION_STATE_TTL_MS);
-    await this.redis.set(this.sessionActiveKey(session.userBId), session.id, 'PX', SESSION_STATE_TTL_MS);
+    await this.redis.set(
+      this.sessionStateKey(session.id),
+      JSON.stringify(state),
+      'PX',
+      SESSION_STATE_TTL_MS,
+    );
+    await this.redis.set(
+      this.sessionActiveKey(session.userAId),
+      session.id,
+      'PX',
+      SESSION_STATE_TTL_MS,
+    );
+    await this.redis.set(
+      this.sessionActiveKey(session.userBId),
+      session.id,
+      'PX',
+      SESSION_STATE_TTL_MS,
+    );
   }
 
-  async submitChoice(sessionId: string, userId: string, choice: SessionChoice): Promise<ChoiceResult> {
-    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+  async submitChoice(
+    sessionId: string,
+    userId: string,
+    choice: SessionChoice,
+  ): Promise<ChoiceResult> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
     if (!session) {
       throw new NotFoundException('Session not found');
     }
@@ -209,12 +258,18 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     }
 
     await this.redis.hset(choiceKey, userId, choice);
-    await this.redis.pexpire(choiceKey, Math.max(1, deadline.getTime() - Date.now()));
+    await this.redis.pexpire(
+      choiceKey,
+      Math.max(1, deadline.getTime() - Date.now()),
+    );
 
     return this.evaluateChoices(session, deadline);
   }
 
-  private async evaluateChoices(session: Session, deadline: Date): Promise<ChoiceResult> {
+  private async evaluateChoices(
+    session: Session,
+    deadline: Date,
+  ): Promise<ChoiceResult> {
     const choiceKey = this.sessionChoiceKey(session.id);
     const [choiceA, choiceB] = (await this.redis.hmget(
       choiceKey,
@@ -223,7 +278,11 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     )) as Array<SessionChoice | null>;
 
     if (choiceA === 'PASS' || choiceB === 'PASS') {
-      return this.finalizeDecision(session, choiceA ?? 'PASS', choiceB ?? 'PASS');
+      return this.finalizeDecision(
+        session,
+        choiceA ?? 'PASS',
+        choiceB ?? 'PASS',
+      );
     }
 
     if (choiceA === 'MATCH' && choiceB === 'MATCH') {
@@ -231,7 +290,11 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (Date.now() >= deadline.getTime()) {
-      return this.finalizeDecision(session, choiceA ?? 'PASS', choiceB ?? 'PASS');
+      return this.finalizeDecision(
+        session,
+        choiceA ?? 'PASS',
+        choiceB ?? 'PASS',
+      );
     }
 
     return { status: 'pending', deadline: deadline.toISOString() };
@@ -248,11 +311,15 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       return existing;
     }
 
-    const outcome = choiceA === 'MATCH' && choiceB === 'MATCH' ? 'mutual' : 'non_mutual';
+    const outcome =
+      choiceA === 'MATCH' && choiceB === 'MATCH' ? 'mutual' : 'non_mutual';
     let matchId: string | undefined;
 
     if (outcome === 'mutual') {
-      const [userLow, userHigh] = this.canonicalPair(session.userAId, session.userBId);
+      const [userLow, userHigh] = this.canonicalPair(
+        session.userAId,
+        session.userBId,
+      );
 
       const existingMatch = await this.prisma.match.findUnique({
         where: {
@@ -284,9 +351,9 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     const stored = await this.redis.set(
       decisionKey,
       JSON.stringify(payload),
-      'NX',
       'PX',
       CHOICE_STATE_TTL_MS,
+      'NX',
     );
 
     if (!stored) {
@@ -319,12 +386,20 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     this.emitToUsers(session, 'match:non_mutual', payload);
   }
 
-  private emitToUsers(session: Session, event: string, payload: Record<string, unknown>) {
+  private emitToUsers(
+    session: Session,
+    event: string,
+    payload: Record<string, unknown>,
+  ) {
     if (!this.videoGateway.server) {
       return;
     }
-    this.videoGateway.server.to(this.userRoom(session.userAId)).emit(event, payload);
-    this.videoGateway.server.to(this.userRoom(session.userBId)).emit(event, payload);
+    this.videoGateway.server
+      .to(this.userRoom(session.userAId))
+      .emit(event, payload);
+    this.videoGateway.server
+      .to(this.userRoom(session.userBId))
+      .emit(event, payload);
   }
 
   private userRoom(userId: string) {
@@ -351,7 +426,13 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     }
 
     const deadline = new Date(Date.now() + CHOICE_WINDOW_MS);
-    await this.redis.set(key, deadline.toISOString(), 'NX', 'PX', CHOICE_STATE_TTL_MS);
+    await this.redis.set(
+      key,
+      deadline.toISOString(),
+      'PX',
+      CHOICE_STATE_TTL_MS,
+      'NX',
+    );
     return deadline;
   }
 

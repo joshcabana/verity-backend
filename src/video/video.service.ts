@@ -33,8 +33,21 @@ export class VideoService {
     const byUser: AgoraTokens['byUser'] = {};
     for (const userId of userIds) {
       const rtcUid = this.hashToUid(userId);
-      const rtcToken = this.buildRtcToken(appId, appCertificate, channelName, rtcUid, expireTs, ttlSeconds);
-      const rtmToken = this.buildRtmToken(appId, appCertificate, userId, expireTs, ttlSeconds);
+      const rtcToken = this.buildRtcToken(
+        appId,
+        appCertificate,
+        channelName,
+        rtcUid,
+        expireTs,
+        ttlSeconds,
+      );
+      const rtmToken = this.buildRtmToken(
+        appId,
+        appCertificate,
+        userId,
+        expireTs,
+        ttlSeconds,
+      );
       byUser[userId] = {
         rtcToken,
         rtmToken,
@@ -90,7 +103,10 @@ export class VideoService {
   }
 
   private getTokenTtlSeconds(): number {
-    const value = Number.parseInt(process.env.AGORA_TOKEN_TTL_SECONDS ?? '', 10);
+    const value = Number.parseInt(
+      process.env.AGORA_TOKEN_TTL_SECONDS ?? '',
+      10,
+    );
     if (Number.isFinite(value) && value > 0) {
       return value;
     }
@@ -217,7 +233,10 @@ abstract class Service {
 }
 
 class ServiceRtc extends Service {
-  constructor(private readonly channelName: string, private readonly uid: number) {
+  constructor(
+    private readonly channelName: string,
+    private readonly uid: number,
+  ) {
     super(ServiceType.RTC);
   }
 

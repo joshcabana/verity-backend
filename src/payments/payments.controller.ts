@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { IsIn } from 'class-validator';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { PaymentsService } from './payments.service';
 
 class PurchaseDto {
@@ -36,7 +36,9 @@ export class PaymentsController {
   }
 
   private getUserId(req: Request): string {
-    const user = req.user as { sub?: string; id?: string; userId?: string } | undefined;
+    const user = req.user as
+      | { sub?: string; id?: string; userId?: string }
+      | undefined;
     const userId = user?.sub ?? user?.id ?? user?.userId;
     if (!userId) {
       throw new UnauthorizedException('Invalid access token');

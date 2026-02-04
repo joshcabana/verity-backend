@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Message } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatGateway } from './chat.gateway';
@@ -12,7 +17,11 @@ export class ChatService {
     private readonly gateway: ChatGateway,
   ) {}
 
-  async listMessages(matchId: string, userId: string, limit = DEFAULT_MESSAGE_LIMIT) {
+  async listMessages(
+    matchId: string,
+    userId: string,
+    limit = DEFAULT_MESSAGE_LIMIT,
+  ) {
     const match = await this.getMatchForUser(matchId, userId);
     if (!match) {
       throw new NotFoundException('Match not found');
@@ -28,7 +37,11 @@ export class ChatService {
     return messages.reverse();
   }
 
-  async sendMessage(matchId: string, userId: string, text: string): Promise<Message> {
+  async sendMessage(
+    matchId: string,
+    userId: string,
+    text: string,
+  ): Promise<Message> {
     const content = text.trim();
     if (!content) {
       throw new BadRequestException('Message text is required');
@@ -66,7 +79,9 @@ export class ChatService {
   }
 
   private async getMatchForUser(matchId: string, userId: string) {
-    const match = await this.prisma.match.findUnique({ where: { id: matchId } });
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
     if (!match) {
       return null;
     }

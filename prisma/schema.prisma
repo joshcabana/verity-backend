@@ -32,6 +32,8 @@ model User {
   matchesAsB    Match[]   @relation("UserBMatches")
   tokenTxs      TokenTransaction[]
   moderation    ModerationEvent[]
+  refreshTokens RefreshToken[]
+  messagesSent  Message[]
 }
 
 model RefreshToken {
@@ -79,6 +81,7 @@ model Match {
 
   userA User @relation("UserAMatches", fields: [userAId], references: [id])
   userB User @relation("UserBMatches", fields: [userBId], references: [id])
+  messages Message[]
 
   @@unique([userAId, userBId])
   @@index([userAId])

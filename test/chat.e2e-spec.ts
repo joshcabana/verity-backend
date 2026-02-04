@@ -22,7 +22,9 @@ class FakePrismaService {
     },
     findMany: async ({ where, include, orderBy }: any) => {
       const results = Array.from(this.matches.values()).filter(
-        (match) => match.userAId === where.OR[0].userAId || match.userBId === where.OR[1].userBId,
+        (match) =>
+          match.userAId === where.OR[0].userAId ||
+          match.userBId === where.OR[1].userBId,
       );
 
       const withUsers = results.map((match) => ({
@@ -40,7 +42,11 @@ class FakePrismaService {
   };
 
   message = {
-    create: async ({ data }: { data: { matchId: string; senderId: string; text: string } }) => {
+    create: async ({
+      data,
+    }: {
+      data: { matchId: string; senderId: string; text: string };
+    }) => {
       const message: Message = {
         id: `msg-${this.messages.length + 1}`,
         matchId: data.matchId,
@@ -52,9 +58,13 @@ class FakePrismaService {
       return message;
     },
     findMany: async ({ where, orderBy, take }: any) => {
-      let results = this.messages.filter((message) => message.matchId === where.matchId);
+      let results = this.messages.filter(
+        (message) => message.matchId === where.matchId,
+      );
       if (orderBy?.createdAt === 'desc') {
-        results = results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        results = results.sort(
+          (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+        );
       }
       if (take) {
         results = results.slice(0, take);
@@ -68,7 +78,10 @@ describe('Chat & identity reveal (e2e)', () => {
   it('lists matches with partner profile and delivers chat messages', async () => {
     const prisma = new FakePrismaService();
     const gateway = new FakeChatGateway();
-    const chatService = new ChatService(prisma as unknown as any, gateway as any);
+    const chatService = new ChatService(
+      prisma as unknown as any,
+      gateway as any,
+    );
     const matchesService = new MatchesService(prisma as unknown as any);
 
     const userA: User = {
@@ -117,7 +130,11 @@ describe('Chat & identity reveal (e2e)', () => {
     expect(list[0].partner.id).toBe(userB.id);
     expect(list[0].partner.displayName).toBe('B');
 
-    const message = await chatService.sendMessage(match.id, userA.id, 'Hello there');
+    const message = await chatService.sendMessage(
+      match.id,
+      userA.id,
+      'Hello there',
+    );
     expect(message.text).toBe('Hello there');
     expect(gateway.events).toHaveLength(2);
 
@@ -128,7 +145,10 @@ describe('Chat & identity reveal (e2e)', () => {
   it('prevents non-participants from sending messages', async () => {
     const prisma = new FakePrismaService();
     const gateway = new FakeChatGateway();
-    const chatService = new ChatService(prisma as unknown as any, gateway as any);
+    const chatService = new ChatService(
+      prisma as unknown as any,
+      gateway as any,
+    );
 
     const match: Match = {
       id: 'match-2',
@@ -139,8 +159,8 @@ describe('Chat & identity reveal (e2e)', () => {
     };
     prisma.matches.set(match.id, match);
 
-    await expect(chatService.sendMessage(match.id, 'user-c', 'Hey')).rejects.toThrow(
-      ForbiddenException,
-    );
+    await expect(
+      chatService.sendMessage(match.id, 'user-c', 'Hey'),
+    ).rejects.toThrow(ForbiddenException);
   });
 });
