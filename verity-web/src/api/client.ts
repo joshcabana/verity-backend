@@ -81,6 +81,18 @@ export async function apiJson<T>(
   return { ok: response.ok, status: response.status, data };
 }
 
+export function getAdminKey(): string | null {
+  return localStorage.getItem('verity_admin_key');
+}
+
+export function setAdminKey(value: string | null) {
+  if (value && value.trim().length > 0) {
+    localStorage.setItem('verity_admin_key', value.trim());
+  } else {
+    localStorage.removeItem('verity_admin_key');
+  }
+}
+
 export function decodeToken(token: string): { sub?: string } {
   try {
     const payload = token.split('.')[1];

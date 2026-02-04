@@ -163,6 +163,26 @@ header {
   margin-top: 18px;
 }
 
+.report-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.report-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: #fff;
+}
+
+.report-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
 .section-title {
   font-size: 20px;
   margin: 0 0 12px;

@@ -11,6 +11,7 @@ import { Matches } from './pages/Matches';
 import { Chat } from './pages/Chat';
 import { Settings } from './pages/Settings';
 import { Legal } from './pages/Legal';
+import { AdminModeration } from './pages/AdminModeration';
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token } = useAuth();
@@ -46,6 +47,14 @@ export const App: React.FC = () => {
           element={
             <RequireAuth>
               <Settings />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/moderation"
+          element={
+            <RequireAuth>
+              <AdminModeration />
             </RequireAuth>
           }
         />
