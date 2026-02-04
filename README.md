@@ -355,3 +355,9 @@ scripts/e2e-local-run.sh all clean
 - Violations immediately terminate the session and log `ModerationEvent` rows.
 - Repeat offenders (3+ violations in 24h) are banned via Redis TTL and receive `moderation:action` events.
 - Optional screenshot fallback can be configured via `HIVE_SCREENSHOT_URL`.
+
+## Running Unit Tests & Coverage
+
+- Run unit tests only: `npm test`
+- Run unit tests with coverage: `npm run test:cov`
+- End-to-end tests remain in: `npm run test:e2e`
