@@ -17,4 +17,7 @@ import { MatchingWorker } from './matching.worker';
     redisProvider,
   ],
 })
-export class QueueModule {}
+export class QueueModule {
+  // Ensures the matching worker is instantiated at module bootstrap.
+  constructor(private readonly matchingWorker: MatchingWorker) {}
+}

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Post,
   Req,
   Res,
@@ -54,6 +55,7 @@ export class AuthController {
 
   @Post('refresh')
   @UseGuards(RefreshGuard)
+  @HttpCode(200)
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,

@@ -94,12 +94,10 @@ describe('Video session timer (e2e)', () => {
     const endMs = Date.parse(payload.endAt);
     expect(endMs - startMs).toBe(45_000);
 
-    jest.advanceTimersByTime(44_999);
-    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(44_999);
     expect(gateway.endEvents).toHaveLength(0);
 
-    jest.advanceTimersByTime(1);
-    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(1);
     expect(gateway.endEvents).toHaveLength(2);
   });
 

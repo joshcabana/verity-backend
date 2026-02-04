@@ -215,79 +215,100 @@ export class AuthService {
     const now = new Date();
     const tokenHash = this.hashToken(refreshToken);
 
-    return this.prisma.$transaction(async (tx) => {
-      const stored = await tx.refreshToken.findUnique({
-        where: { id: tokenId },
-      });
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { id: tokenId },
+    });
 
-      if (
-        !stored ||
-        stored.userId !== payload.sub ||
-        stored.familyId !== payload.fid
-      ) {
-        if (stored?.familyId) {
-          await this.revokeFamilyTx(tx, stored.familyId, now);
-        }
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-
-      if (stored.tokenHash !== tokenHash) {
-        await this.revokeFamilyTx(tx, stored.familyId, now);
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-
-      if (stored.revokedAt) {
-        await this.revokeFamilyTx(tx, stored.familyId, now);
-        throw new UnauthorizedException('Refresh token reused');
-      }
-
-      if (stored.expiresAt <= now) {
-        await tx.refreshToken.update({
-          where: { id: stored.id },
+    if (
+      !stored ||
+      stored.userId !== payload.sub ||
+      stored.familyId !== payload.fid
+    ) {
+      if (stored?.familyId) {
+        await this.prisma.refreshToken.updateMany({
+          where: { familyId: stored.familyId, revokedAt: null },
           data: { revokedAt: now, lastUsedAt: now },
         });
-        throw new UnauthorizedException('Refresh token expired');
       }
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-      const nextTokenId = randomUUID();
-      const nextToken = await this.createRefreshToken(
-        payload.sub,
-        payload.fid,
-        nextTokenId,
-      );
-
-      const updated = await tx.refreshToken.updateMany({
-        where: { id: stored.id, revokedAt: null },
-        data: {
-          revokedAt: now,
-          replacedById: nextTokenId,
-          lastUsedAt: now,
-        },
+    if (stored.tokenHash !== tokenHash) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: stored.familyId, revokedAt: null },
+        data: { revokedAt: now, lastUsedAt: now },
       });
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-      if (updated.count !== 1) {
-        await this.revokeFamilyTx(tx, stored.familyId, now);
+    if (stored.revokedAt) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: stored.familyId, revokedAt: null },
+        data: { revokedAt: now, lastUsedAt: now },
+      });
+      throw new UnauthorizedException('Refresh token reused');
+    }
+
+    if (stored.expiresAt <= now) {
+      await this.prisma.refreshToken.update({
+        where: { id: stored.id },
+        data: { revokedAt: now, lastUsedAt: now },
+      });
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    class RefreshReuseError extends Error {}
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const nextTokenId = randomUUID();
+        const nextToken = await this.createRefreshToken(
+          payload.sub,
+          payload.fid,
+          nextTokenId,
+        );
+
+        const updated = await tx.refreshToken.updateMany({
+          where: { id: stored.id, revokedAt: null },
+          data: {
+            revokedAt: now,
+            replacedById: nextTokenId,
+            lastUsedAt: now,
+          },
+        });
+
+        if (updated.count !== 1) {
+          throw new RefreshReuseError('Refresh token already used');
+        }
+
+        await tx.refreshToken.create({
+          data: {
+            id: nextTokenId,
+            userId: payload.sub,
+            familyId: stored.familyId,
+            tokenHash: this.hashToken(nextToken),
+            userAgent,
+            ipAddress,
+            createdAt: now,
+            updatedAt: now,
+            lastUsedAt: now,
+            expiresAt: this.refreshExpiry(now),
+          },
+        });
+
+        const accessToken = await this.createAccessToken(payload.sub);
+        return { accessToken, refreshToken: nextToken };
+      });
+    } catch (error) {
+      if (error instanceof RefreshReuseError) {
+        await this.prisma.refreshToken.updateMany({
+          where: { familyId: stored.familyId, revokedAt: null },
+          data: { revokedAt: now, lastUsedAt: now },
+        });
         throw new UnauthorizedException('Refresh token already used');
       }
-
-      await tx.refreshToken.create({
-        data: {
-          id: nextTokenId,
-          userId: payload.sub,
-          familyId: stored.familyId,
-          tokenHash: this.hashToken(nextToken),
-          userAgent,
-          ipAddress,
-          createdAt: now,
-          updatedAt: now,
-          lastUsedAt: now,
-          expiresAt: this.refreshExpiry(now),
-        },
-      });
-
-      const accessToken = await this.createAccessToken(payload.sub);
-      return { accessToken, refreshToken: nextToken };
-    });
+      throw error;
+    }
   }
 
   async logoutAll(userId: string) {

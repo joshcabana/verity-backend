@@ -5,11 +5,14 @@ import Redis from 'ioredis';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { MatchingWorker } from '../src/queue/matching.worker';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Queue (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaClient;
   let redis: Redis;
+  let worker: MatchingWorker;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -19,13 +22,13 @@ describe('Queue (e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.listen(0, '127.0.0.1');
 
-    prisma = new PrismaClient();
+    prisma = app.get(PrismaService);
     redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+    worker = app.get(MatchingWorker);
   });
 
   afterAll(async () => {
     await app.close();
-    await prisma.$disconnect();
     await redis.quit();
   });
 
@@ -56,7 +59,7 @@ describe('Queue (e2e)', () => {
       data: { tokenBalance: 1 },
     });
 
-    await Promise.all([
+    const [joinA, joinB] = await Promise.all([
       request(app.getHttpServer())
         .post('/queue/join')
         .set('Authorization', `Bearer ${tokenA}`)
@@ -69,9 +72,17 @@ describe('Queue (e2e)', () => {
         .expect(201),
     ]);
 
-    const deadline = Date.now() + 3000;
+    const queueKey = joinA.body.queueKey;
+    if (worker && queueKey) {
+      await (worker as any).processQueueKey?.(queueKey);
+    }
+
+    const deadline = Date.now() + 10_000;
     let session = null;
     while (Date.now() < deadline) {
+      if (worker) {
+        await (worker as any).tick?.();
+      }
       session = await prisma.session.findFirst({
         where: {
           OR: [

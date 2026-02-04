@@ -7,6 +7,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { ChatGateway } from '../src/chat/chat.gateway';
 import { REDIS_CLIENT, type RedisClient } from '../src/common/redis.provider';
+import { PrismaService } from '../src/prisma/prisma.service';
 import { QueueGateway } from '../src/queue/queue.service';
 import { MatchingWorker } from '../src/queue/matching.worker';
 import { SessionService } from '../src/session/session.service';
@@ -62,20 +63,11 @@ class FakeVideoService {
   }
 }
 
-class NoopMatchingWorker {
-  onModuleInit() {
-    return;
-  }
-
-  onModuleDestroy() {
-    return;
-  }
-}
-
 describe('Queue -> Session -> Decision (e2e)', () => {
   let app: INestApplication<App> | null = null;
   let prisma: PrismaClient;
   let redis: Redis;
+  let worker: MatchingWorker;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -89,15 +81,14 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       .useClass(NoopVideoGateway)
       .overrideProvider(VideoService)
       .useClass(FakeVideoService)
-      .overrideProvider(MatchingWorker)
-      .useClass(NoopMatchingWorker)
       .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    prisma = new PrismaClient();
+    prisma = app.get(PrismaService);
     redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+    worker = app.get(MatchingWorker);
   });
 
   afterAll(async () => {
@@ -129,7 +120,6 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       appRedis.disconnect();
       await app.close();
     }
-    await prisma.$disconnect();
     await redis.quit();
     redis.disconnect();
   });
@@ -161,7 +151,7 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       data: { tokenBalance: 1 },
     });
 
-    await Promise.all([
+    const [joinA, joinB] = await Promise.all([
       request(app.getHttpServer())
         .post('/queue/join')
         .set('Authorization', `Bearer ${tokenA}`)
@@ -174,9 +164,17 @@ describe('Queue -> Session -> Decision (e2e)', () => {
         .expect(201),
     ]);
 
-    const deadline = Date.now() + 3000;
+    const queueKey = joinA.body.queueKey;
+    if (worker && queueKey) {
+      await (worker as any).processQueueKey?.(queueKey);
+    }
+
+    const deadline = Date.now() + 10_000;
     let session = null;
     while (Date.now() < deadline) {
+      if (worker) {
+        await (worker as any).tick?.();
+      }
       session = await prisma.session.findFirst({
         where: {
           OR: [

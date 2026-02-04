@@ -60,6 +60,18 @@ class FakePrismaService {
   };
 
   match = {
+    findUnique: async ({
+      where,
+    }: {
+      where: { userAId_userBId: { userAId: string; userBId: string } };
+    }) => {
+      const { userAId, userBId } = where.userAId_userBId;
+      return (
+        this.matches.find(
+          (match) => match.userAId === userAId && match.userBId === userBId,
+        ) ?? null
+      );
+    },
     findFirst: async ({ where }: any) => {
       return (
         this.matches.find(
@@ -221,8 +233,7 @@ describe('Match decision (e2e)', () => {
     prisma.sessions.set(session.id, session);
     await service.endSession(session, 'timeout');
 
-    jest.advanceTimersByTime(60_000);
-    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(60_000);
 
     const decision = await redis.get(`session:decision:${session.id}`);
     expect(decision).toBeTruthy();
