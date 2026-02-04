@@ -12,6 +12,7 @@ describe('Queue (e2e)', () => {
   let redis: Redis;
 
   beforeAll(async () => {
+    process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/db';
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

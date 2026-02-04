@@ -60,14 +60,15 @@ class FakePrismaService {
   };
 
   match = {
-    findFirst: async ({ where }: any) => {
+    findUnique: async ({ where }: any) => {
+      const composite = where.userAId_userBId;
       return (
         this.matches.find(
           (match) =>
-            (match.userAId === where.OR[0].userAId &&
-              match.userBId === where.OR[0].userBId) ||
-            (match.userAId === where.OR[1].userAId &&
-              match.userBId === where.OR[1].userBId),
+            (match.userAId === composite.userAId &&
+              match.userBId === composite.userBId) ||
+            (match.userAId === composite.userBId &&
+              match.userBId === composite.userAId),
         ) ?? null
       );
     },
@@ -222,6 +223,7 @@ describe('Match decision (e2e)', () => {
     await service.endSession(session, 'timeout');
 
     jest.advanceTimersByTime(60_000);
+    await Promise.resolve();
     await Promise.resolve();
 
     const decision = await redis.get(`session:decision:${session.id}`);

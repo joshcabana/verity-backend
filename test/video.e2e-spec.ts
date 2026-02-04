@@ -37,6 +37,10 @@ class FakePrismaService {
   $use() {
     return;
   }
+
+  session = {
+    findUnique: async () => null,
+  };
 }
 
 class FakeVideoGateway {
@@ -99,6 +103,7 @@ describe('Video session timer (e2e)', () => {
     expect(gateway.endEvents).toHaveLength(0);
 
     jest.advanceTimersByTime(1);
+    await Promise.resolve();
     await Promise.resolve();
     expect(gateway.endEvents).toHaveLength(2);
   });

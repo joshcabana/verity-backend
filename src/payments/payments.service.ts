@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,7 +24,7 @@ export class PaymentsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    stripeClient?: Stripe,
+    @Optional() stripeClient?: Stripe,
   ) {
     const apiKey = process.env.STRIPE_SECRET_KEY ?? '';
     this.stripe =
