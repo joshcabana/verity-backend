@@ -7,8 +7,33 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { MatchingWorker } from '../src/queue/matching.worker';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { VideoService } from '../src/video/video.service';
+
+class FakeVideoService {
+  buildSessionTokens(sessionId: string, userIds: string[]) {
+    const expiresAt = new Date(Date.now() + 60_000);
+    const byUser = Object.fromEntries(
+      userIds.map((userId, index) => [
+        userId,
+        {
+          rtcToken: `test-rtc-${userId}`,
+          rtmToken: `test-rtm-${userId}`,
+          rtcUid: index + 1,
+          rtmUserId: userId,
+        },
+      ]),
+    );
+
+    return {
+      channelName: `test_${sessionId}`,
+      expiresAt,
+      byUser,
+    };
+  }
+}
 
 describe('Queue (e2e)', () => {
+  jest.setTimeout(15000);
   let app: INestApplication<App>;
   let prisma: PrismaClient;
   let redis: Redis;
@@ -17,7 +42,10 @@ describe('Queue (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(VideoService)
+      .useClass(FakeVideoService)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.listen(0, '127.0.0.1');

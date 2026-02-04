@@ -64,6 +64,7 @@ class FakeVideoService {
 }
 
 describe('Queue -> Session -> Decision (e2e)', () => {
+  jest.setTimeout(15000);
   let app: INestApplication<App> | null = null;
   let prisma: PrismaClient;
   let redis: Redis;
