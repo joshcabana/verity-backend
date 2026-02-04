@@ -217,6 +217,16 @@ Staging helpers:
 
 ## E2E Checklist (Manual)
 
+### E2E Quick Commands
+
+```bash
+# Single test, keep containers
+scripts/e2e-local-run.sh
+
+# Full suite, then clean containers
+scripts/e2e-local-run.sh all clean
+```
+
 ### Local E2E Setup (Quick)
 
 For a fresh local database, Prisma migrations currently assume baseline tables
