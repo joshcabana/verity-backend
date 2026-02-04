@@ -94,7 +94,7 @@ export const Onboarding: React.FC = () => {
             <Link to="/legal/privacy">Privacy Policy</Link>.
           </label>
         </div>
-        <button className="button" onClick={handleStart} disabled={loading}>
+        <button className="button" onClick={handleStart} disabled={loading || !ready}>
           {loading ? 'Creating profile...' : 'Start anonymously'}
         </button>
         <p className="subtle">

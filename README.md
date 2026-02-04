@@ -227,6 +227,14 @@ scripts/e2e-local-run.sh
 scripts/e2e-local-run.sh all clean
 ```
 
+### Legal Drafts (Australia-First Beta)
+
+Draft policies live in `docs/legal/`:
+- `privacy-policy.md`
+- `terms-of-service.md`
+- `community-guidelines.md`
+- `cookie-notice.md`
+
 ### E2E FAQ (Non-Technical)
 
 - **What is Docker?**  
