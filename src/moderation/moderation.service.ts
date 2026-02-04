@@ -10,6 +10,7 @@ import { SessionService } from '../session/session.service';
 import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
 import { VideoGateway } from '../video/video.gateway';
+import { ReportUserDto } from './dto/report-user.dto';
 
 const VIOLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const BAN_THRESHOLD = 3;
@@ -38,6 +39,31 @@ export class ModerationService {
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
     private readonly videoGateway: VideoGateway,
   ) {}
+
+  async createReport(reporterId: string, input: ReportUserDto) {
+    if (reporterId === input.reportedUserId) {
+      throw new BadRequestException('Cannot report yourself');
+    }
+
+    return this.prisma.moderationReport.create({
+      data: {
+        reporterId,
+        reportedUserId: input.reportedUserId,
+        reason: input.reason,
+        details: input.details,
+        status: 'OPEN',
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        reporterId: true,
+        reportedUserId: true,
+        reason: true,
+        details: true,
+        status: true,
+      },
+    });
+  }
 
   static async startStreamMonitoring(input: {
     sessionId: string;

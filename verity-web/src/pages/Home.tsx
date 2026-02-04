@@ -104,6 +104,9 @@ export const Home: React.FC = () => {
         <p className="subtle">
           Stripe checkout opens in a new tab when configured.
         </p>
+        <p className="subtle">
+          Tokens are non-refundable except where required by law.
+        </p>
         <div style={{ display: 'grid', gap: '12px' }}>
           {PACKS.map((pack) => (
             <button

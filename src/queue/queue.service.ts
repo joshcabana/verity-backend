@@ -237,6 +237,10 @@ export class QueueService {
       .exec();
   }
 
+  async cleanupExpiredSessions() {
+    await this.sessionService.cleanupExpiredSessions();
+  }
+
   async cleanupQueueKey(queueKey: string) {
     const remaining = await this.redis.zcard(this.queueZsetKey(queueKey));
     if (remaining === 0) {

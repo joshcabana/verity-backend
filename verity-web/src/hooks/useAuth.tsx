@@ -5,9 +5,17 @@ type AuthContextValue = {
   token: string | null;
   userId: string | null;
   loading: boolean;
-  signUp: () => Promise<void>;
+  signUp: (input?: SignUpInput) => Promise<void>;
   signOut: () => void;
+  deleteAccount: () => Promise<void>;
   setToken: (token: string | null) => void;
+};
+
+export type SignUpInput = {
+  dateOfBirth?: string;
+  consents?: Record<string, unknown>;
+  privacyNoticeVersion?: string;
+  tosVersion?: string;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -31,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setTokenState(next);
   }, []);
 
-  const signUp = useCallback(async () => {
+  const signUp = useCallback(async (input?: SignUpInput) => {
     if (loading) {
       return;
     }
@@ -40,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       '/auth/signup-anonymous',
       {
         method: 'POST',
+        body: input,
       },
     );
     if (response.ok && response.data?.accessToken) {
@@ -54,9 +63,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setToken(null);
   }, [setToken]);
 
+  const deleteAccount = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    const response = await apiJson('/users/me', { method: 'DELETE' });
+    if (!response.ok) {
+      throw new Error('Delete account failed');
+    }
+    setToken(null);
+  }, [token, setToken]);
+
   const value = useMemo(
-    () => ({ token, userId, loading, signUp, signOut, setToken }),
-    [token, userId, loading, signUp, signOut, setToken],
+    () => ({
+      token,
+      userId,
+      loading,
+      signUp,
+      signOut,
+      deleteAccount,
+      setToken,
+    }),
+    [token, userId, loading, signUp, signOut, deleteAccount, setToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

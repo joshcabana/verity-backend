@@ -9,6 +9,8 @@ import { Session } from './pages/Session';
 import { Decision } from './pages/Decision';
 import { Matches } from './pages/Matches';
 import { Chat } from './pages/Chat';
+import { Settings } from './pages/Settings';
+import { Legal } from './pages/Legal';
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token } = useAuth();
@@ -29,11 +31,21 @@ export const App: React.FC = () => {
           element={<Navigate to={token ? '/home' : '/onboarding'} replace />}
         />
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/legal/:doc" element={<Legal />} />
+        <Route path="/legal" element={<Legal />} />
         <Route
           path="/home"
           element={
             <RequireAuth>
               <Home />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <Settings />
             </RequireAuth>
           }
         />

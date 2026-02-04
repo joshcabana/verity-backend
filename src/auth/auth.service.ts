@@ -29,8 +29,52 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async signupAnonymous(userAgent?: string, ipAddress?: string) {
-    const user = await this.prisma.user.create({ data: {} });
+  async signupAnonymous(
+    userAgent?: string,
+    ipAddress?: string,
+    input?: {
+      dateOfBirth?: string;
+      consents?: Record<string, unknown>;
+      privacyNoticeVersion?: string;
+      tosVersion?: string;
+    },
+  ) {
+    const now = new Date();
+    const dateOfBirth = input?.dateOfBirth
+      ? new Date(input.dateOfBirth)
+      : undefined;
+
+    if (dateOfBirth && Number.isNaN(dateOfBirth.getTime())) {
+      throw new BadRequestException('Invalid date of birth');
+    }
+
+    let ageVerifiedAt: Date | undefined;
+    if (dateOfBirth) {
+      const age = this.calculateAge(dateOfBirth, now);
+      if (age < 18) {
+        throw new BadRequestException('Must be 18 or older');
+      }
+      ageVerifiedAt = now;
+    }
+
+    const consents = input?.consents
+      ? {
+          ...input.consents,
+          acceptedAt:
+            (input.consents as { acceptedAt?: string }).acceptedAt ??
+            now.toISOString(),
+        }
+      : undefined;
+
+    const user = await this.prisma.user.create({
+      data: {
+        dateOfBirth,
+        ageVerifiedAt,
+        consents,
+        privacyNoticeVersion: input?.privacyNoticeVersion,
+        tosVersion: input?.tosVersion,
+      },
+    });
     const tokens = await this.issueTokens(user.id, { userAgent, ipAddress });
     return { user, ...tokens };
   }
@@ -195,6 +239,27 @@ export class AuthService {
     });
   }
 
+  async deleteAccount(userId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.deleteMany({ where: { userId } });
+      await tx.tokenTransaction.deleteMany({ where: { userId } });
+      await tx.moderationEvent.deleteMany({ where: { userId } });
+      await tx.moderationReport.deleteMany({
+        where: {
+          OR: [{ reporterId: userId }, { reportedUserId: userId }],
+        },
+      });
+      await tx.message.deleteMany({ where: { senderId: userId } });
+      await tx.session.deleteMany({
+        where: { OR: [{ userAId: userId }, { userBId: userId }] },
+      });
+      await tx.match.deleteMany({
+        where: { OR: [{ userAId: userId }, { userBId: userId }] },
+      });
+      await tx.user.delete({ where: { id: userId } });
+    });
+  }
+
   setRefreshCookie(response: Response, token: string) {
     response.cookie(REFRESH_COOKIE_NAME, token, this.getRefreshCookieOptions());
   }
@@ -336,6 +401,18 @@ export class AuthService {
   private normalizePhone(value: string): string | null {
     const cleaned = value.replace(/[^\d+]/g, '');
     return cleaned.length >= 8 ? cleaned : null;
+  }
+
+  private calculateAge(dateOfBirth: Date, now: Date): number {
+    let age = now.getUTCFullYear() - dateOfBirth.getUTCFullYear();
+    const monthDiff = now.getUTCMonth() - dateOfBirth.getUTCMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && now.getUTCDate() < dateOfBirth.getUTCDate())
+    ) {
+      age -= 1;
+    }
+    return age;
   }
 
   private isUniqueViolation(error: unknown): boolean {

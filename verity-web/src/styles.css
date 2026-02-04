@@ -121,6 +121,48 @@ header {
   font-size: 14px;
 }
 
+.input-stack {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.input-stack input[type='date'] {
+  display: block;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  width: 100%;
+}
+
+.input-stack input[type='checkbox'] {
+  margin-right: 8px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.button.danger {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.button.danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.legal-section {
+  margin-top: 18px;
+}
+
 .section-title {
   font-size: 20px;
   margin: 0 0 12px;

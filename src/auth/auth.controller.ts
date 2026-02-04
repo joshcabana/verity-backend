@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Req,
@@ -11,6 +12,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { SignupAnonymousDto } from './dto/signup-anonymous.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { VerifyPhoneDto } from './dto/verify-phone.dto';
 import { RefreshGuard } from './iefresh.guard';
@@ -23,11 +25,13 @@ export class AuthController {
   async signupAnonymous(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Body() dto: SignupAnonymousDto,
   ) {
     const { user, accessToken, refreshToken } =
       await this.authService.signupAnonymous(
         this.getUserAgent(req),
         this.getIpAddress(req),
+        dto,
       );
 
     this.authService.setRefreshCookie(res, refreshToken);
@@ -124,5 +128,23 @@ export class UsersController {
       throw new UnauthorizedException('Invalid access token');
     }
     return this.authService.getCurrentUser(userId);
+  }
+
+  @Delete('me')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteMe(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = req.user as
+      | { sub?: string; id?: string; userId?: string }
+      | undefined;
+    const userId = user?.sub ?? user?.id ?? user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+    await this.authService.deleteAccount(userId);
+    this.authService.clearRefreshCookie(res);
+    return { success: true };
   }
 }

@@ -19,6 +19,7 @@ const SESSION_STATE_TTL_MS = 60 * 60 * 1000;
 const SESSION_LOCK_TTL_MS = 10_000;
 const CHOICE_WINDOW_MS = 60_000;
 const CHOICE_STATE_TTL_MS = 2 * 60 * 60 * 1000;
+const SESSION_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 type SessionChoice = 'MATCH' | 'PASS';
 
@@ -464,6 +465,16 @@ export class SessionService implements OnModuleDestroy {
     }, delay);
 
     this.choiceTimers.set(sessionId, timer);
+  }
+
+  async cleanupExpiredSessions() {
+    const cutoff = new Date(Date.now() - SESSION_RETENTION_MS);
+    const result = await this.prisma.session.deleteMany({
+      where: { createdAt: { lt: cutoff } },
+    });
+    if (result.count > 0) {
+      this.logger.log(`Deleted ${result.count} expired sessions`);
+    }
   }
 
   private sessionStateKey(sessionId: string) {

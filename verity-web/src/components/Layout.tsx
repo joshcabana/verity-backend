@@ -16,6 +16,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <>
               <NavLink to="/home">Home</NavLink>
               <NavLink to="/matches">Matches</NavLink>
+              <NavLink to="/settings">Settings</NavLink>
               <button className="button secondary" onClick={signOut}>
                 Sign out
               </button>
