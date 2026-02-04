@@ -4,7 +4,6 @@
   "testEnvironment": "node",
   "maxWorkers": 1,
   "testRegex": ".e2e-spec.ts$",
-  "forceExit": true,
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }

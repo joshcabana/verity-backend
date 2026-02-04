@@ -1,7 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
-import Redis from 'ioredis';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
@@ -67,7 +66,7 @@ describe('Queue -> Session -> Decision (e2e)', () => {
   jest.setTimeout(15000);
   let app: INestApplication<App> | null = null;
   let prisma: PrismaClient;
-  let redis: Redis;
+  let redis: RedisClient;
   let worker: MatchingWorker;
 
   beforeAll(async () => {
@@ -88,7 +87,7 @@ describe('Queue -> Session -> Decision (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+    redis = app.get<RedisClient>(REDIS_CLIENT);
     worker = app.get(MatchingWorker);
   });
 
@@ -116,13 +115,12 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       closeGateway(app.get(VideoGateway));
       closeGateway(app.get(ChatGateway));
       closeGateway(app.get(QueueGateway));
-      const appRedis = app.get<RedisClient>(REDIS_CLIENT);
-      await appRedis.quit();
-      appRedis.disconnect();
       await app.close();
     }
-    await redis.quit();
-    redis.disconnect();
+    if (redis) {
+      await redis.quit();
+      redis.disconnect();
+    }
   });
 
   beforeEach(async () => {
