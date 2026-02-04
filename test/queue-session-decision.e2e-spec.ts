@@ -121,6 +121,9 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       await redis.quit();
       redis.disconnect();
     }
+    if (prisma) {
+      await prisma.$disconnect();
+    }
   });
 
   beforeEach(async () => {
