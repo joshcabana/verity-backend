@@ -227,6 +227,16 @@ scripts/e2e-local-run.sh
 scripts/e2e-local-run.sh all clean
 ```
 
+### E2E FAQ (Non-Technical)
+
+- **What is Docker?**  
+  A tool that runs apps (like Postgres and Redis) in isolated containers, so you don't have to install them directly.
+- **What is E2E?**  
+  End-to-end tests that simulate a real user flow from signup → queue → match.
+- **What if it fails?**  
+  Re-run the status check: `scripts/e2e-local-status.sh`.  
+  If containers look unhealthy, run the clean script and try again: `scripts/e2e-local-clean.sh`.
+
 ### Local E2E Setup (Quick)
 
 For a fresh local database, Prisma migrations currently assume baseline tables
