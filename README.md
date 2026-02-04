@@ -246,6 +246,12 @@ Clean up local E2E containers/network:
 scripts/e2e-local-clean.sh
 ```
 
+Check local E2E container/network status:
+
+```bash
+scripts/e2e-local-status.sh
+```
+
 1. `POST /auth/signup-anonymous` returns access token and sets refresh cookie.
 2. `GET /tokens/balance` returns token balance (seed tokens if needed).
 3. `POST /queue/join` succeeds and triggers a queue match event.
