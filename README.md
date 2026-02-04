@@ -178,6 +178,7 @@ Required secrets (store in Key Vault via Bicep params):
 - `AGORA_APP_CERTIFICATE`
 - `HIVE_API_KEY`
 - `HIVE_WEBHOOK_SECRET`
+- `MODERATION_ADMIN_KEY`
 
 Non-secret values (safe as plain env vars):
 - `API_URL`
@@ -291,11 +292,12 @@ scripts/e2e-local-run.sh all clean
 ```
 
 1. `POST /auth/signup-anonymous` returns access token and sets refresh cookie.
-2. `GET /tokens/balance` returns token balance (seed tokens if needed).
-3. `POST /queue/join` succeeds and triggers a queue match event.
-4. `/video` socket receives `session:start`, then `session:end`.
-5. `POST /sessions/:id/choice` yields `match:mutual` on double MATCH.
-6. `GET /matches` lists the mutual match and `/matches/:id/messages` loads chat.
+2. `GET /users/me/export` returns user data payload for access requests.
+3. `GET /tokens/balance` returns token balance (seed tokens if needed).
+4. `POST /queue/join` succeeds and triggers a queue match event.
+5. `/video` socket receives `session:start`, then `session:end`.
+6. `POST /sessions/:id/choice` yields `match:mutual` on double MATCH.
+7. `GET /matches` lists the mutual match and `/matches/:id/messages` loads chat.
 
 ## Platform Features (Backend)
 

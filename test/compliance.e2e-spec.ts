@@ -74,8 +74,12 @@ describe('Compliance (e2e)', () => {
   let app: INestApplication<App> | null = null;
   let prisma: PrismaClient;
   let redis: Redis;
+  let previousAdminKey: string | undefined;
 
   beforeAll(async () => {
+    previousAdminKey = process.env.MODERATION_ADMIN_KEY;
+    process.env.MODERATION_ADMIN_KEY = 'test-admin';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -105,6 +109,11 @@ describe('Compliance (e2e)', () => {
     await prisma.$disconnect();
     await redis.quit();
     redis.disconnect();
+    if (previousAdminKey === undefined) {
+      delete process.env.MODERATION_ADMIN_KEY;
+    } else {
+      process.env.MODERATION_ADMIN_KEY = previousAdminKey;
+    }
   });
 
   beforeEach(async () => {
@@ -135,6 +144,13 @@ describe('Compliance (e2e)', () => {
     expect(user?.privacyNoticeVersion).toBe('2026-02-04');
     expect(user?.tosVersion).toBe('2026-02-04');
     expect(user?.consents).toBeTruthy();
+
+    const exportResponse = await request(app.getHttpServer())
+      .get('/users/me/export')
+      .set('Authorization', `Bearer ${response.body.accessToken}`)
+      .expect(200);
+
+    expect(exportResponse.body.user?.id).toBe(userId);
   });
 
   it('creates a report and deletes user data', async () => {
@@ -166,6 +182,22 @@ describe('Compliance (e2e)', () => {
       where: { id: reportId },
     });
     expect(storedReport).toBeTruthy();
+
+    const listResponse = await request(app.getHttpServer())
+      .get('/moderation/reports')
+      .set('Authorization', `Bearer ${reporterToken}`)
+      .set('x-admin-key', 'test-admin')
+      .expect(200);
+    expect(Array.isArray(listResponse.body)).toBe(true);
+
+    await request(app.getHttpServer())
+      .post(`/moderation/reports/${reportId}/resolve`)
+      .set('Authorization', `Bearer ${reporterToken}`)
+      .set('x-admin-key', 'test-admin')
+      .send({ action: 'ban' })
+      .expect(201);
+    const banned = await redis.get(`moderation:ban:${reported.id}`);
+    expect(banned).toBeTruthy();
 
     await request(app.getHttpServer())
       .delete('/users/me')

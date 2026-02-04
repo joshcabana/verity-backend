@@ -105,6 +105,65 @@ export class AuthService {
     return user;
   }
 
+  async exportUserData(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        displayName: true,
+        photos: true,
+        bio: true,
+        age: true,
+        gender: true,
+        interests: true,
+        phone: true,
+        email: true,
+        tokenBalance: true,
+        dateOfBirth: true,
+        ageVerifiedAt: true,
+        consents: true,
+        privacyNoticeVersion: true,
+        tosVersion: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const [matches, sessions, messages, tokenTxs, reportsMade, reportsReceived] =
+      await Promise.all([
+        this.prisma.match.findMany({
+          where: { OR: [{ userAId: userId }, { userBId: userId }] },
+        }),
+        this.prisma.session.findMany({
+          where: { OR: [{ userAId: userId }, { userBId: userId }] },
+        }),
+        this.prisma.message.findMany({
+          where: { senderId: userId },
+        }),
+        this.prisma.tokenTransaction.findMany({ where: { userId } }),
+        this.prisma.moderationReport.findMany({
+          where: { reporterId: userId },
+        }),
+        this.prisma.moderationReport.findMany({
+          where: { reportedUserId: userId },
+        }),
+      ]);
+
+    return {
+      user,
+      matches,
+      sessions,
+      messages,
+      tokenTransactions: tokenTxs,
+      reportsMade,
+      reportsReceived,
+    };
+  }
+
   async verifyPhone(userId: string, phoneRaw: string, code?: string) {
     const phone = this.normalizePhone(phoneRaw);
     if (!phone) {

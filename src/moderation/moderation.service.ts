@@ -297,4 +297,45 @@ export class ModerationService {
   private banCooldownKey(userId: string) {
     return `moderation:ban:cooldown:${userId}`;
   }
+
+  async listReports(status?: string, limit = 50) {
+    return this.prisma.moderationReport.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 200),
+      select: {
+        id: true,
+        createdAt: true,
+        reporterId: true,
+        reportedUserId: true,
+        reason: true,
+        details: true,
+        status: true,
+      },
+    });
+  }
+
+  async resolveReport(reportId: string, action: 'warn' | 'ban') {
+    const report = await this.prisma.moderationReport.update({
+      where: { id: reportId },
+      data: { status: action === 'ban' ? 'BANNED' : 'WARNED' },
+    });
+
+    if (action === 'ban') {
+      await this.redis.set(
+        this.banKey(report.reportedUserId),
+        '1',
+        'PX',
+        BAN_TTL_MS,
+      );
+    }
+
+    this.emitModerationAction(report.reportedUserId, action, report.reason);
+
+    return {
+      id: report.id,
+      status: report.status,
+      action,
+    };
+  }
 }

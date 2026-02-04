@@ -1,7 +1,11 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Get,
+  Param,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -26,5 +30,42 @@ export class ModerationController {
       throw new UnauthorizedException('Invalid access token');
     }
     return this.moderationService.createReport(reporterId, dto);
+  }
+
+  @Get('reports')
+  @UseGuards(AuthGuard('jwt'))
+  async listReports(
+    @Req() req: Request,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+  ) {
+    this.assertAdmin(req);
+    const parsedLimit = limit ? Number.parseInt(limit, 10) : undefined;
+    return this.moderationService.listReports(status, parsedLimit);
+  }
+
+  @Post('reports/:id/resolve')
+  @UseGuards(AuthGuard('jwt'))
+  async resolveReport(
+    @Req() req: Request,
+    @Param('id') reportId: string,
+    @Body('action') action: 'warn' | 'ban',
+  ) {
+    this.assertAdmin(req);
+    if (action !== 'warn' && action !== 'ban') {
+      throw new BadRequestException('Invalid action');
+    }
+    return this.moderationService.resolveReport(reportId, action);
+  }
+
+  private assertAdmin(req: Request) {
+    const adminKey = process.env.MODERATION_ADMIN_KEY;
+    if (!adminKey) {
+      throw new UnauthorizedException('Admin key not configured');
+    }
+    const provided = req.headers['x-admin-key'];
+    if (typeof provided !== 'string' || provided !== adminKey) {
+      throw new UnauthorizedException('Invalid admin key');
+    }
   }
 }

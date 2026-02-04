@@ -130,6 +130,19 @@ export class UsersController {
     return this.authService.getCurrentUser(userId);
   }
 
+  @Get('me/export')
+  @UseGuards(AuthGuard('jwt'))
+  async exportMe(@Req() req: Request) {
+    const user = req.user as
+      | { sub?: string; id?: string; userId?: string }
+      | undefined;
+    const userId = user?.sub ?? user?.id ?? user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+    return this.authService.exportUserData(userId);
+  }
+
   @Delete('me')
   @UseGuards(AuthGuard('jwt'))
   async deleteMe(
