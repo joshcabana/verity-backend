@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import AgoraRTC, { IAgoraRTCClient, ILocalTrack } from 'agora-rtc-sdk-ng';
+import type { IAgoraRTCClient, ILocalTrack } from 'agora-rtc-sdk-ng';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
 import { ReportDialog } from '../components/ReportDialog';
@@ -95,6 +95,10 @@ export const Session: React.FC = () => {
 
     const startAgora = async () => {
       try {
+        const { default: AgoraRTC } = await import('agora-rtc-sdk-ng');
+        if (!mounted) {
+          return;
+        }
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
         clientRef.current = client;
 
