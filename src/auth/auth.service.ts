@@ -301,11 +301,18 @@ export class AuthService {
   private getRefreshCookieOptions(): CookieOptions {
     const isProd = process.env.NODE_ENV === 'production';
     const maxAge = REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
+    const rawSameSite = process.env.REFRESH_COOKIE_SAMESITE?.toLowerCase();
+    const sameSite =
+      rawSameSite === 'lax' || rawSameSite === 'none' || rawSameSite === 'strict'
+        ? rawSameSite
+        : 'strict';
+    const domain = process.env.REFRESH_COOKIE_DOMAIN?.trim();
 
     return {
       httpOnly: true,
-      secure: isProd,
-      sameSite: 'strict',
+      secure: isProd || sameSite === 'none',
+      sameSite,
+      domain: domain && domain.length > 0 ? domain : undefined,
       path: '/auth/refresh',
       maxAge,
     };

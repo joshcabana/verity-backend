@@ -50,8 +50,8 @@ az deployment group create \
 az acr build \
   --registry "$ACR_NAME" \
   --image "verity-api:$IMAGE_TAG" \
-  --file "$ROOT/verity-backend/Dockerfile" \
-  "$ROOT/verity-backend"
+  --file "$ROOT/Dockerfile" \
+  "$ROOT"
 
 az containerapp update \
   --name "$API_NAME" \

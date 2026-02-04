@@ -45,7 +45,7 @@ Note: `acrName`, `postgresServerName`, `redisName`, and `keyVaultName` must be g
 3) Build and push the API image
 
 ```bash
-az acr build --registry <acrName> --image verity-api:latest --file verity-backend/Dockerfile verity-backend
+az acr build --registry <acrName> --image verity-api:latest --file Dockerfile .
 ```
 
 4) Update container apps to the latest image
@@ -58,7 +58,6 @@ az containerapp update --name <workerName> --resource-group verity-au --image <a
 5) Run migrations
 
 ```bash
-cd verity-backend
 DATABASE_URL=... npx prisma migrate deploy
 ```
 

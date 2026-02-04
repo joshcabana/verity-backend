@@ -27,11 +27,12 @@ If Australia Central is unavailable, use `infra/azure/params.sydney-fallback.jso
 
 ## Environment Variables
 
-All env vars are documented in `verity-backend/.env.production.example`.
+All env vars are documented in `.env.production.example`.
 
 Key variables used by the backend:
 - `DATABASE_URL`, `REDIS_URL`
 - `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
+- `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
 - `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `AGORA_TOKEN_TTL_SECONDS`
 - `HIVE_STREAM_URL`, `HIVE_SCREENSHOT_URL`, `HIVE_API_KEY`, `HIVE_WEBHOOK_SECRET`
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PLUS`, `STRIPE_PRICE_PRO`
@@ -42,13 +43,27 @@ Key variables used by the backend:
 Build and run locally:
 
 ```bash
-cd verity-backend
 npm ci
 npm run build
 
 docker build -t verity-api:local .
 docker run --rm -p 3000:3000 --env-file .env.production.example verity-api:local
 ```
+
+## Web Client (Vite)
+
+Web app lives in `verity-web/`.
+
+```bash
+cd verity-web
+npm install
+npm run dev
+```
+
+Web environment variables:
+- `VITE_API_URL` (e.g. `http://localhost:3000`)
+- `VITE_WS_URL` (e.g. `http://localhost:3000`)
+- `VITE_AGORA_APP_ID` (required for video)
 
 ## Azure Deployment (Canberra or Sydney)
 
@@ -87,7 +102,7 @@ Swap to Sydney by using `infra/azure/params.sydney-fallback.json`.
 ### 3) Build and Push Image
 
 ```bash
-az acr build --registry <acrName> --image verity-api:latest --file verity-backend/Dockerfile verity-backend
+az acr build --registry <acrName> --image verity-api:latest --file Dockerfile .
 ```
 
 ### 4) Update Container Apps
@@ -102,7 +117,6 @@ az containerapp update --name <workerName> --resource-group verity-au --image <a
 Run from a trusted machine or CI where Prisma is available:
 
 ```bash
-cd verity-backend
 DATABASE_URL=... npx prisma migrate deploy
 ```
 
@@ -200,6 +214,15 @@ Staging helpers:
 - WebSocket connects to `WS_URL`.
 - Stripe webhook endpoint reachable from Stripe.
 - Redis and Postgres connectivity from Container Apps.
+
+## E2E Checklist (Manual)
+
+1. `POST /auth/signup-anonymous` returns access token and sets refresh cookie.
+2. `GET /tokens/balance` returns token balance (seed tokens if needed).
+3. `POST /queue/join` succeeds and triggers a queue match event.
+4. `/video` socket receives `session:start`, then `session:end`.
+5. `POST /sessions/:id/choice` yields `match:mutual` on double MATCH.
+6. `GET /matches` lists the mutual match and `/matches/:id/messages` loads chat.
 
 ## Platform Features (Backend)
 

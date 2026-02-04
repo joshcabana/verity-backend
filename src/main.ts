@@ -4,6 +4,25 @@ import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  const rawOrigins = process.env.APP_ORIGINS ?? process.env.APP_URL ?? '';
+  const allowedOrigins = rawOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.length === 0) {
+        callback(null, true);
+        return;
+      }
+      callback(null, allowedOrigins.includes(origin));
+    },
+    credentials: true,
+  });
   app.use(
     bodyParser.json({
       verify: (req, _res, buf) => {

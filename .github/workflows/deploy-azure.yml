@@ -60,8 +60,8 @@ jobs:
           az acr build \
             --registry "$ACR_NAME" \
             --image "verity-api:${{ github.sha }}" \
-            --file verity-backend/Dockerfile \
-            verity-backend
+            --file Dockerfile \
+            .
 
       - name: Update container apps to latest image
         run: |
@@ -80,7 +80,6 @@ jobs:
         if: ${{ inputs.runMigrations == 'true' }}
         run: |
           set -euo pipefail
-          cd verity-backend
           npm ci
           npx prisma migrate deploy
         env:
