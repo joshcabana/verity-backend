@@ -228,6 +228,18 @@ DATABASE_URL=... npx prisma db push --accept-data-loss
 
 In production/CI, continue using `npx prisma migrate deploy`.
 
+One-click local E2E (Docker + Postgres + Redis, single test):
+
+```bash
+scripts/e2e-local.sh
+```
+
+Run the full E2E suite:
+
+```bash
+scripts/e2e-local-all.sh
+```
+
 1. `POST /auth/signup-anonymous` returns access token and sets refresh cookie.
 2. `GET /tokens/balance` returns token balance (seed tokens if needed).
 3. `POST /queue/join` succeeds and triggers a queue match event.
