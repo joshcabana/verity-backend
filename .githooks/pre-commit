@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+if git diff --cached --name-only | grep -E '(^|/)node_modules/' >/dev/null; then
+  echo "Error: node_modules files are staged. Remove them before committing."
+  echo "Hint: git rm -r --cached <path>/node_modules"
+  exit 1
+fi
