@@ -107,6 +107,12 @@ export const Legal: React.FC = () => {
   const params = useParams();
   const docKey = params.doc ?? 'privacy';
   const doc = docs[docKey];
+  const docLinks = [
+    { key: 'privacy', label: 'Privacy' },
+    { key: 'terms', label: 'Terms' },
+    { key: 'community', label: 'Community' },
+    { key: 'cookies', label: 'Cookies' },
+  ] as const;
 
   if (!doc) {
     return (
@@ -121,6 +127,17 @@ export const Legal: React.FC = () => {
 
   return (
     <section className="card">
+      <div className="legal-nav">
+        {docLinks.map((link) => (
+          <Link
+            key={link.key}
+            to={`/legal/${link.key}`}
+            className={`legal-link${docKey === link.key ? ' active' : ''}`}
+          >
+            {link.label}
+          </Link>
+        ))}
+      </div>
       <p className="badge">Draft policy</p>
       <h1 className="section-title">{doc.title}</h1>
       <p className="subtle">Last updated {doc.updated}</p>

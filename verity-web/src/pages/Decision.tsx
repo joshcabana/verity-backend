@@ -83,26 +83,46 @@ export const Decision: React.FC = () => {
   };
 
   return (
-    <section className="card">
-      <h2 className="section-title">Decision time</h2>
-      <p className="subtle">Choose MATCH or PASS once the call ends.</p>
-      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-        <button
-          className="button"
-          onClick={() => submitChoice('MATCH')}
-          disabled={submitting}
-        >
-          Match
-        </button>
-        <button
-          className="button secondary"
-          onClick={() => submitChoice('PASS')}
-          disabled={submitting}
-        >
-          Pass
-        </button>
+    <section className="grid two">
+      <div className="card">
+        <h2 className="section-title">Decision time</h2>
+        <p className="subtle">Choose MATCH or PASS once the call ends.</p>
+        <div className="inline" style={{ marginTop: '16px' }}>
+          <button
+            className="button"
+            onClick={() => submitChoice('MATCH')}
+            disabled={submitting}
+          >
+            Match
+          </button>
+          <button
+            className="button secondary"
+            onClick={() => submitChoice('PASS')}
+            disabled={submitting}
+          >
+            Pass
+          </button>
+        </div>
+        {message && (
+          <p className="subtle" style={{ marginTop: '12px' }}>
+            {message}
+          </p>
+        )}
       </div>
-      {message && <p className="subtle" style={{ marginTop: '12px' }}>{message}</p>}
+      <div className="card soft">
+        <h3 className="section-title">What happens next</h3>
+        <ul className="list subtle">
+          <li>Mutual MATCH unlocks profiles and chat.</li>
+          <li>PASS keeps your details private.</li>
+          <li>You can rejoin the queue anytime.</li>
+        </ul>
+        <div className="callout safety" style={{ marginTop: '16px' }}>
+          <strong>Safety matters</strong>
+          <p className="subtle">
+            If anything felt off, report the user from the session or chat screen.
+          </p>
+        </div>
+      </div>
     </section>
   );
 };

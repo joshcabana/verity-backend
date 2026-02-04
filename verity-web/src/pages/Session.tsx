@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AgoraRTC, { IAgoraRTCClient, ILocalTrack } from 'agora-rtc-sdk-ng';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
+import { ReportDialog } from '../components/ReportDialog';
 
 const AGORA_APP_ID = import.meta.env.VITE_AGORA_APP_ID as string | undefined;
 
@@ -40,6 +41,7 @@ export const Session: React.FC = () => {
   const remoteVideoRef = useRef<HTMLDivElement | null>(null);
 
   const matchPayload = location.state as { partnerId?: string } | null;
+  const partnerId = matchPayload?.partnerId ?? null;
 
   useEffect(() => {
     if (!socket) {
@@ -168,7 +170,12 @@ export const Session: React.FC = () => {
   return (
     <section className="grid" style={{ gap: '24px' }}>
       <div className="card">
-        <h2 className="section-title">Video session</h2>
+        <div className="inline" style={{ justifyContent: 'space-between' }}>
+          <h2 className="section-title">Video session</h2>
+          <span className={`pill ${status === 'ended' ? 'warning' : 'success'}`}>
+            {status === 'waiting' ? 'Connecting' : status === 'ended' ? 'Ended' : 'Live'}
+          </span>
+        </div>
         <p className="subtle">{callStatus}</p>
         {matchPayload?.partnerId && (
           <p className="subtle">Partner ID: {matchPayload.partnerId}</p>
@@ -182,6 +189,12 @@ export const Session: React.FC = () => {
             <span className="video-label">Match</span>
           </div>
         </div>
+        <div className="callout safety" style={{ marginTop: '20px' }}>
+          <strong>Safety reminder</strong>
+          <p className="subtle">
+            This session is not recorded. You can report any unsafe behavior at any time.
+          </p>
+        </div>
         {status === 'ended' && sessionId && (
           <button
             className="button"
@@ -191,6 +204,12 @@ export const Session: React.FC = () => {
             Continue to decision
           </button>
         )}
+        <div style={{ marginTop: '16px' }}>
+          <ReportDialog
+            reportedUserId={partnerId}
+            contextLabel="Reports are reviewed by our safety team."
+          />
+        </div>
       </div>
     </section>
   );

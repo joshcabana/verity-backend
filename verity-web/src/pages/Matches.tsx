@@ -46,25 +46,35 @@ export const Matches: React.FC = () => {
   return (
     <section className="grid">
       <div className="card">
-        <h2 className="section-title">Your matches</h2>
+        <div className="inline" style={{ justifyContent: 'space-between' }}>
+          <h2 className="section-title">Your matches</h2>
+          <span className="pill">{matches.length} total</span>
+        </div>
         {matches.length === 0 ? (
-          <p className="subtle">No matches yet. Keep queueing.</p>
+          <div className="callout" style={{ marginTop: '12px' }}>
+            <strong>No matches yet</strong>
+            <p className="subtle">Join the queue to get paired.</p>
+          </div>
         ) : (
-          <div className="grid" style={{ gap: '12px' }}>
+          <div className="grid" style={{ gap: '12px', marginTop: '12px' }}>
             {matches.map((match) => (
-              <div
-                key={match.id}
-                className="card"
-                style={{ boxShadow: 'none' }}
-              >
-                <h3 style={{ margin: '0 0 8px' }}>
-                  {match.partner.displayName ?? 'Anonymous match'}
-                </h3>
+              <div key={match.id} className="card soft">
+                <div className="inline" style={{ justifyContent: 'space-between' }}>
+                  <h3 style={{ margin: 0 }}>
+                    {match.partner.displayName ?? 'Anonymous match'}
+                  </h3>
+                  <span className="pill">
+                    {new Date(match.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
                 {match.partner.bio && (
-                  <p className="subtle">{match.partner.bio}</p>
+                  <p className="subtle" style={{ marginTop: '8px' }}>
+                    {match.partner.bio}
+                  </p>
                 )}
                 <button
                   className="button secondary"
+                  style={{ marginTop: '12px' }}
                   onClick={() => navigate(`/chat/${match.id}`)}
                 >
                   Open chat

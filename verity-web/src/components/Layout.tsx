@@ -14,16 +14,51 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <nav className="nav">
           {token ? (
             <>
-              <NavLink to="/home">Home</NavLink>
-              <NavLink to="/matches">Matches</NavLink>
-              <NavLink to="/settings">Settings</NavLink>
-              <NavLink to="/admin/moderation">Admin</NavLink>
+              <NavLink
+                to="/home"
+                className={({ isActive }) =>
+                  `nav-link${isActive ? ' active' : ''}`
+                }
+              >
+                Home
+              </NavLink>
+              <NavLink
+                to="/matches"
+                className={({ isActive }) =>
+                  `nav-link${isActive ? ' active' : ''}`
+                }
+              >
+                Matches
+              </NavLink>
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  `nav-link${isActive ? ' active' : ''}`
+                }
+              >
+                Settings
+              </NavLink>
+              <NavLink
+                to="/admin/moderation"
+                className={({ isActive }) =>
+                  `nav-link${isActive ? ' active' : ''}`
+                }
+              >
+                Admin
+              </NavLink>
               <button className="button secondary" onClick={signOut}>
                 Sign out
               </button>
             </>
           ) : (
-            <NavLink to="/onboarding">Get started</NavLink>
+            <NavLink
+              to="/onboarding"
+              className={({ isActive }) =>
+                `nav-link${isActive ? ' active' : ''}`
+              }
+            >
+              Get started
+            </NavLink>
           )}
         </nav>
       </header>

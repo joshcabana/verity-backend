@@ -42,18 +42,28 @@ export const Onboarding: React.FC = () => {
   return (
     <section className="grid two">
       <div className="card">
-        <div className="badge">Australia-first</div>
-        <h1 className="section-title" style={{ fontSize: '32px' }}>
+        <div className="inline">
+          <span className="badge">Australia-first</span>
+          <span className="pill success">Privacy-first beta</span>
+        </div>
+        <h1 className="hero-title">
           Real-time matches, 45-second video, and instant decisions.
         </h1>
         <p className="subtle">
           Verity pairs you in a live queue, drops you into a short video call,
           and reveals identities only after a mutual match.
         </p>
+        <div className="callout safety">
+          <strong>Safety by design</strong>
+          <p className="subtle">
+            Calls are not recorded. Real-time AI moderation keeps the experience safe.
+          </p>
+        </div>
         <div className="input-stack">
           <label className="subtle">
             Date of birth (18+)
             <input
+              className="input"
               type="date"
               value={dateOfBirth}
               onChange={(event) => setDateOfBirth(event.target.value)}
@@ -94,7 +104,11 @@ export const Onboarding: React.FC = () => {
             <Link to="/legal/privacy">Privacy Policy</Link>.
           </label>
         </div>
-        <button className="button" onClick={handleStart} disabled={loading || !ready}>
+        <button
+          className="button"
+          onClick={handleStart}
+          disabled={loading || !ready}
+        >
           {loading ? 'Creating profile...' : 'Start anonymously'}
         </button>
         <p className="subtle">
@@ -105,12 +119,36 @@ export const Onboarding: React.FC = () => {
       </div>
       <div className="card">
         <h2 className="section-title">What happens next</h2>
-        <ol className="subtle">
-          <li>Join the queue with a token.</li>
-          <li>Complete a 45-second Agora session.</li>
-          <li>Choose MATCH or PASS.</li>
-          <li>Chat instantly on mutual match.</li>
-        </ol>
+        <ul className="steps">
+          <li>
+            <span>1</span>
+            <div>
+              <strong>Join the queue</strong>
+              <p className="subtle">Spend one token to enter the live queue.</p>
+            </div>
+          </li>
+          <li>
+            <span>2</span>
+            <div>
+              <strong>45-second session</strong>
+              <p className="subtle">Meet in a short, moderated video call.</p>
+            </div>
+          </li>
+          <li>
+            <span>3</span>
+            <div>
+              <strong>Mutual decision</strong>
+              <p className="subtle">Choose MATCH or PASS after the call.</p>
+            </div>
+          </li>
+          <li>
+            <span>4</span>
+            <div>
+              <strong>Chat instantly</strong>
+              <p className="subtle">Mutual matches unlock secure messaging.</p>
+            </div>
+          </li>
+        </ul>
       </div>
     </section>
   );

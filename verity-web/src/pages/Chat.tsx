@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
+import { ReportDialog } from '../components/ReportDialog';
 
 type Message = {
   id: string;
@@ -13,12 +14,18 @@ type Message = {
   createdAt: string;
 };
 
+type MatchSummary = {
+  id: string;
+  partner: { id: string; displayName?: string | null };
+};
+
 export const Chat: React.FC = () => {
   const { matchId } = useParams();
   const { token, userId } = useAuth();
   const socket = useSocket('/chat', token);
   const [draft, setDraft] = useState('');
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const messagesQuery = useQuery({
     queryKey: ['messages', matchId],
@@ -31,6 +38,18 @@ export const Chat: React.FC = () => {
         throw new Error('Failed to load messages');
       }
       return response.data;
+    },
+    enabled: Boolean(matchId),
+  });
+
+  const matchQuery = useQuery({
+    queryKey: ['match-summary', matchId],
+    queryFn: async () => {
+      const response = await apiJson<MatchSummary[]>('/matches');
+      if (!response.ok || !response.data) {
+        throw new Error('Failed to load match');
+      }
+      return response.data.find((item) => item.id === matchId) ?? null;
     },
     enabled: Boolean(matchId),
   });
@@ -59,6 +78,10 @@ export const Chat: React.FC = () => {
     return [...base, ...liveMessages];
   }, [messagesQuery.data, liveMessages]);
 
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
   const sendMessage = async () => {
     if (!matchId || !draft.trim()) {
       return;
@@ -82,10 +105,16 @@ export const Chat: React.FC = () => {
     return <section className="card">Unable to load messages.</section>;
   }
 
+  const partnerName = matchQuery.data?.partner.displayName ?? 'Your match';
+  const partnerId = matchQuery.data?.partner.id ?? null;
+
   return (
     <section className="grid">
       <div className="card">
-        <h2 className="section-title">Chat</h2>
+        <div className="inline" style={{ justifyContent: 'space-between' }}>
+          <h2 className="section-title">Chat with {partnerName}</h2>
+          <ReportDialog reportedUserId={partnerId} buttonLabel="Report" />
+        </div>
         <div className="chat-list">
           {messages.map((message) => (
             <div
@@ -97,17 +126,30 @@ export const Chat: React.FC = () => {
               {message.text}
             </div>
           ))}
+          <div ref={bottomRef} />
         </div>
-        <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <div className="inline" style={{ marginTop: '16px' }}>
           <input
             className="input"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Say something nice"
+            placeholder="Say something kind"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void sendMessage();
+              }
+            }}
           />
-          <button className="button" onClick={sendMessage}>
+          <button className="button" onClick={sendMessage} disabled={!draft.trim()}>
             Send
           </button>
+        </div>
+        <div className="callout safety" style={{ marginTop: '16px' }}>
+          <strong>Stay respectful</strong>
+          <p className="subtle">
+            If you receive anything unsafe, use the report button and we will review it.
+          </p>
         </div>
       </div>
     </section>

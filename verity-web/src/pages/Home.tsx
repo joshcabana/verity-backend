@@ -74,15 +74,30 @@ export const Home: React.FC = () => {
   return (
     <section className="grid two">
       <div className="card">
-        <h2 className="section-title">Queue status</h2>
-        <p className="subtle">Token balance: {balanceLabel}</p>
-        <label className="subtle">Region</label>
-        <input
-          className="input"
-          value={region}
-          onChange={(event) => setRegion(event.target.value)}
-        />
-        <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+        <div className="inline" style={{ justifyContent: 'space-between' }}>
+          <h2 className="section-title">Queue status</h2>
+          <span className="pill success">Ready</span>
+        </div>
+        <div className="stat">
+          <span className="subtle">Token balance</span>
+          <strong>{balanceLabel}</strong>
+        </div>
+        <label className="subtle">
+          Region
+          <input
+            className="input"
+            list="region-options"
+            value={region}
+            onChange={(event) => setRegion(event.target.value)}
+          />
+        </label>
+        <datalist id="region-options">
+          <option value="au" />
+          <option value="na" />
+          <option value="eu" />
+          <option value="apac" />
+        </datalist>
+        <div className="inline" style={{ marginTop: '16px' }}>
           <button className="button" onClick={handleJoin} disabled={!canJoin}>
             {joining ? 'Joining...' : 'Join queue'}
           </button>
@@ -98,6 +113,12 @@ export const Home: React.FC = () => {
             You need at least 1 token to join the queue.
           </p>
         )}
+        <div className="callout" style={{ marginTop: '18px' }}>
+          <strong>Queue safety</strong>
+          <p className="subtle">
+            Sessions end automatically after 45 seconds. You can leave the queue at any time.
+          </p>
+        </div>
       </div>
       <div className="card">
         <h2 className="section-title">Buy tokens</h2>
@@ -107,7 +128,7 @@ export const Home: React.FC = () => {
         <p className="subtle">
           Tokens are non-refundable except where required by law.
         </p>
-        <div style={{ display: 'grid', gap: '12px' }}>
+        <div className="stack tight">
           {PACKS.map((pack) => (
             <button
               key={pack.id}
@@ -117,6 +138,20 @@ export const Home: React.FC = () => {
               {pack.label} · {pack.tokens} tokens
             </button>
           ))}
+        </div>
+      </div>
+      <div className="card">
+        <h2 className="section-title">Safety & privacy</h2>
+        <ul className="list subtle">
+          <li>Anonymous by default until a mutual match.</li>
+          <li>No recording of video sessions.</li>
+          <li>AI moderation monitors for unsafe content.</li>
+        </ul>
+        <div className="callout safety" style={{ marginTop: '16px' }}>
+          <strong>Need help?</strong>
+          <p className="subtle">
+            You can report unsafe behavior during a session or in chat.
+          </p>
         </div>
       </div>
     </section>
