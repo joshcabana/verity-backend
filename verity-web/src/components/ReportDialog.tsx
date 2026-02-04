@@ -20,6 +20,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
   contextLabel = 'This report will be reviewed by our safety team.',
   buttonLabel = 'Report user',
 }) => {
+  const offline = typeof navigator !== 'undefined' && !navigator.onLine;
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState(REASONS[0].value);
   const [details, setDetails] = useState('');
@@ -48,23 +49,27 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
     }
     setStatus('sending');
     const trimmed = details.trim();
-    const response = await apiJson('/moderation/reports', {
-      method: 'POST',
-      body: {
-        reportedUserId,
-        reason,
-        details: trimmed.length > 0 ? trimmed : undefined,
-      },
-    });
+    try {
+      const response = await apiJson('/moderation/reports', {
+        method: 'POST',
+        body: {
+          reportedUserId,
+          reason,
+          details: trimmed.length > 0 ? trimmed : undefined,
+        },
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        setStatus('error');
+        return;
+      }
+      setStatus('sent');
+      setTimeout(() => {
+        setOpen(false);
+      }, 900);
+    } catch {
       setStatus('error');
-      return;
     }
-    setStatus('sent');
-    setTimeout(() => {
-      setOpen(false);
-    }, 900);
   };
 
   return (
@@ -120,7 +125,9 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
             </label>
             {status === 'error' && (
               <p className="subtle" style={{ color: '#dc2626' }}>
-                We could not submit the report. Please try again.
+                {offline
+                  ? 'You appear to be offline. Reconnect and try again.'
+                  : 'We could not submit the report. Please try again.'}
               </p>
             )}
             {status === 'sent' && (

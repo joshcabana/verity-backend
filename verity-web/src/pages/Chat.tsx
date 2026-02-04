@@ -24,8 +24,10 @@ export const Chat: React.FC = () => {
   const { token, userId } = useAuth();
   const socket = useSocket('/chat', token);
   const [draft, setDraft] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const offline = typeof navigator !== 'undefined' && !navigator.onLine;
 
   const messagesQuery = useQuery({
     queryKey: ['messages', matchId],
@@ -88,12 +90,25 @@ export const Chat: React.FC = () => {
     }
     const content = draft.trim();
     setDraft('');
-    const response = await apiJson<Message>(`/matches/${matchId}/messages`, {
-      method: 'POST',
-      body: { text: content },
-    });
-    if (response.ok && response.data) {
-      setLiveMessages((prev) => [...prev, response.data as Message]);
+    setSendError(null);
+    try {
+      const response = await apiJson<Message>(`/matches/${matchId}/messages`, {
+        method: 'POST',
+        body: { text: content },
+      });
+      if (response.ok && response.data) {
+        setLiveMessages((prev) => [...prev, response.data as Message]);
+        return;
+      }
+      setSendError('Unable to send message. Try again.');
+      setDraft(content);
+    } catch {
+      setSendError(
+        offline
+          ? 'You appear to be offline. Message not sent.'
+          : 'Unable to send message. Try again.',
+      );
+      setDraft(content);
     }
   };
 
@@ -107,6 +122,11 @@ export const Chat: React.FC = () => {
 
   const partnerName = matchQuery.data?.partner.displayName ?? 'Your match';
   const partnerId = matchQuery.data?.partner.id ?? null;
+  const matchWarning = matchQuery.isError
+    ? offline
+      ? 'You appear to be offline. Match details are unavailable.'
+      : 'Unable to load match details right now.'
+    : null;
 
   return (
     <section className="grid">
@@ -115,6 +135,12 @@ export const Chat: React.FC = () => {
           <h2 className="section-title">Chat with {partnerName}</h2>
           <ReportDialog reportedUserId={partnerId} buttonLabel="Report" />
         </div>
+        {matchWarning && (
+          <div className="callout" style={{ marginTop: '12px' }}>
+            <strong>Match details unavailable</strong>
+            <p className="subtle">{matchWarning}</p>
+          </div>
+        )}
         <div className="chat-list">
           {messages.map((message) => (
             <div
@@ -145,6 +171,11 @@ export const Chat: React.FC = () => {
             Send
           </button>
         </div>
+        {sendError && (
+          <p className="subtle" style={{ color: '#dc2626' }}>
+            {sendError}
+          </p>
+        )}
         <div className="callout safety" style={{ marginTop: '16px' }}>
           <strong>Stay respectful</strong>
           <p className="subtle">

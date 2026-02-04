@@ -29,29 +29,38 @@ export const AdminModeration: React.FC = () => {
     setLoading(true);
     setError(null);
     const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
-    const response = await apiJson<Report[]>(`/moderation/reports${query}`, {
-      method: 'GET',
-      headers,
-    });
-    if (response.ok && response.data) {
-      setReports(response.data);
-    } else {
-      setError('Unable to load reports. Check admin key.');
+    try {
+      const response = await apiJson<Report[]>(`/moderation/reports${query}`, {
+        method: 'GET',
+        headers,
+      });
+      if (response.ok && response.data) {
+        setReports(response.data);
+      } else {
+        setError('Unable to load reports. Check admin key.');
+      }
+    } catch {
+      setError('Unable to load reports. Check your connection.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const resolveReport = async (id: string, action: ResolveAction) => {
-    const response = await apiJson(`/moderation/reports/${id}/resolve`, {
-      method: 'POST',
-      headers,
-      body: { action },
-    });
-    if (!response.ok) {
-      setError('Failed to resolve report.');
-      return;
+    try {
+      const response = await apiJson(`/moderation/reports/${id}/resolve`, {
+        method: 'POST',
+        headers,
+        body: { action },
+      });
+      if (!response.ok) {
+        setError('Failed to resolve report.');
+        return;
+      }
+      await fetchReports();
+    } catch {
+      setError('Failed to resolve report. Check your connection.');
     }
-    await fetchReports();
   };
 
   useEffect(() => {

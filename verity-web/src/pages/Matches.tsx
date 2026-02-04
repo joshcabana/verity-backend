@@ -21,6 +21,7 @@ type Match = {
 
 export const Matches: React.FC = () => {
   const navigate = useNavigate();
+  const offline = typeof navigator !== 'undefined' && !navigator.onLine;
 
   const matchesQuery = useQuery({
     queryKey: ['matches'],
@@ -38,7 +39,26 @@ export const Matches: React.FC = () => {
   }
 
   if (matchesQuery.isError) {
-    return <section className="card">Unable to load matches.</section>;
+    return (
+      <section className="card">
+        <h2 className="section-title">Your matches</h2>
+        <div className="callout" style={{ marginTop: '12px' }}>
+          <strong>Unable to load matches</strong>
+          <p className="subtle">
+            {offline
+              ? 'You appear to be offline. Reconnect and try again.'
+              : 'Check your connection and try again.'}
+          </p>
+        </div>
+        <button
+          className="button secondary"
+          style={{ marginTop: '12px' }}
+          onClick={() => matchesQuery.refetch()}
+        >
+          Retry
+        </button>
+      </section>
+    );
   }
 
   const matches = matchesQuery.data ?? [];
