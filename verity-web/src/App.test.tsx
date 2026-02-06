@@ -14,7 +14,13 @@ vi.mock('./hooks/useAuth', () => ({
 describe('App routing', () => {
   it('redirects unauthenticated users to onboarding', async () => {
     render(
-      <MemoryRouter initialEntries={['/home']}>
+      <MemoryRouter
+        initialEntries={['/home']}
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <App />
       </MemoryRouter>,
     );
