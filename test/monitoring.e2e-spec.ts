@@ -10,6 +10,8 @@ import {
 describe('Frontend monitoring ingestion (e2e)', () => {
   const originalOrigins = process.env.APP_ORIGINS;
   let context: TestAppContext | null = null;
+  let infoSpy: jest.SpyInstance;
+  let warnSpy: jest.SpyInstance;
 
   beforeAll(async () => {
     process.env.APP_ORIGINS = 'https://app.verity.test';
@@ -26,11 +28,18 @@ describe('Frontend monitoring ingestion (e2e)', () => {
   });
 
   beforeEach(async () => {
+    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     if (!context) {
       return;
     }
     await resetDatabase(context.prisma);
     await resetRedis(context.redis);
+  });
+
+  afterEach(() => {
+    infoSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it('accepts valid web vitals payload from allowed origin', async () => {
@@ -48,6 +57,7 @@ describe('Frontend monitoring ingestion (e2e)', () => {
       .expect(202);
 
     expect(response.body).toEqual({ accepted: true });
+    expect(infoSpy).toHaveBeenCalled();
   });
 
   it('rejects invalid web vitals payload', async () => {
@@ -78,6 +88,7 @@ describe('Frontend monitoring ingestion (e2e)', () => {
       .expect(202);
 
     expect(response.body).toEqual({ accepted: true });
+    expect(warnSpy).toHaveBeenCalled();
   });
 
   it('rejects disallowed origins', async () => {
