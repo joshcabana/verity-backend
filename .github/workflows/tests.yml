@@ -64,14 +64,8 @@ jobs:
         run: npm ci
       - name: Prisma db push
         run: npx prisma db push --accept-data-loss
-      - name: Run backend e2e flow suite
-        run: |
-          npm run test:e2e -- --runTestsByPath \
-            test/e2e/auth.flow.spec.ts \
-            test/e2e/matching-and-video.flow.spec.ts \
-            test/e2e/match-and-chat.flow.spec.ts \
-            test/e2e/payments.flow.spec.ts \
-            test/e2e/moderation.flow.spec.ts
+      - name: Run backend e2e suite
+        run: npm run test:e2e -- --runInBand
 
   web-unit:
     runs-on: ubuntu-latest
