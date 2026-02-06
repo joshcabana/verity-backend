@@ -211,6 +211,11 @@ export class QueueService {
       return null;
     }
 
+    if (await this.isPairBlocked(pair.userA, pair.userB)) {
+      await this.deferBlockedPair(queueKey, pair);
+      return null;
+    }
+
     return { userA: pair.userA, userB: pair.userB };
   }
 
@@ -348,6 +353,32 @@ export class QueueService {
     const script =
       'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
     await this.redis.eval(script, 1, lockKey, lockValue);
+  }
+
+  private async isPairBlocked(userAId: string, userBId: string) {
+    const block = await this.prisma.block.findFirst({
+      where: {
+        liftedAt: null,
+        OR: [
+          { blockerId: userAId, blockedId: userBId },
+          { blockerId: userBId, blockedId: userAId },
+        ],
+      },
+      select: { id: true },
+    });
+    return Boolean(block);
+  }
+
+  private async deferBlockedPair(queueKey: string, pair: QueuePair) {
+    // Delay rematching for blocked pairs to avoid hot-looping.
+    const scoreBase = Date.now() + 5000;
+    await this.redis.zadd(
+      this.queueZsetKey(queueKey),
+      scoreBase,
+      pair.userA,
+      scoreBase + 1,
+      pair.userB,
+    );
   }
 }
 

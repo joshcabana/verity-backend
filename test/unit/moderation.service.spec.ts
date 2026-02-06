@@ -53,6 +53,7 @@ describe('ModerationService (unit)', () => {
       } as any),
     ).rejects.toThrow(BadRequestException);
 
+    prisma.moderationReport.count.mockResolvedValue(0);
     prisma.moderationReport.create.mockResolvedValue({
       id: 'report-1',
       reporterId: 'user-1',
@@ -62,6 +63,15 @@ describe('ModerationService (unit)', () => {
       status: 'OPEN',
       createdAt: new Date(),
     });
+    prisma.block.findUnique.mockResolvedValue(null);
+    prisma.block.create.mockResolvedValue({
+      id: 'block-1',
+      blockerId: 'user-1',
+      blockedId: 'user-2',
+      liftedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     const report = await service.createReport('user-1', {
       reportedUserId: 'user-2',
@@ -70,6 +80,75 @@ describe('ModerationService (unit)', () => {
     } as any);
 
     expect(report.id).toBe('report-1');
+    expect(prisma.block.create).toHaveBeenCalled();
+  });
+
+  it('enforces daily report spam limits', async () => {
+    prisma.moderationReport.count.mockResolvedValue(10);
+
+    await expect(
+      service.createReport('user-1', {
+        reportedUserId: 'user-2',
+        reason: 'spam',
+      } as any),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('creates and reopens blocks', async () => {
+    prisma.block.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 'block-1',
+        blockerId: 'user-1',
+        blockedId: 'user-2',
+        liftedAt: new Date('2026-01-01T00:00:00Z'),
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      });
+
+    prisma.block.create.mockResolvedValue({
+      id: 'block-1',
+      blockerId: 'user-1',
+      blockedId: 'user-2',
+      liftedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.block.update.mockResolvedValue({
+      id: 'block-1',
+      blockerId: 'user-1',
+      blockedId: 'user-2',
+      liftedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const first = await service.createBlock('user-1', 'user-2');
+    const second = await service.createBlock('user-1', 'user-2');
+
+    expect(first.status).toBe('blocked');
+    expect(second.status).toBe('blocked');
+    expect(prisma.block.update).toHaveBeenCalled();
+  });
+
+  it('marks blocks as lifted on unblock', async () => {
+    prisma.block.findUnique.mockResolvedValue({
+      id: 'block-1',
+      liftedAt: null,
+    });
+    prisma.block.update.mockResolvedValue({
+      id: 'block-1',
+      liftedAt: new Date(),
+    });
+
+    const result = await service.unblock('user-1', 'user-2');
+
+    expect(result.status).toBe('unblocked');
+  });
+
+  it('detects bidirectional blocks', async () => {
+    prisma.block.findFirst.mockResolvedValue({ id: 'block-1' });
+    await expect(service.isBlocked('user-1', 'user-2')).resolves.toBe(true);
   });
 
   it('startStreamMonitoring is a no-op without URL', async () => {
@@ -255,9 +334,18 @@ describe('ModerationService (unit)', () => {
   it('resolves report and applies ban', async () => {
     prisma.moderationReport.update.mockResolvedValue({
       id: 'report-1',
+      reporterId: 'user-x',
       reportedUserId: 'user-1',
       status: 'BANNED',
       reason: 'abuse',
+    });
+    prisma.block.findUnique.mockResolvedValue({
+      id: 'block-1',
+      blockerId: 'user-x',
+      blockedId: 'user-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      liftedAt: null,
     });
 
     const result = await service.resolveReport('report-1', 'ban');
@@ -270,9 +358,18 @@ describe('ModerationService (unit)', () => {
   it('resolves report with warn action without banning', async () => {
     prisma.moderationReport.update.mockResolvedValue({
       id: 'report-2',
+      reporterId: 'user-x',
       reportedUserId: 'user-2',
       status: 'WARNED',
       reason: 'abuse',
+    });
+    prisma.block.findUnique.mockResolvedValue({
+      id: 'block-2',
+      blockerId: 'user-x',
+      blockedId: 'user-2',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      liftedAt: null,
     });
 
     const result = await service.resolveReport('report-2', 'warn');

@@ -4,7 +4,7 @@
   "testEnvironment": "node",
   "maxWorkers": 1,
   "openHandlesTimeout": 5000,
-  "testRegex": ".e2e-spec.ts$",
+  "testRegex": "(.e2e-spec.ts$|\\.flow\\.spec\\.ts$)",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }

@@ -130,4 +130,65 @@ describe('Matching + video flow (e2e)', () => {
     videoSocketA.disconnect();
     videoSocketB.disconnect();
   });
+
+  it('does not match users who blocked each other', async () => {
+    if (!context) {
+      throw new Error('Missing test context');
+    }
+
+    const signupA = await request(context.app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .expect(201);
+
+    const signupB = await request(context.app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .expect(201);
+
+    const userA = signupA.body.user;
+    const userB = signupB.body.user;
+    const tokenA = signupA.body.accessToken as string;
+    const tokenB = signupB.body.accessToken as string;
+
+    await context.prisma.user.update({
+      where: { id: userA.id },
+      data: { tokenBalance: 1 },
+    });
+    await context.prisma.user.update({
+      where: { id: userB.id },
+      data: { tokenBalance: 1 },
+    });
+
+    await request(context.app.getHttpServer())
+      .post('/moderation/blocks')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ blockedUserId: userB.id })
+      .expect(201);
+
+    const [joinA] = await Promise.all([
+      request(context.app.getHttpServer())
+        .post('/queue/join')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ region: 'na', preferences: { mode: 'standard' } })
+        .expect(201),
+      request(context.app.getHttpServer())
+        .post('/queue/join')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .send({ region: 'na', preferences: { mode: 'standard' } })
+        .expect(201),
+    ]);
+
+    await (context.worker as any).processQueueKey?.(joinA.body.queueKey);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await (context.worker as any).processQueueKey?.(joinA.body.queueKey);
+
+    const session = await context.prisma.session.findFirst({
+      where: {
+        OR: [
+          { userAId: userA.id, userBId: userB.id },
+          { userAId: userB.id, userBId: userA.id },
+        ],
+      },
+    });
+    expect(session).toBeNull();
+  });
 });

@@ -109,6 +109,22 @@ describe('ChatService (unit)', () => {
     expect(message.text).toBe('Hello');
     expect(gateway.events).toHaveLength(2);
   });
+
+  it('blocks message access when users are blocked', async () => {
+    prisma.match.findUnique.mockResolvedValue({
+      id: 'match-1',
+      userAId: 'user-a',
+      userBId: 'user-b',
+    });
+    prisma.block.findFirst.mockResolvedValue({ id: 'block-1' });
+
+    await expect(service.listMessages('match-1', 'user-a')).rejects.toThrow(
+      ForbiddenException,
+    );
+    await expect(
+      service.sendMessage('match-1', 'user-a', 'Hello'),
+    ).rejects.toThrow(ForbiddenException);
+  });
 });
 
 describe('MatchesService (unit)', () => {
@@ -146,5 +162,29 @@ describe('MatchesService (unit)', () => {
     expect(result).toHaveLength(2);
     expect(result[0].partner.id).toBe('user-b');
     expect(result[1].partner.id).toBe('user-c');
+  });
+
+  it('filters blocked partners from matches', async () => {
+    const createdAt = new Date('2024-01-01T00:00:00Z');
+    prisma.match.findMany.mockResolvedValue([
+      {
+        id: 'match-1',
+        createdAt,
+        userAId: 'user-a',
+        userBId: 'user-b',
+        userA: { id: 'user-a', displayName: 'A' },
+        userB: { id: 'user-b', displayName: 'B' },
+      },
+    ]);
+    prisma.block.findMany.mockResolvedValue([
+      {
+        blockerId: 'user-a',
+        blockedId: 'user-b',
+      },
+    ]);
+
+    const result = await service.listMatches('user-a');
+
+    expect(result).toHaveLength(0);
   });
 });

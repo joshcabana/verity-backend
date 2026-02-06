@@ -33,7 +33,17 @@ export function createPrismaMock() {
     moderationReport: {
       create: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(),
       update: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    block: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
       deleteMany: jest.fn(),
     },
     message: {

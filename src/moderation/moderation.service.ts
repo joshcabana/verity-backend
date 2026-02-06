@@ -16,6 +16,10 @@ const VIOLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const BAN_THRESHOLD = 3;
 const BAN_TTL_MS = 24 * 60 * 60 * 1000;
 const BAN_RATE_LIMIT_MS = 60 * 1000;
+const REPORT_SPAM_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MAX_REPORTS_PER_USER_PER_DAY = 10;
+const REPORT_ESCALATION_THRESHOLD = 3;
+const REPORT_ESCALATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 type HiveViolationPayload = {
   sessionId: string;
@@ -45,24 +49,178 @@ export class ModerationService {
       throw new BadRequestException('Cannot report yourself');
     }
 
-    return this.prisma.moderationReport.create({
-      data: {
+    const details = input.details?.trim();
+    if (details && details.length > 500) {
+      throw new BadRequestException('Report details must be 500 characters or fewer');
+    }
+
+    const reportWindowStart = new Date(Date.now() - REPORT_SPAM_WINDOW_MS);
+    const reportCount = await this.prisma.moderationReport.count({
+      where: {
         reporterId,
-        reportedUserId: input.reportedUserId,
-        reason: input.reason,
-        details: input.details,
-        status: 'OPEN',
+        createdAt: { gte: reportWindowStart },
       },
+    });
+    if (reportCount >= MAX_REPORTS_PER_USER_PER_DAY) {
+      throw new BadRequestException('Daily report limit reached');
+    }
+
+    const report = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.moderationReport.create({
+        data: {
+          reporterId,
+          reportedUserId: input.reportedUserId,
+          reason: input.reason,
+          details,
+          status: 'OPEN',
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          reporterId: true,
+          reportedUserId: true,
+          reason: true,
+          details: true,
+          status: true,
+        },
+      });
+
+      const existingBlock = await tx.block.findUnique({
+        where: {
+          blockerId_blockedId: {
+            blockerId: reporterId,
+            blockedId: input.reportedUserId,
+          },
+        },
+      });
+
+      if (!existingBlock) {
+        await tx.block.create({
+          data: {
+            blockerId: reporterId,
+            blockedId: input.reportedUserId,
+          },
+        });
+      } else if (existingBlock.liftedAt) {
+        await tx.block.update({
+          where: { id: existingBlock.id },
+          data: { liftedAt: null },
+        });
+      }
+
+      return created;
+    });
+
+    await this.bumpReportEscalation(input.reportedUserId);
+    await this.removeFromQueueIfPresent(input.reportedUserId);
+    return report;
+  }
+
+  async createBlock(blockerId: string, blockedId: string) {
+    if (blockerId === blockedId) {
+      throw new BadRequestException('Cannot block yourself');
+    }
+
+    const existing = await this.prisma.block.findUnique({
+      where: { blockerId_blockedId: { blockerId, blockedId } },
+      select: {
+        id: true,
+        blockerId: true,
+        blockedId: true,
+        createdAt: true,
+        updatedAt: true,
+        liftedAt: true,
+      },
+    });
+
+    if (!existing) {
+      const created = await this.prisma.block.create({
+        data: { blockerId, blockedId },
+        select: {
+          id: true,
+          blockerId: true,
+          blockedId: true,
+          createdAt: true,
+          updatedAt: true,
+          liftedAt: true,
+        },
+      });
+      await this.removeFromQueueIfPresent(blockedId);
+      return { status: 'blocked' as const, block: created };
+    }
+
+    if (!existing.liftedAt) {
+      return { status: 'already_blocked' as const, block: existing };
+    }
+
+    const reopened = await this.prisma.block.update({
+      where: { id: existing.id },
+      data: { liftedAt: null },
+      select: {
+        id: true,
+        blockerId: true,
+        blockedId: true,
+        createdAt: true,
+        updatedAt: true,
+        liftedAt: true,
+      },
+    });
+    await this.removeFromQueueIfPresent(blockedId);
+    return { status: 'blocked' as const, block: reopened };
+  }
+
+  async listBlocks(userId: string, limit = 100) {
+    const safeLimit = Math.max(1, Math.min(limit, 200));
+    const blocks = await this.prisma.block.findMany({
+      where: {
+        blockerId: userId,
+        liftedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
       select: {
         id: true,
         createdAt: true,
-        reporterId: true,
-        reportedUserId: true,
-        reason: true,
-        details: true,
-        status: true,
+        blockedId: true,
       },
     });
+
+    return blocks.map((block) => ({
+      id: block.id,
+      createdAt: block.createdAt,
+      blockedUserId: block.blockedId,
+    }));
+  }
+
+  async unblock(blockerId: string, blockedId: string) {
+    const existing = await this.prisma.block.findUnique({
+      where: { blockerId_blockedId: { blockerId, blockedId } },
+      select: { id: true, liftedAt: true },
+    });
+    if (!existing || existing.liftedAt) {
+      return { status: 'not_blocked' as const };
+    }
+
+    await this.prisma.block.update({
+      where: { id: existing.id },
+      data: { liftedAt: new Date() },
+    });
+
+    return { status: 'unblocked' as const };
+  }
+
+  async isBlocked(userAId: string, userBId: string): Promise<boolean> {
+    const block = await this.prisma.block.findFirst({
+      where: {
+        liftedAt: null,
+        OR: [
+          { blockerId: userAId, blockedId: userBId },
+          { blockerId: userBId, blockedId: userAId },
+        ],
+      },
+      select: { id: true },
+    });
+    return Boolean(block);
   }
 
   static async startStreamMonitoring(input: {
@@ -321,6 +479,9 @@ export class ModerationService {
       data: { status: action === 'ban' ? 'BANNED' : 'WARNED' },
     });
 
+    // Legacy report records may exist from before auto-block behavior.
+    await this.createBlock(report.reporterId, report.reportedUserId);
+
     if (action === 'ban') {
       await this.redis.set(
         this.banKey(report.reportedUserId),
@@ -337,5 +498,38 @@ export class ModerationService {
       status: report.status,
       action,
     };
+  }
+
+  private async removeFromQueueIfPresent(userId: string) {
+    const stateRaw = await this.redis.get(`queue:user:${userId}`);
+    if (!stateRaw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stateRaw) as { queueKey?: string };
+      if (parsed.queueKey) {
+        await this.redis.zrem(`queue:zset:${parsed.queueKey}`, userId);
+      }
+    } catch {
+      // Ignore malformed queue state.
+    } finally {
+      await this.redis.del(`queue:user:${userId}`);
+    }
+  }
+
+  private async bumpReportEscalation(userId: string) {
+    const key = `user:reports:${userId}`;
+    const currentRaw = await this.redis.get(key);
+    const current = currentRaw ? Number.parseInt(currentRaw, 10) : 0;
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const next = safeCurrent + 1;
+    await this.redis.set(key, String(next), 'PX', REPORT_ESCALATION_TTL_MS);
+
+    if (next >= REPORT_ESCALATION_THRESHOLD) {
+      this.logger.warn(
+        `User ${userId} reached ${next} reports in 24h and should be reviewed by human moderation`,
+      );
+    }
   }
 }

@@ -182,6 +182,7 @@ export async function resetDatabase(prisma: PrismaClient) {
       TRUNCATE TABLE
         "Message",
         "Match",
+        "Block",
         "Session",
         "TokenTransaction",
         "ModerationEvent",
@@ -197,6 +198,7 @@ export async function resetDatabase(prisma: PrismaClient) {
 
   await prisma.message.deleteMany();
   await prisma.match.deleteMany();
+  await prisma.block.deleteMany();
   await prisma.session.deleteMany();
   await prisma.tokenTransaction.deleteMany();
   await prisma.moderationEvent.deleteMany();

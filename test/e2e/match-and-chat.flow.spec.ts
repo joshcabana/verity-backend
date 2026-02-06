@@ -178,4 +178,51 @@ describe('Match + chat flow (e2e)', () => {
     videoSocketA.disconnect();
     videoSocketB.disconnect();
   });
+
+  it('prevents chat access after a user blocks their match', async () => {
+    if (!context) {
+      throw new Error('Missing test context');
+    }
+
+    const signupA = await request(context.app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .expect(201);
+    const signupB = await request(context.app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .expect(201);
+
+    const userA = signupA.body.user;
+    const userB = signupB.body.user;
+    const tokenA = signupA.body.accessToken as string;
+    const tokenB = signupB.body.accessToken as string;
+
+    const [low, high] =
+      userA.id < userB.id ? [userA.id, userB.id] : [userB.id, userA.id];
+    const match = await context.prisma.match.create({
+      data: { userAId: low, userBId: high },
+    });
+
+    await request(context.app.getHttpServer())
+      .post('/moderation/blocks')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ blockedUserId: userB.id })
+      .expect(201);
+
+    await request(context.app.getHttpServer())
+      .get(`/matches/${match.id}/messages`)
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(403);
+
+    await request(context.app.getHttpServer())
+      .post(`/matches/${match.id}/messages`)
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ text: 'blocked message' })
+      .expect(403);
+
+    await request(context.app.getHttpServer())
+      .get('/matches')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(200)
+      .expect([]);
+  });
 });

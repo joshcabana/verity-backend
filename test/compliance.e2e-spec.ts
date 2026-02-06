@@ -183,6 +183,16 @@ describe('Compliance (e2e)', () => {
     });
     expect(storedReport).toBeTruthy();
 
+    const autoBlock = await prisma.block.findUnique({
+      where: {
+        blockerId_blockedId: {
+          blockerId: reporter.id,
+          blockedId: reported.id,
+        },
+      },
+    });
+    expect(autoBlock).toBeTruthy();
+
     const listResponse = await request(app.getHttpServer())
       .get('/moderation/reports')
       .set('Authorization', `Bearer ${reporterToken}`)
@@ -210,9 +220,18 @@ describe('Compliance (e2e)', () => {
     const deletedReport = await prisma.moderationReport.findUnique({
       where: { id: reportId },
     });
+    const deletedBlock = await prisma.block.findUnique({
+      where: {
+        blockerId_blockedId: {
+          blockerId: reporter.id,
+          blockedId: reported.id,
+        },
+      },
+    });
 
     expect(deletedUser).toBeNull();
     expect(deletedReport).toBeNull();
+    expect(deletedBlock).toBeNull();
   });
 
   it('blocks queue join when user is banned', async () => {

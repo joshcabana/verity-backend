@@ -41,6 +41,8 @@ model User {
   messagesSent  Message[]
   reportsMade   ModerationReport[] @relation("ReportsMade")
   reportsReceived ModerationReport[] @relation("ReportsReceived")
+  blocksMade    Block[]  @relation("BlocksMade")
+  blocksReceived Block[] @relation("BlocksReceived")
 }
 
 model RefreshToken {
@@ -153,4 +155,20 @@ model ModerationReport {
   @@index([reporterId])
   @@index([reportedUserId])
   @@index([status])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  blockerId String
+  blockedId String
+  liftedAt  DateTime?
+
+  blocker     User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedUser User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId, liftedAt])
+  @@index([blockedId, liftedAt])
 }

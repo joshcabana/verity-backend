@@ -245,6 +245,31 @@ describe('QueueService (unit)', () => {
     expect(result).toEqual({ userA: 'user-a', userB: 'user-b' });
   });
 
+  it('defers blocked pairs and returns null', async () => {
+    const queueKey = service.buildQueueKey('na', { mode: 'standard' });
+    await redis.set(
+      `queue:user:user-a`,
+      JSON.stringify({ queueKey, joinedAt: 1 }),
+    );
+    await redis.set(
+      `queue:user:user-b`,
+      JSON.stringify({ queueKey, joinedAt: 2 }),
+    );
+    prisma.block.findFirst.mockResolvedValue({ id: 'block-1' });
+
+    const result = await service.validatePair(queueKey, {
+      userA: 'user-a',
+      userB: 'user-b',
+      scoreA: 1,
+      scoreB: 2,
+    });
+
+    expect(result).toBeNull();
+    expect(prisma.block.findFirst).toHaveBeenCalled();
+    expect(await redis.zrank(`queue:zset:${queueKey}`, 'user-a')).toBe(0);
+    expect(await redis.zrank(`queue:zset:${queueKey}`, 'user-b')).toBe(1);
+  });
+
   it('pops a pair from the queue', async () => {
     const queueKey = service.buildQueueKey('na', { mode: 'standard' });
     await redis.zadd(`queue:zset:${queueKey}`, 1, 'user-a', 2, 'user-b');

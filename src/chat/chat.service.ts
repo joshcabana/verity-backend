@@ -26,6 +26,7 @@ export class ChatService {
     if (!match) {
       throw new NotFoundException('Match not found');
     }
+    await this.assertNotBlocked(match.userAId, match.userBId);
 
     const safeLimit = Math.max(1, Math.min(limit, 100));
     const messages = await this.prisma.message.findMany({
@@ -51,6 +52,7 @@ export class ChatService {
     if (!match) {
       throw new NotFoundException('Match not found');
     }
+    await this.assertNotBlocked(match.userAId, match.userBId);
 
     if (match.userAId !== userId && match.userBId !== userId) {
       throw new ForbiddenException('Not a match participant');
@@ -89,5 +91,22 @@ export class ChatService {
       throw new ForbiddenException('Not a match participant');
     }
     return match;
+  }
+
+  private async assertNotBlocked(userAId: string, userBId: string) {
+    const block = await this.prisma.block.findFirst({
+      where: {
+        liftedAt: null,
+        OR: [
+          { blockerId: userAId, blockedId: userBId },
+          { blockerId: userBId, blockedId: userAId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (block) {
+      throw new ForbiddenException('Conversation unavailable');
+    }
   }
 }

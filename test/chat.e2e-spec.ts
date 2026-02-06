@@ -41,6 +41,11 @@ class FakePrismaService {
     },
   };
 
+  block = {
+    findMany: async () => [],
+    findFirst: async () => null,
+  };
+
   message = {
     create: async ({
       data,
