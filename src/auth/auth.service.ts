@@ -133,8 +133,15 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const [matches, sessions, messages, tokenTxs, reportsMade, reportsReceived] =
-      await Promise.all([
+    const [
+      matches,
+      sessions,
+      messages,
+      tokenTxs,
+      reportsMade,
+      reportsReceived,
+      pushTokens,
+    ] = await Promise.all([
         this.prisma.match.findMany({
           where: { OR: [{ userAId: userId }, { userBId: userId }] },
         }),
@@ -151,6 +158,18 @@ export class AuthService {
         this.prisma.moderationReport.findMany({
           where: { reportedUserId: userId },
         }),
+        this.prisma.pushToken.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+            platform: true,
+            deviceId: true,
+            lastSeenAt: true,
+            revokedAt: true,
+          },
+        }),
       ]);
 
     return {
@@ -161,6 +180,7 @@ export class AuthService {
       tokenTransactions: tokenTxs,
       reportsMade,
       reportsReceived,
+      pushTokens,
     };
   }
 
@@ -322,6 +342,7 @@ export class AuthService {
   async deleteAccount(userId: string) {
     await this.prisma.$transaction(async (tx) => {
       await tx.refreshToken.deleteMany({ where: { userId } });
+      await tx.pushToken.deleteMany({ where: { userId } });
       await tx.tokenTransaction.deleteMany({ where: { userId } });
       await tx.moderationEvent.deleteMany({ where: { userId } });
       await tx.moderationReport.deleteMany({

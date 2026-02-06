@@ -151,6 +151,45 @@ describe('Compliance (e2e)', () => {
       .expect(200);
 
     expect(exportResponse.body.user?.id).toBe(userId);
+    expect(Array.isArray(exportResponse.body.pushTokens)).toBe(true);
+  });
+
+  it('registers and unregisters push tokens', async () => {
+    const signup = await request(app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .send({ dateOfBirth: '1993-03-14' })
+      .expect(201);
+
+    const userId = signup.body.user.id as string;
+    const accessToken = signup.body.accessToken as string;
+    const token = 'web-token-compliance-123456';
+
+    await request(app.getHttpServer())
+      .post('/notifications/tokens')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        token,
+        platform: 'WEB',
+        deviceId: 'browser-1',
+      })
+      .expect(201);
+
+    const stored = await prisma.pushToken.findUnique({
+      where: { token },
+    });
+    expect(stored?.userId).toBe(userId);
+    expect(stored?.revokedAt).toBeNull();
+
+    await request(app.getHttpServer())
+      .delete('/notifications/tokens')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ token })
+      .expect(200);
+
+    const revoked = await prisma.pushToken.findUnique({
+      where: { token },
+    });
+    expect(revoked?.revokedAt).toBeTruthy();
   });
 
   it('creates a report and deletes user data', async () => {
@@ -166,6 +205,16 @@ describe('Compliance (e2e)', () => {
     const reporter = reporterSignup.body.user;
     const reported = reportedSignup.body.user;
     const reporterToken = reporterSignup.body.accessToken as string;
+    const reporterPushToken = `push-${reporter.id}`;
+
+    await request(app.getHttpServer())
+      .post('/notifications/tokens')
+      .set('Authorization', `Bearer ${reporterToken}`)
+      .send({
+        token: reporterPushToken,
+        platform: 'WEB',
+      })
+      .expect(201);
 
     const reportResponse = await request(app.getHttpServer())
       .post('/moderation/reports')
@@ -228,10 +277,14 @@ describe('Compliance (e2e)', () => {
         },
       },
     });
+    const deletedPushToken = await prisma.pushToken.findUnique({
+      where: { token: reporterPushToken },
+    });
 
     expect(deletedUser).toBeNull();
     expect(deletedReport).toBeNull();
     expect(deletedBlock).toBeNull();
+    expect(deletedPushToken).toBeNull();
   });
 
   it('blocks queue join when user is banned', async () => {

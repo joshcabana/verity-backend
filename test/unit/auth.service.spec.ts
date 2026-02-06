@@ -161,10 +161,12 @@ describe('AuthService (unit)', () => {
     prisma.message.findMany.mockResolvedValue([]);
     prisma.tokenTransaction.findMany.mockResolvedValue([]);
     prisma.moderationReport.findMany.mockResolvedValue([]);
+    prisma.pushToken.findMany.mockResolvedValue([]);
 
     const data = await service.exportUserData('user-1');
     expect(data.user.id).toBe('user-1');
     expect(data.matches).toEqual([]);
+    expect(data.pushTokens).toEqual([]);
   });
 
   it('rejects invalid refresh token', async () => {
@@ -370,6 +372,7 @@ describe('AuthService (unit)', () => {
 
   it('deletes account data within a transaction', async () => {
     prisma.refreshToken.deleteMany.mockResolvedValue({ count: 0 });
+    prisma.pushToken.deleteMany.mockResolvedValue({ count: 0 });
     prisma.tokenTransaction.deleteMany.mockResolvedValue({ count: 0 });
     prisma.moderationEvent.deleteMany.mockResolvedValue({ count: 0 });
     prisma.moderationReport.deleteMany.mockResolvedValue({ count: 0 });
@@ -381,6 +384,9 @@ describe('AuthService (unit)', () => {
     await service.deleteAccount('user-1');
 
     expect(prisma.refreshToken.deleteMany).toHaveBeenCalled();
+    expect(prisma.pushToken.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+    });
     expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
   });
 });

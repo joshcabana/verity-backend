@@ -33,6 +33,7 @@ Key variables used by the backend:
 - `DATABASE_URL`, `REDIS_URL`
 - `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
 - `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
+- `PUSH_DISPATCH_WEBHOOK_URL` (optional, server-to-server push dispatch webhook)
 - `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `AGORA_TOKEN_TTL_SECONDS`
 - `HIVE_STREAM_URL`, `HIVE_SCREENSHOT_URL`, `HIVE_API_KEY`, `HIVE_WEBHOOK_SECRET`
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PLUS`, `STRIPE_PRICE_PRO`
@@ -179,6 +180,7 @@ Required secrets (store in Key Vault via Bicep params):
 - `HIVE_API_KEY`
 - `HIVE_WEBHOOK_SECRET`
 - `MODERATION_ADMIN_KEY`
+- `PUSH_DISPATCH_WEBHOOK_URL`
 
 Non-secret values (safe as plain env vars):
 - `API_URL`
@@ -318,6 +320,16 @@ scripts/e2e-local-run.sh all clean
 1. `POST /auth/signup-anonymous` returns access token and sets refresh cookie.
 2. `GET /users/me/export` returns user data payload for access requests.
 3. `GET /tokens/balance` returns token balance (seed tokens if needed).
+
+## Push Notifications (Optional)
+
+Backend endpoints:
+- `POST /notifications/tokens` to register or refresh a device/web push token.
+- `DELETE /notifications/tokens` to revoke a previously registered token.
+
+Dispatch behavior:
+- If `PUSH_DISPATCH_WEBHOOK_URL` is empty, events are logged as dry-run only.
+- If set, Verity POSTs delivery payloads for `queue_match_found`, `match_mutual`, and `chat_message_new`.
 4. `POST /queue/join` succeeds and triggers a queue match event.
 5. `/video` socket receives `session:start`, then `session:end`.
 6. `POST /sessions/:id/choice` yields `match:mutual` on double MATCH.
