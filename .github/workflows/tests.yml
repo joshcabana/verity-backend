@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  backend-unit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,3 +21,101 @@ jobs:
         run: npm test
       - name: Run moderation accuracy suite
         run: npm test -- --runTestsByPath test/moderation/accuracy.spec.ts
+      - name: Build backend
+        run: npm run build
+
+  backend-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: verity
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d verity"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/verity
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Prisma db push
+        run: npx prisma db push --accept-data-loss
+      - name: Run backend e2e flow suite
+        run: |
+          npm run test:e2e -- --runTestsByPath \
+            test/e2e/auth.flow.spec.ts \
+            test/e2e/matching-and-video.flow.spec.ts \
+            test/e2e/match-and-chat.flow.spec.ts \
+            test/e2e/payments.flow.spec.ts \
+            test/e2e/moderation.flow.spec.ts
+
+  web-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: verity-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: verity-web/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run web unit tests
+        run: npm test
+      - name: Build web app
+        run: npm run build
+      - name: Enforce bundle budgets
+        run: npm run check:budgets
+
+  web-smoke:
+    runs-on: ubuntu-latest
+    needs: web-unit
+    defaults:
+      run:
+        working-directory: verity-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: verity-web/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Run browser smoke tests
+        env:
+          CI: true
+        run: npm run test:smoke

@@ -17,7 +17,7 @@ const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
 @Injectable()
 export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MatchingWorker.name);
-  private timer?: NodeJS.Timeout;
+  private timer?: ReturnType<typeof setInterval>;
   private running = false;
   private lastCleanupAt = 0;
 

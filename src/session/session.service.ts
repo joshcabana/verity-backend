@@ -30,8 +30,11 @@ type ChoiceResult =
 @Injectable()
 export class SessionService implements OnModuleDestroy {
   private readonly logger = new Logger(SessionService.name);
-  private readonly timers = new Map<string, NodeJS.Timeout>();
-  private readonly choiceTimers = new Map<string, NodeJS.Timeout>();
+  private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly choiceTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
 
   constructor(
     private readonly prisma: PrismaService,

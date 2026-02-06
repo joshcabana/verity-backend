@@ -2,8 +2,24 @@ import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
+const routePrefetchers: Record<string, () => Promise<unknown>> = {
+  '/home': () => import('../pages/Home'),
+  '/matches': () => import('../pages/Matches'),
+  '/settings': () => import('../pages/Settings'),
+  '/admin/moderation': () => import('../pages/AdminModeration'),
+  '/waiting': () => import('../pages/Waiting'),
+  '/onboarding': () => import('../pages/Onboarding'),
+};
+
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token, signOut } = useAuth();
+
+  const prefetchRoute = (path: string) => {
+    const prefetch = routePrefetchers[path];
+    if (prefetch) {
+      void prefetch();
+    }
+  };
 
   return (
     <main>
@@ -19,6 +35,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 className={({ isActive }) =>
                   `nav-link${isActive ? ' active' : ''}`
                 }
+                onMouseEnter={() => prefetchRoute('/home')}
+                onFocus={() => prefetchRoute('/home')}
               >
                 Home
               </NavLink>
@@ -27,6 +45,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 className={({ isActive }) =>
                   `nav-link${isActive ? ' active' : ''}`
                 }
+                onMouseEnter={() => prefetchRoute('/matches')}
+                onFocus={() => prefetchRoute('/matches')}
               >
                 Matches
               </NavLink>
@@ -35,6 +55,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 className={({ isActive }) =>
                   `nav-link${isActive ? ' active' : ''}`
                 }
+                onMouseEnter={() => prefetchRoute('/settings')}
+                onFocus={() => prefetchRoute('/settings')}
               >
                 Settings
               </NavLink>
@@ -43,6 +65,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 className={({ isActive }) =>
                   `nav-link${isActive ? ' active' : ''}`
                 }
+                onMouseEnter={() => prefetchRoute('/admin/moderation')}
+                onFocus={() => prefetchRoute('/admin/moderation')}
               >
                 Admin
               </NavLink>
@@ -56,6 +80,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               className={({ isActive }) =>
                 `nav-link${isActive ? ' active' : ''}`
               }
+              onMouseEnter={() => prefetchRoute('/onboarding')}
+              onFocus={() => prefetchRoute('/onboarding')}
             >
               Get started
             </NavLink>

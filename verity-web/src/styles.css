@@ -254,6 +254,13 @@ header {
   box-shadow: 0 12px 24px rgba(220, 38, 38, 0.25);
 }
 
+.button:focus-visible,
+.nav-link:focus-visible,
+.legal-link:focus-visible {
+  outline: 3px solid rgba(31, 94, 255, 0.4);
+  outline-offset: 2px;
+}
+
 .input {
   width: 100%;
   padding: 12px 14px;

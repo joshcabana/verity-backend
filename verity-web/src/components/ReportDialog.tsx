@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiJson } from '../api/client';
 
 const REASONS = [
@@ -21,6 +21,8 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
   buttonLabel = 'Report user',
 }) => {
   const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const reasonRef = useRef<HTMLSelectElement | null>(null);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState(REASONS[0].value);
   const [details, setDetails] = useState('');
@@ -41,6 +43,11 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
     setReason(REASONS[0].value);
     setDetails('');
     setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    triggerRef.current?.focus();
   };
 
   const handleSubmit = async () => {
@@ -65,16 +72,35 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
       }
       setStatus('sent');
       setTimeout(() => {
-        setOpen(false);
+        handleClose();
       }, 900);
     } catch {
       setStatus('error');
     }
   };
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    reasonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
   return (
     <>
       <button
+        ref={triggerRef}
         className="button secondary"
         onClick={handleOpen}
         disabled={!reportedUserId}
@@ -87,13 +113,21 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
         </p>
       )}
       {open && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-dialog-title"
+        >
           <div className="modal">
             <div className="modal-header">
-              <h3 className="section-title">Report a safety issue</h3>
+              <h3 id="report-dialog-title" className="section-title">
+                Report a safety issue
+              </h3>
               <button
                 className="button ghost"
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
+                aria-label="Close report dialog"
               >
                 Close
               </button>
@@ -102,6 +136,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
             <label className="subtle">
               Reason
               <select
+                ref={reasonRef}
                 className="input"
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
@@ -138,7 +173,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
             <div className="modal-actions">
               <button
                 className="button secondary"
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
               >
                 Cancel
               </button>

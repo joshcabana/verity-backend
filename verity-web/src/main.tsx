@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './hooks/useAuth';
 import { App } from './App';
+import { startGlobalErrorTracking } from './monitoring/errors';
+import { startWebVitals } from './monitoring/webVitals';
 import './styles.css';
 
 const queryClient = new QueryClient({
@@ -16,6 +18,8 @@ const queryClient = new QueryClient({
 
 const container = document.getElementById('root');
 if (container) {
+  startGlobalErrorTracking();
+  startWebVitals();
   createRoot(container).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
