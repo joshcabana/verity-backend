@@ -10,6 +10,7 @@ import { QueueModule } from './queue/queue.module';
 import { SessionModule } from './session/session.module';
 import { VideoModule } from './video/video.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     PaymentsModule,
     ModerationModule,
     NotificationsModule,
+    MonitoringModule,
   ],
   controllers: [AppController],
   providers: [AppService],

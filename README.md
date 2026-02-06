@@ -65,6 +65,8 @@ Web environment variables:
 - `VITE_API_URL` (e.g. `http://localhost:3000`)
 - `VITE_WS_URL` (e.g. `http://localhost:3000`)
 - `VITE_AGORA_APP_ID` (required for video)
+- `VITE_WEB_VITALS_ENDPOINT` (optional; e.g. `http://localhost:3000/monitoring/web-vitals`)
+- `VITE_FRONTEND_ERROR_ENDPOINT` (optional; e.g. `http://localhost:3000/monitoring/frontend-errors`)
 
 ## Azure Deployment (Canberra or Sydney)
 
@@ -330,6 +332,16 @@ Backend endpoints:
 Dispatch behavior:
 - If `PUSH_DISPATCH_WEBHOOK_URL` is empty, events are logged as dry-run only.
 - If set, Verity POSTs delivery payloads for `queue_match_found`, `match_mutual`, and `chat_message_new`.
+
+## Frontend Monitoring Ingestion (Optional)
+
+Backend ingestion endpoints:
+- `POST /monitoring/web-vitals`
+- `POST /monitoring/frontend-errors`
+
+Security behavior:
+- Requests are accepted only from configured app origins when `APP_ORIGINS` (or `APP_URL`) is set.
+- Payloads are validated and emitted as structured logs for downstream log sinks.
 4. `POST /queue/join` succeeds and triggers a queue match event.
 5. `/video` socket receives `session:start`, then `session:end`.
 6. `POST /sessions/:id/choice` yields `match:mutual` on double MATCH.
