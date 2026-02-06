@@ -188,8 +188,8 @@ header {
 }
 
 .pill.success {
-  background: rgba(27, 154, 90, 0.12);
-  color: var(--success);
+  background: #dcfce7;
+  color: #14532d;
 }
 
 .pill.warning {
@@ -239,10 +239,23 @@ header {
 }
 
 .button:disabled {
-  opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
+  background: #4f7dff;
+  color: #ffffff;
+}
+
+.button.secondary:disabled {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #94a3b8;
+}
+
+.button.danger:disabled {
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #b91c1c;
 }
 
 .button:hover:not(:disabled) {
@@ -269,6 +282,27 @@ header {
   font-size: 14px;
   font-family: inherit;
   background: #fff;
+  color: #1f2937;
+}
+
+.input::placeholder {
+  color: #6b7280;
+}
+
+input[type='date']::-webkit-datetime-edit {
+  color: #1f2937;
+}
+
+input[type='date']::-webkit-datetime-edit-text,
+input[type='date']::-webkit-datetime-edit-month-field,
+input[type='date']::-webkit-datetime-edit-day-field,
+input[type='date']::-webkit-datetime-edit-year-field {
+  color: #1f2937;
+}
+
+input[type='date']:required:invalid,
+input[type='date']:required:invalid::-webkit-datetime-edit {
+  color: #374151;
 }
 
 .input:focus {
