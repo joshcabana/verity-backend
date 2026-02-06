@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Message } from '@prisma/client';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -18,7 +19,7 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly gateway: ChatGateway,
     private readonly notificationsService: NotificationsService,
-    private readonly analyticsService: AnalyticsService,
+    @Optional() private readonly analyticsService?: AnalyticsService,
   ) {}
 
   async listMessages(
@@ -62,9 +63,7 @@ export class ChatService {
       throw new ForbiddenException('Not a match participant');
     }
 
-    const existingCount = await this.prisma.message.count({
-      where: { matchId },
-    });
+    const existingCount = await this.getExistingMessageCount(matchId);
 
     const message = await this.prisma.message.create({
       data: {
@@ -96,7 +95,7 @@ export class ChatService {
       },
     );
 
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId,
       name: existingCount === 0 ? 'first_message_sent' : 'message_sent',
       properties: {
@@ -136,5 +135,22 @@ export class ChatService {
     if (block) {
       throw new ForbiddenException('Conversation unavailable');
     }
+  }
+
+  private async getExistingMessageCount(matchId: string): Promise<number> {
+    const countFn = (
+      this.prisma.message as unknown as {
+        count?: (args: { where: { matchId: string } }) => Promise<number>;
+      }
+    ).count;
+    if (typeof countFn === 'function') {
+      return countFn({ where: { matchId } });
+    }
+
+    const messages = await this.prisma.message.findMany({
+      where: { matchId },
+      select: { id: true },
+    });
+    return messages.length;
   }
 }

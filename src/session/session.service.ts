@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
   OnModuleDestroy,
+  Optional,
 } from '@nestjs/common';
 import type { Session } from '@prisma/client';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -44,7 +45,7 @@ export class SessionService implements OnModuleDestroy {
     private readonly videoGateway: VideoGateway,
     private readonly notificationsService: NotificationsService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
-    private readonly analyticsService: AnalyticsService,
+    @Optional() private readonly analyticsService?: AnalyticsService,
   ) {}
 
   onModuleDestroy() {
@@ -111,7 +112,7 @@ export class SessionService implements OnModuleDestroy {
         rtm: { token: userBTokens.rtmToken, userId: userBTokens.rtmUserId },
       });
 
-      this.analyticsService.trackServerEvent({
+      this.analyticsService?.trackServerEvent({
         userId: session.userAId,
         name: 'session_started',
         properties: {
@@ -119,7 +120,7 @@ export class SessionService implements OnModuleDestroy {
           durationSeconds: SESSION_DURATION_MS / 1000,
         },
       });
-      this.analyticsService.trackServerEvent({
+      this.analyticsService?.trackServerEvent({
         userId: session.userBId,
         name: 'session_started',
         properties: {
@@ -179,20 +180,20 @@ export class SessionService implements OnModuleDestroy {
       endedAt,
     });
 
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId: session.userAId,
       name: 'session_ended',
       properties: {
         sessionId: session.id,
-        reason,
+        endReason: reason,
       },
     });
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId: session.userBId,
       name: 'session_ended',
       properties: {
         sessionId: session.id,
-        reason,
+        endReason: reason,
       },
     });
 
@@ -305,7 +306,7 @@ export class SessionService implements OnModuleDestroy {
       Math.max(1, deadline.getTime() - Date.now()),
     );
 
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId,
       name: 'session_choice_submitted',
       properties: {
@@ -412,7 +413,7 @@ export class SessionService implements OnModuleDestroy {
       return cached ?? payload;
     }
 
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId: session.userAId,
       name: 'session_choice_resolved',
       properties: {
@@ -421,7 +422,7 @@ export class SessionService implements OnModuleDestroy {
         hasMatch: Boolean(matchId),
       },
     });
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId: session.userBId,
       name: 'session_choice_resolved',
       properties: {

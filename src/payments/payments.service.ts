@@ -22,15 +22,23 @@ const TOKEN_PACKS = [
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
   private readonly stripe: Stripe;
+  private readonly analyticsService?: AnalyticsService;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly analyticsService: AnalyticsService,
+    @Optional() analyticsService?: AnalyticsService,
     @Optional() stripeClient?: Stripe,
   ) {
+    const legacyStripeClient = this.isStripeLike(analyticsService)
+      ? analyticsService
+      : undefined;
+    this.analyticsService =
+      legacyStripeClient === undefined ? analyticsService : undefined;
+
     const apiKey = process.env.STRIPE_SECRET_KEY ?? '';
     this.stripe =
       stripeClient ??
+      legacyStripeClient ??
       new Stripe(apiKey, {
         apiVersion: '2023-10-16',
       });
@@ -70,7 +78,7 @@ export class PaymentsService {
       },
     });
 
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId,
       name: 'token_purchase_started',
       properties: {
@@ -144,7 +152,7 @@ export class PaymentsService {
       });
     });
 
-    this.analyticsService.trackServerEvent({
+    this.analyticsService?.trackServerEvent({
       userId,
       name: 'token_purchase_succeeded',
       properties: {
@@ -180,5 +188,13 @@ export class PaymentsService {
       throw new BadRequestException('Unknown token pack');
     }
     return pack;
+  }
+
+  private isStripeLike(value: unknown): value is Stripe {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const candidate = value as { checkout?: unknown };
+    return typeof candidate.checkout === 'object' && candidate.checkout !== null;
   }
 }
