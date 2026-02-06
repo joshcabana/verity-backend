@@ -1,13 +1,33 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
+
+type BlockEntry = {
+  id: string;
+  createdAt: string;
+  blockedUserId: string;
+};
 
 export const Settings: React.FC = () => {
   const { deleteAccount, signOut } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [blockError, setBlockError] = useState<string | null>(null);
+
+  const blocksQuery = useQuery({
+    queryKey: ['blocked-users'],
+    queryFn: async () => {
+      const response = await apiJson<BlockEntry[]>('/moderation/blocks');
+      if (!response.ok || !response.data) {
+        throw new Error('Failed to load blocks');
+      }
+      return response.data;
+    },
+  });
 
   const handleDelete = async () => {
     const confirmed = window.confirm(
@@ -44,6 +64,28 @@ export const Settings: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleUnblock = async (blockedUserId: string) => {
+    if (unblockingId) {
+      return;
+    }
+    setUnblockingId(blockedUserId);
+    setBlockError(null);
+
+    const response = await apiJson(`/moderation/blocks/${blockedUserId}`, {
+      method: 'DELETE',
+    });
+
+    setUnblockingId(null);
+    if (!response.ok) {
+      setBlockError('Unable to unblock right now. Try again.');
+      return;
+    }
+
+    await blocksQuery.refetch();
+  };
+
+  const blockedUsers = blocksQuery.data ?? [];
+
   return (
     <section className="grid two">
       <div className="card">
@@ -60,6 +102,41 @@ export const Settings: React.FC = () => {
           </button>
         </div>
         {error && <p className="subtle" style={{ color: '#dc2626' }}>{error}</p>}
+      </div>
+      <div className="card">
+        <h2 className="section-title">Safety</h2>
+        {blocksQuery.isLoading ? (
+          <p className="subtle">Loading blocked users…</p>
+        ) : blocksQuery.isError ? (
+          <p className="subtle" style={{ color: '#dc2626' }}>
+            Unable to load blocked users right now.
+          </p>
+        ) : blockedUsers.length === 0 ? (
+          <p className="subtle">You have not blocked anyone.</p>
+        ) : (
+          <div className="block-list">
+            {blockedUsers.map((entry) => (
+              <div key={entry.id} className="block-item">
+                <div className="subtle">
+                  <strong>{entry.blockedUserId}</strong>
+                  <div>Blocked on {new Date(entry.createdAt).toLocaleDateString()}</div>
+                </div>
+                <button
+                  className="button secondary"
+                  onClick={() => handleUnblock(entry.blockedUserId)}
+                  disabled={unblockingId === entry.blockedUserId}
+                >
+                  {unblockingId === entry.blockedUserId ? 'Unblocking…' : 'Unblock'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {blockError && (
+          <p className="subtle" style={{ color: '#dc2626', marginTop: '8px' }}>
+            {blockError}
+          </p>
+        )}
       </div>
       <div className="card">
         <h2 className="section-title">Legal</h2>

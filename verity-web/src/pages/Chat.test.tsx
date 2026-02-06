@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { Chat } from './Chat';
 import { renderWithProviders } from '../test/testUtils';
 
@@ -24,6 +24,11 @@ vi.mock('../hooks/useSocket', () => ({
 describe('Chat', () => {
   beforeEach(() => {
     apiJsonMock.mockReset();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('restores draft and shows error when send fails', async () => {
@@ -53,6 +58,9 @@ describe('Chat', () => {
       if (path === '/matches/m1/messages' && options?.method === 'POST') {
         return { ok: false, status: 500, data: null };
       }
+      if (path === '/moderation/blocks' && options?.method === 'POST') {
+        return { ok: true, status: 201, data: { status: 'blocked' } };
+      }
       return { ok: false, status: 404, data: null };
     });
 
@@ -69,5 +77,12 @@ describe('Chat', () => {
     expect(
       screen.getByText(/unable to send message. try again/i),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /block/i }));
+    await waitFor(() => {
+      expect(
+        screen.getByText(/chat is unavailable because one of you has blocked the other/i),
+      ).toBeInTheDocument();
+    });
   });
 });

@@ -25,6 +25,9 @@ export const Chat: React.FC = () => {
   const socket = useSocket('/chat', token);
   const [draft, setDraft] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
+  const [blockError, setBlockError] = useState<string | null>(null);
+  const [blocking, setBlocking] = useState(false);
+  const [locallyBlocked, setLocallyBlocked] = useState(false);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const offline = typeof navigator !== 'undefined' && !navigator.onLine;
@@ -37,6 +40,9 @@ export const Chat: React.FC = () => {
       }
       const response = await apiJson<Message[]>(`/matches/${matchId}/messages`);
       if (!response.ok || !response.data) {
+        if (response.status === 403) {
+          throw new Error('BLOCKED');
+        }
         throw new Error('Failed to load messages');
       }
       return response.data;
@@ -100,6 +106,11 @@ export const Chat: React.FC = () => {
         setLiveMessages((prev) => [...prev, response.data as Message]);
         return;
       }
+      if (response.status === 403) {
+        setLocallyBlocked(true);
+        setSendError('Chat is unavailable because one of you has blocked the other.');
+        return;
+      }
       setSendError('Unable to send message. Try again.');
       setDraft(content);
     } catch {
@@ -116,7 +127,11 @@ export const Chat: React.FC = () => {
     return <section className="card">Loading messages…</section>;
   }
 
-  if (messagesQuery.isError) {
+  const messageError = messagesQuery.error as Error | null;
+  const blockedByServer = messageError?.message === 'BLOCKED';
+  const blocked = blockedByServer || locallyBlocked;
+
+  if (messagesQuery.isError && !blockedByServer) {
     return <section className="card">Unable to load messages.</section>;
   }
 
@@ -128,12 +143,52 @@ export const Chat: React.FC = () => {
       : 'Unable to load match details right now.'
     : null;
 
+  const handleBlock = async () => {
+    if (!partnerId || blocking) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Block ${partnerName}? You will no longer see each other in matches or chat.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setBlocking(true);
+    setBlockError(null);
+    const response = await apiJson('/moderation/blocks', {
+      method: 'POST',
+      body: { blockedUserId: partnerId },
+    });
+    setBlocking(false);
+
+    if (!response.ok) {
+      setBlockError('Unable to block this user right now. Try again.');
+      return;
+    }
+
+    setLocallyBlocked(true);
+    setDraft('');
+    setLiveMessages([]);
+    setSendError(null);
+  };
+
   return (
     <section className="grid">
       <div className="card">
         <div className="inline" style={{ justifyContent: 'space-between' }}>
           <h2 className="section-title">Chat with {partnerName}</h2>
-          <ReportDialog reportedUserId={partnerId} buttonLabel="Report" />
+          <div className="inline">
+            <button
+              className="button ghost"
+              onClick={handleBlock}
+              disabled={!partnerId || blocking || blocked}
+            >
+              {blocking ? 'Blocking…' : blocked ? 'Blocked' : 'Block'}
+            </button>
+            <ReportDialog reportedUserId={partnerId} buttonLabel="Report" />
+          </div>
         </div>
         {matchWarning && (
           <div className="callout" style={{ marginTop: '12px' }}>
@@ -154,12 +209,26 @@ export const Chat: React.FC = () => {
           ))}
           <div ref={bottomRef} />
         </div>
+        {blocked && (
+          <div className="callout" style={{ marginTop: '16px' }}>
+            <strong>Conversation blocked</strong>
+            <p className="subtle">
+              Chat is unavailable because one of you has blocked the other.
+            </p>
+          </div>
+        )}
+        {blockError && (
+          <p className="subtle" style={{ color: '#dc2626' }}>
+            {blockError}
+          </p>
+        )}
         <div className="inline" style={{ marginTop: '16px' }}>
           <input
             className="input"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Say something kind"
+            disabled={blocked}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
@@ -167,7 +236,7 @@ export const Chat: React.FC = () => {
               }
             }}
           />
-          <button className="button" onClick={sendMessage} disabled={!draft.trim()}>
+          <button className="button" onClick={sendMessage} disabled={!draft.trim() || blocked}>
             Send
           </button>
         </div>
