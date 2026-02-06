@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Session } from '@prisma/client';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { SessionService } from '../../src/session/session.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { VideoService } from '../../src/video/video.service';
@@ -31,6 +32,7 @@ describe('SessionService (unit)', () => {
   let videoService: { buildSessionTokens: jest.Mock };
   let videoGateway: any;
   let notificationsService: { notifyUsers: jest.Mock };
+  let analyticsService: { trackServerEvent: jest.Mock };
 
   beforeEach(async () => {
     jest.useFakeTimers();
@@ -68,6 +70,7 @@ describe('SessionService (unit)', () => {
       },
     };
     notificationsService = { notifyUsers: jest.fn() };
+    analyticsService = { trackServerEvent: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -77,6 +80,7 @@ describe('SessionService (unit)', () => {
         { provide: VideoGateway, useValue: videoGateway },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: REDIS_CLIENT, useValue: redis },
+        { provide: AnalyticsService, useValue: analyticsService },
       ],
     }).compile();
 

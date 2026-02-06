@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import Stripe from 'stripe';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { PaymentsService } from '../../src/payments/payments.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { createPrismaMock } from '../mocks/prisma.mock';
@@ -11,10 +12,12 @@ describe('PaymentsService (unit)', () => {
   let service: PaymentsService;
   let prisma: ReturnType<typeof createPrismaMock>;
   let stripeMock: ReturnType<typeof createStripeMock>;
+  let analyticsService: { trackServerEvent: jest.Mock };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
     stripeMock = createStripeMock();
+    analyticsService = { trackServerEvent: jest.fn() };
 
     process.env.STRIPE_SECRET_KEY = 'sk_test';
     process.env.STRIPE_PRICE_STARTER = 'price_starter';
@@ -25,6 +28,7 @@ describe('PaymentsService (unit)', () => {
       providers: [
         PaymentsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AnalyticsService, useValue: analyticsService },
         { provide: Stripe, useValue: stripeMock as unknown as Stripe },
       ],
     }).compile();

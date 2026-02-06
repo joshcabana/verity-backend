@@ -54,6 +54,7 @@ export function createPrismaMock() {
     },
     message: {
       findMany: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       deleteMany: jest.fn(),
     },
@@ -67,6 +68,11 @@ export function createPrismaMock() {
       create: jest.fn(),
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    featureFlag: {
+      findMany: jest.fn(),
+      upsert: jest.fn(),
       deleteMany: jest.fn(),
     },
     $transaction: jest.fn(async (fn: (tx: any) => any) => fn(prisma)),

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { ChatService } from '../../src/chat/chat.service';
 import { ChatGateway } from '../../src/chat/chat.gateway';
 import { MatchesService } from '../../src/matches/matches.service';
@@ -17,11 +18,13 @@ describe('ChatService (unit)', () => {
   let prisma: ReturnType<typeof createPrismaMock>;
   let gateway: ChatGatewayMock;
   let notificationsService: { notifyUsers: jest.Mock };
+  let analyticsService: { trackServerEvent: jest.Mock };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
     gateway = new ChatGatewayMock();
     notificationsService = { notifyUsers: jest.fn() };
+    analyticsService = { trackServerEvent: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -29,6 +32,7 @@ describe('ChatService (unit)', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: ChatGateway, useValue: gateway },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: AnalyticsService, useValue: analyticsService },
       ],
     }).compile();
 

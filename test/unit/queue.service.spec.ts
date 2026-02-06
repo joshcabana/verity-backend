@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { JwtService } from '@nestjs/jwt';
 import { QueueGateway, QueueService } from '../../src/queue/queue.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
@@ -17,6 +18,7 @@ describe('QueueService (unit)', () => {
   let prisma: ReturnType<typeof createPrismaMock>;
   let redis: ReturnType<typeof createRedisMock>;
   let sessionService: { handleSessionCreated: jest.Mock; cleanupExpiredSessions: jest.Mock };
+  let analyticsService: { trackServerEvent: jest.Mock };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
@@ -25,6 +27,7 @@ describe('QueueService (unit)', () => {
       handleSessionCreated: jest.fn(),
       cleanupExpiredSessions: jest.fn(),
     };
+    analyticsService = { trackServerEvent: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -32,6 +35,7 @@ describe('QueueService (unit)', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: SessionService, useValue: sessionService },
         { provide: REDIS_CLIENT, useValue: redis },
+        { provide: AnalyticsService, useValue: analyticsService },
       ],
     }).compile();
 

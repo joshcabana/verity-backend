@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiJson } from '../api/client';
+import { trackEvent } from '../analytics/events';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
 
@@ -22,6 +23,10 @@ export const Waiting: React.FC = () => {
     }
 
     const handleMatch = (payload: MatchPayload) => {
+      trackEvent('queue_match_found', {
+        sessionId: payload.sessionId,
+        queueKey: payload.queueKey,
+      });
       navigate(`/session/${payload.sessionId}`, { state: payload });
     };
 

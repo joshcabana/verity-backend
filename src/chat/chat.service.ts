@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Message } from '@prisma/client';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatGateway } from './chat.gateway';
@@ -17,6 +18,7 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly gateway: ChatGateway,
     private readonly notificationsService: NotificationsService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async listMessages(
@@ -60,6 +62,10 @@ export class ChatService {
       throw new ForbiddenException('Not a match participant');
     }
 
+    const existingCount = await this.prisma.message.count({
+      where: { matchId },
+    });
+
     const message = await this.prisma.message.create({
       data: {
         matchId,
@@ -89,6 +95,15 @@ export class ChatService {
         senderId: message.senderId,
       },
     );
+
+    this.analyticsService.trackServerEvent({
+      userId,
+      name: existingCount === 0 ? 'first_message_sent' : 'message_sent',
+      properties: {
+        matchId,
+        messageId: message.id,
+      },
+    });
 
     return message;
   }

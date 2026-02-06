@@ -6,6 +6,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import Stripe from 'stripe';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const DEFAULT_SUCCESS_URL = 'https://example.com/success';
@@ -24,6 +25,7 @@ export class PaymentsService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly analyticsService: AnalyticsService,
     @Optional() stripeClient?: Stripe,
   ) {
     const apiKey = process.env.STRIPE_SECRET_KEY ?? '';
@@ -65,6 +67,16 @@ export class PaymentsService {
         userId,
         packId: pack.id,
         tokens: String(pack.tokens),
+      },
+    });
+
+    this.analyticsService.trackServerEvent({
+      userId,
+      name: 'token_purchase_started',
+      properties: {
+        packId: pack.id,
+        tokenAmount: pack.tokens,
+        checkoutSessionId: session.id,
       },
     });
 
@@ -130,6 +142,16 @@ export class PaymentsService {
           },
         },
       });
+    });
+
+    this.analyticsService.trackServerEvent({
+      userId,
+      name: 'token_purchase_succeeded',
+      properties: {
+        packId,
+        tokenAmount: tokens,
+        stripeSessionId: session.id,
+      },
     });
 
     return { received: true };

@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useFlags } from '../hooks/useFlags';
 
 export const Onboarding: React.FC = () => {
   const { signUp, loading } = useAuth();
+  const { flags } = useFlags();
   const navigate = useNavigate();
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [ageConfirmed, setAgeConfirmed] = useState(false);
@@ -45,9 +47,13 @@ export const Onboarding: React.FC = () => {
         <div className="inline">
           <span className="badge">Australia-first</span>
           <span className="pill success">Privacy-first beta</span>
+          {flags.onboardingVariant !== 'control' && (
+            <span className="badge">Variant {flags.onboardingVariant}</span>
+          )}
         </div>
         <h1 className="hero-title">
-          Real-time matches, 45-second video, and instant decisions.
+          Real-time matches, {flags.sessionDurationSeconds}-second video, and
+          instant decisions.
         </h1>
         <p className="subtle">
           Verity pairs you in a live queue, drops you into a short video call,
@@ -130,7 +136,7 @@ export const Onboarding: React.FC = () => {
           <li>
             <span>2</span>
             <div>
-              <strong>45-second session</strong>
+              <strong>{flags.sessionDurationSeconds}-second session</strong>
               <p className="subtle">Meet in a short, moderated video call.</p>
             </div>
           </li>

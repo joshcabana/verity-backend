@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { redisProvider } from '../common/redis.provider';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SessionService } from '../session/session.service';
@@ -7,7 +8,7 @@ import { VideoGateway } from './video.gateway';
 import { VideoService } from './video.service';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, AnalyticsModule],
   providers: [
     VideoService,
     VideoGateway,

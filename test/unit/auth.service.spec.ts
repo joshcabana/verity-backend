@@ -6,6 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { createHash } from 'crypto';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { AuthService } from '../../src/auth/auth.service';
 import { AppService } from '../../src/app.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
@@ -18,18 +19,22 @@ describe('AuthService (unit)', () => {
   let service: AuthService;
   let prisma: ReturnType<typeof createPrismaMock>;
   let jwt: JwtService;
+  let analyticsService: { trackServerEvent: jest.Mock };
 
   beforeEach(async () => {
     process.env.JWT_ACCESS_SECRET = 'test-access';
     process.env.JWT_REFRESH_SECRET = 'test-refresh';
     prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
     jwt = new JwtService({} as any);
+    analyticsService = { trackServerEvent: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: jwt },
+        { provide: AnalyticsService, useValue: analyticsService },
       ],
     }).compile();
 
@@ -56,7 +61,7 @@ describe('AuthService (unit)', () => {
   });
 
   it('signs up anonymous user and issues tokens', async () => {
-    prisma.user.create.mockResolvedValue({ id: 'user-1' });
+    prisma.user.create.mockResolvedValue({ id: 'user-1', role: 'USER' });
     prisma.refreshToken.create.mockResolvedValue({ id: 'refresh-1' });
 
     const result = await service.signupAnonymous('ua', 'ip', {

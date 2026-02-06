@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { apiJson, decodeToken, getAccessToken, setAccessToken } from '../api/client';
+import { trackEvent } from '../analytics/events';
 
 type AuthContextValue = {
   token: string | null;
@@ -80,6 +81,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     );
     if (response.ok && response.data?.accessToken) {
       setToken(response.data.accessToken);
+      trackEvent('auth_signup_completed', {
+        hasDob: Boolean(input?.dateOfBirth),
+      });
     } else {
       throw new Error('Signup failed');
     }

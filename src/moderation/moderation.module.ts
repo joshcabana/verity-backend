@@ -4,9 +4,10 @@ import { ModerationWebhookController } from './moderation.webhook.controller';
 import { ModerationController } from './moderation.controller';
 import { VideoModule } from '../video/video.module';
 import { redisProvider } from '../common/redis.provider';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [VideoModule],
+  imports: [VideoModule, AuthModule],
   controllers: [ModerationWebhookController, ModerationController],
   providers: [ModerationService, redisProvider],
 })

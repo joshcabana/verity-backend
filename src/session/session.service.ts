@@ -8,6 +8,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import type { Session } from '@prisma/client';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
@@ -43,6 +44,7 @@ export class SessionService implements OnModuleDestroy {
     private readonly videoGateway: VideoGateway,
     private readonly notificationsService: NotificationsService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   onModuleDestroy() {
@@ -109,6 +111,23 @@ export class SessionService implements OnModuleDestroy {
         rtm: { token: userBTokens.rtmToken, userId: userBTokens.rtmUserId },
       });
 
+      this.analyticsService.trackServerEvent({
+        userId: session.userAId,
+        name: 'session_started',
+        properties: {
+          sessionId: session.id,
+          durationSeconds: SESSION_DURATION_MS / 1000,
+        },
+      });
+      this.analyticsService.trackServerEvent({
+        userId: session.userBId,
+        name: 'session_started',
+        properties: {
+          sessionId: session.id,
+          durationSeconds: SESSION_DURATION_MS / 1000,
+        },
+      });
+
       this.scheduleSessionEnd(
         session.id,
         session.userAId,
@@ -158,6 +177,23 @@ export class SessionService implements OnModuleDestroy {
       sessionId: session.id,
       reason,
       endedAt,
+    });
+
+    this.analyticsService.trackServerEvent({
+      userId: session.userAId,
+      name: 'session_ended',
+      properties: {
+        sessionId: session.id,
+        reason,
+      },
+    });
+    this.analyticsService.trackServerEvent({
+      userId: session.userBId,
+      name: 'session_ended',
+      properties: {
+        sessionId: session.id,
+        reason,
+      },
     });
 
     const deadline = await this.ensureChoiceDeadline(session.id);
@@ -269,6 +305,15 @@ export class SessionService implements OnModuleDestroy {
       Math.max(1, deadline.getTime() - Date.now()),
     );
 
+    this.analyticsService.trackServerEvent({
+      userId,
+      name: 'session_choice_submitted',
+      properties: {
+        sessionId,
+        choice,
+      },
+    });
+
     return this.evaluateChoices(session, deadline);
   }
 
@@ -366,6 +411,25 @@ export class SessionService implements OnModuleDestroy {
       const cached = await this.getDecision(session.id);
       return cached ?? payload;
     }
+
+    this.analyticsService.trackServerEvent({
+      userId: session.userAId,
+      name: 'session_choice_resolved',
+      properties: {
+        sessionId: session.id,
+        outcome,
+        hasMatch: Boolean(matchId),
+      },
+    });
+    this.analyticsService.trackServerEvent({
+      userId: session.userBId,
+      name: 'session_choice_resolved',
+      properties: {
+        sessionId: session.id,
+        outcome,
+        hasMatch: Boolean(matchId),
+      },
+    });
 
     if (outcome === 'mutual') {
       this.emitMatchMutual(session, matchId ?? '');

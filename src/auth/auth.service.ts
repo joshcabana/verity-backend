@@ -6,9 +6,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 import { CookieOptions, Response } from 'express';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const ACCESS_TOKEN_TTL = '15m';
@@ -27,6 +28,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async signupAnonymous(
@@ -75,7 +77,19 @@ export class AuthService {
         tosVersion: input?.tosVersion,
       },
     });
-    const tokens = await this.issueTokens(user.id, { userAgent, ipAddress });
+    const tokens = await this.issueTokens(user.id, {
+      userAgent,
+      ipAddress,
+      role: user.role,
+    });
+    this.analyticsService.trackServerEvent({
+      userId: user.id,
+      name: 'auth_signup_completed',
+      properties: {
+        hasDob: Boolean(dateOfBirth),
+        hasConsents: Boolean(consents),
+      },
+    });
     return { user, ...tokens };
   }
 
@@ -371,7 +385,12 @@ export class AuthService {
 
   async issueTokens(
     userId: string,
-    options: { familyId?: string; userAgent?: string; ipAddress?: string } = {},
+    options: {
+      familyId?: string;
+      userAgent?: string;
+      ipAddress?: string;
+      role?: UserRole;
+    } = {},
   ) {
     const now = new Date();
     const familyId = options.familyId ?? randomUUID();
@@ -397,18 +416,30 @@ export class AuthService {
       },
     });
 
-    const accessToken = await this.createAccessToken(userId);
+    const accessToken = await this.createAccessToken(userId, options.role);
     return { accessToken, refreshToken };
   }
 
-  private async createAccessToken(userId: string) {
+  private async createAccessToken(userId: string, role?: UserRole) {
+    const resolvedRole = role ?? (await this.getUserRole(userId));
     return this.jwt.signAsync(
-      { sub: userId, typ: 'access' },
+      { sub: userId, typ: 'access', role: resolvedRole },
       {
         expiresIn: ACCESS_TOKEN_TTL,
         secret: this.accessSecret,
       },
     );
+  }
+
+  private async getUserRole(userId: string): Promise<UserRole> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return user.role;
   }
 
   private async createRefreshToken(

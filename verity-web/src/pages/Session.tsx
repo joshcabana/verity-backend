@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { IAgoraRTCClient, ILocalTrack } from 'agora-rtc-sdk-ng';
+import { trackEvent } from '../analytics/events';
+import { useFlags } from '../hooks/useFlags';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
 import { ReportDialog } from '../components/ReportDialog';
@@ -28,6 +30,7 @@ export const Session: React.FC = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { flags } = useFlags();
   const { token } = useAuth();
   const socket = useSocket('/video', token);
   const [session, setSession] = useState<SessionStartPayload | null>(null);
@@ -54,6 +57,10 @@ export const Session: React.FC = () => {
       }
       setSession(payload);
       setStatus('live');
+      trackEvent('session_started', {
+        sessionId: payload.sessionId,
+        durationSeconds: payload.durationSeconds,
+      });
     };
 
     const handleEnd = (payload: SessionEndPayload) => {
@@ -61,6 +68,10 @@ export const Session: React.FC = () => {
         return;
       }
       setStatus('ended');
+      trackEvent('session_ended', {
+        sessionId: payload.sessionId,
+        reason: payload.reason,
+      });
     };
 
     socket.on('session:start', handleStart);
@@ -208,12 +219,14 @@ export const Session: React.FC = () => {
             Continue to decision
           </button>
         )}
-        <div style={{ marginTop: '16px' }}>
-          <ReportDialog
-            reportedUserId={partnerId}
-            contextLabel="Reports are reviewed by our safety team."
-          />
-        </div>
+        {flags.reportDialogEnabled && (
+          <div style={{ marginTop: '16px' }}>
+            <ReportDialog
+              reportedUserId={partnerId}
+              contextLabel="Reports are reviewed by our safety team."
+            />
+          </div>
+        )}
       </div>
     </section>
   );

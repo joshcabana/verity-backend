@@ -75,10 +75,13 @@ describe('Compliance (e2e)', () => {
   let prisma: PrismaClient;
   let redis: Redis;
   let previousAdminKey: string | undefined;
+  let previousAdminFallback: string | undefined;
 
   beforeAll(async () => {
     previousAdminKey = process.env.MODERATION_ADMIN_KEY;
+    previousAdminFallback = process.env.MODERATION_ADMIN_KEY_FALLBACK;
     process.env.MODERATION_ADMIN_KEY = 'test-admin';
+    process.env.MODERATION_ADMIN_KEY_FALLBACK = 'true';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -113,6 +116,11 @@ describe('Compliance (e2e)', () => {
       delete process.env.MODERATION_ADMIN_KEY;
     } else {
       process.env.MODERATION_ADMIN_KEY = previousAdminKey;
+    }
+    if (previousAdminFallback === undefined) {
+      delete process.env.MODERATION_ADMIN_KEY_FALLBACK;
+    } else {
+      process.env.MODERATION_ADMIN_KEY_FALLBACK = previousAdminFallback;
     }
   });
 
@@ -285,6 +293,64 @@ describe('Compliance (e2e)', () => {
     expect(deletedReport).toBeNull();
     expect(deletedBlock).toBeNull();
     expect(deletedPushToken).toBeNull();
+  });
+
+  it('requires admin role for moderation review endpoints', async () => {
+    const reporterSignup = await request(app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .send({ dateOfBirth: '1994-05-20' })
+      .expect(201);
+    const reportedSignup = await request(app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .send({ dateOfBirth: '1993-08-11' })
+      .expect(201);
+    const adminSignup = await request(app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .send({ dateOfBirth: '1991-10-09' })
+      .expect(201);
+
+    const reporterToken = reporterSignup.body.accessToken as string;
+    const reporterUser = reporterSignup.body.user as { id: string };
+    const reportedUser = reportedSignup.body.user as { id: string };
+    const adminUser = adminSignup.body.user as { id: string };
+
+    await request(app.getHttpServer())
+      .post('/moderation/reports')
+      .set('Authorization', `Bearer ${reporterToken}`)
+      .send({
+        reportedUserId: reportedUser.id,
+        reason: 'harassment',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/moderation/reports')
+      .set('Authorization', `Bearer ${reporterToken}`)
+      .expect(403);
+
+    await prisma.user.update({
+      where: { id: adminUser.id },
+      data: { role: 'ADMIN' },
+    });
+
+    const setCookies = adminSignup.headers['set-cookie'] as string[] | undefined;
+    const refreshCookie = setCookies?.find((value) =>
+      value.startsWith('refresh_token='),
+    );
+    expect(refreshCookie).toBeTruthy();
+
+    const refreshResponse = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', refreshCookie as string)
+      .expect(200);
+    const adminToken = refreshResponse.body.accessToken as string;
+
+    const listResponse = await request(app.getHttpServer())
+      .get('/moderation/reports')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(Array.isArray(listResponse.body)).toBe(true);
+    expect(listResponse.body.some((item: { reporterId?: string }) => item.reporterId === reporterUser.id)).toBe(true);
   });
 
   it('blocks queue join when user is banned', async () => {

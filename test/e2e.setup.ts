@@ -72,7 +72,13 @@ class FakeStripe {
 
 class TestPaymentsService extends PaymentsService {
   constructor(prisma: PrismaService) {
-    super(prisma, new FakeStripe() as any);
+    super(
+      prisma,
+      {
+        trackServerEvent: () => undefined,
+      } as any,
+      new FakeStripe() as any,
+    );
   }
 }
 
@@ -188,6 +194,7 @@ export async function resetDatabase(prisma: PrismaClient) {
         "TokenTransaction",
         "ModerationEvent",
         "ModerationReport",
+        "FeatureFlag",
         "RefreshToken",
         "User"
       RESTART IDENTITY CASCADE
@@ -205,6 +212,7 @@ export async function resetDatabase(prisma: PrismaClient) {
   await prisma.tokenTransaction.deleteMany();
   await prisma.moderationEvent.deleteMany();
   await prisma.moderationReport.deleteMany();
+  await prisma.featureFlag.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 }

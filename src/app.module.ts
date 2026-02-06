@@ -11,6 +11,8 @@ import { SessionModule } from './session/session.module';
 import { VideoModule } from './video/video.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { FlagsModule } from './flags/flags.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     ModerationModule,
     NotificationsModule,
     MonitoringModule,
+    AnalyticsModule,
+    FlagsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

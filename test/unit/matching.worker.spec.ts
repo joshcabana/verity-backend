@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { REDIS_CLIENT } from '../../src/common/redis.provider';
 import { NotificationsService } from '../../src/notifications/notifications.service';
 import { MatchingWorker } from '../../src/queue/matching.worker';
@@ -18,6 +19,7 @@ describe('MatchingWorker (unit)', () => {
   };
   let gateway: { emitMatch: jest.Mock };
   let notificationsService: { notifyUsers: jest.Mock };
+  let analyticsService: { trackServerEvent: jest.Mock };
   let redis: { smembers: jest.Mock };
 
   beforeEach(async () => {
@@ -33,6 +35,7 @@ describe('MatchingWorker (unit)', () => {
     };
     gateway = { emitMatch: jest.fn() };
     notificationsService = { notifyUsers: jest.fn() };
+    analyticsService = { trackServerEvent: jest.fn() };
     redis = { smembers: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
@@ -41,6 +44,7 @@ describe('MatchingWorker (unit)', () => {
         { provide: QueueService, useValue: queueService },
         { provide: QueueGateway, useValue: gateway },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: AnalyticsService, useValue: analyticsService },
         { provide: REDIS_CLIENT, useValue: redis },
       ],
     }).compile();

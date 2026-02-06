@@ -11,6 +11,7 @@ model User {
   id            String    @id @default(cuid())
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  role          UserRole  @default(USER)
 
   // Anonymous fields (visible only after mutual match)
   displayName   String?
@@ -44,6 +45,17 @@ model User {
   blocksMade    Block[]  @relation("BlocksMade")
   blocksReceived Block[] @relation("BlocksReceived")
   pushTokens    PushToken[]
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  variant     String?
+  description String?
+  metadata    Json?
 }
 
 model RefreshToken {
@@ -195,4 +207,9 @@ enum PushPlatform {
   WEB
   IOS
   ANDROID
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
+import { trackEvent } from '../analytics/events';
 
 const PACKS = [
   { id: 'starter', label: 'Starter', tokens: 5 },
@@ -36,20 +37,31 @@ export const Home: React.FC = () => {
     if (!canJoin) {
       return;
     }
+    trackEvent('queue_join_requested', {
+      region,
+    });
     setJoining(true);
-    const response = await apiJson('/queue/join', {
+    const response = await apiJson<{ queueKey?: string; position?: number }>(
+      '/queue/join',
+      {
       method: 'POST',
       body: { region, preferences: {} },
-    });
+      },
+    );
     setJoining(false);
     if (!response.ok) {
       alert('Unable to join queue. Check your token balance.');
       return;
     }
+    trackEvent('queue_joined', {
+      queueKey: response.data?.queueKey ?? '',
+      position: response.data?.position ?? -1,
+    });
     navigate('/waiting');
   };
 
   const handlePurchase = async (packId: string) => {
+    trackEvent('token_purchase_started', { packId });
     const response = await apiJson<PurchaseResponse>('/tokens/purchase', {
       method: 'POST',
       body: { packId },

@@ -20,6 +20,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
 import { SessionService } from '../session/session.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 const QUEUE_KEYS_SET = 'queue:keys';
 const QUEUE_ZSET_PREFIX = 'queue:zset:';
@@ -54,6 +55,7 @@ export class QueueService {
     private readonly prisma: PrismaService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
     private readonly sessionService: SessionService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async joinQueue(
@@ -134,6 +136,15 @@ export class QueueService {
         this.queueZsetKey(queueKey),
         userId,
       );
+      this.analyticsService.trackServerEvent({
+        userId,
+        name: 'queue_joined',
+        properties: {
+          queueKey,
+          status: 'queued',
+          position: position ?? -1,
+        },
+      });
       return { status: 'queued', queueKey, position };
     } finally {
       await this.releaseLock(this.userLockKey(userId), lockValue);

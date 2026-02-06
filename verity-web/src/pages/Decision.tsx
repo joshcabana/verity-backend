@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiJson } from '../api/client';
+import { trackEvent } from '../analytics/events';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
 
@@ -31,6 +32,10 @@ export const Decision: React.FC = () => {
       if (payload.sessionId !== sessionId) {
         return;
       }
+      trackEvent('session_choice_resolved', {
+        sessionId: payload.sessionId,
+        outcome: 'mutual',
+      });
       setMessage('It’s a match! Redirecting to chat.');
       setTimeout(() => navigate(`/chat/${payload.matchId}`), 1200);
     };
@@ -39,6 +44,10 @@ export const Decision: React.FC = () => {
       if (payload.sessionId !== sessionId) {
         return;
       }
+      trackEvent('session_choice_resolved', {
+        sessionId: payload.sessionId,
+        outcome: 'non_mutual',
+      });
       setMessage('No mutual match this time.');
       setTimeout(() => navigate('/home'), 1200);
     };
@@ -56,6 +65,10 @@ export const Decision: React.FC = () => {
     if (!sessionId || submitting) {
       return;
     }
+    trackEvent('session_choice_submitted', {
+      sessionId,
+      choice,
+    });
     setSubmitting(true);
     const response = await apiJson<DecisionResponse>(
       `/sessions/${sessionId}/choice`,
@@ -73,8 +86,16 @@ export const Decision: React.FC = () => {
 
     if (response.data?.status === 'resolved') {
       if (response.data.outcome === 'mutual' && response.data.matchId) {
+        trackEvent('session_choice_resolved', {
+          sessionId,
+          outcome: 'mutual',
+        });
         navigate(`/chat/${response.data.matchId}`);
       } else {
+        trackEvent('session_choice_resolved', {
+          sessionId,
+          outcome: 'non_mutual',
+        });
         navigate('/home');
       }
     } else {

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { QueueGateway, QueueService } from './queue.service';
 
@@ -26,6 +27,7 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
     private readonly queueService: QueueService,
     private readonly gateway: QueueGateway,
     private readonly notificationsService: NotificationsService,
+    private readonly analyticsService: AnalyticsService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
   ) {}
 
@@ -98,6 +100,24 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
           valid.userB,
           session.id,
         );
+        this.analyticsService.trackServerEvent({
+          userId: valid.userA,
+          name: 'queue_match_found',
+          properties: {
+            sessionId: session.id,
+            queueKey: session.queueKey ?? '',
+            partnerId: valid.userB,
+          },
+        });
+        this.analyticsService.trackServerEvent({
+          userId: valid.userB,
+          name: 'queue_match_found',
+          properties: {
+            sessionId: session.id,
+            queueKey: session.queueKey ?? '',
+            partnerId: valid.userA,
+          },
+        });
         this.gateway.emitMatch(valid.userA, valid.userB, session);
         void this.notificationsService.notifyUsers(
           [valid.userA, valid.userB],

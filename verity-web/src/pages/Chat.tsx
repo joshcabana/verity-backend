@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
+import { trackEvent } from '../analytics/events';
 import { useAuth } from '../hooks/useAuth';
+import { useFlags } from '../hooks/useFlags';
 import { useSocket } from '../hooks/useSocket';
 import { ReportDialog } from '../components/ReportDialog';
 
@@ -22,6 +24,7 @@ type MatchSummary = {
 export const Chat: React.FC = () => {
   const { matchId } = useParams();
   const { token, userId } = useAuth();
+  const { flags } = useFlags();
   const socket = useSocket('/chat', token);
   const [draft, setDraft] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
@@ -94,6 +97,7 @@ export const Chat: React.FC = () => {
     if (!matchId || !draft.trim()) {
       return;
     }
+    const isFirstMessage = messages.length === 0;
     const content = draft.trim();
     setDraft('');
     setSendError(null);
@@ -104,6 +108,9 @@ export const Chat: React.FC = () => {
       });
       if (response.ok && response.data) {
         setLiveMessages((prev) => [...prev, response.data as Message]);
+        trackEvent(isFirstMessage ? 'first_message_sent' : 'message_sent', {
+          matchId,
+        });
         return;
       }
       if (response.status === 403) {
@@ -187,7 +194,9 @@ export const Chat: React.FC = () => {
             >
               {blocking ? 'Blocking…' : blocked ? 'Blocked' : 'Block'}
             </button>
-            <ReportDialog reportedUserId={partnerId} buttonLabel="Report" />
+            {flags.reportDialogEnabled && (
+              <ReportDialog reportedUserId={partnerId} buttonLabel="Report" />
+            )}
           </div>
         </div>
         {matchWarning && (
