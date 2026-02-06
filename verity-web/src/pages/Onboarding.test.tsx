@@ -1,8 +1,8 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 import { Onboarding } from './Onboarding';
+import { renderWithProviders } from '../test/testUtils';
 
 const navigateMock = vi.fn();
 const signUpMock = vi.fn();
@@ -33,16 +33,10 @@ describe('Onboarding', () => {
   it('requires all consents before enabling start action', async () => {
     signUpMock.mockResolvedValue(undefined);
 
-    render(
-      <MemoryRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <Onboarding />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Onboarding />, {
+      route: '/onboarding',
+      path: '/onboarding',
+    });
 
     const startButton = screen.getByRole('button', {
       name: /start anonymously/i,
