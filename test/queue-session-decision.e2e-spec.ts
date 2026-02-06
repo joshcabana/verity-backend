@@ -124,8 +124,13 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       await app.close();
     }
     if (redis) {
-      await redis.quit();
-      redis.disconnect();
+      try {
+        await redis.quit();
+      } catch {
+        // Ignore shutdown race when app lifecycle already closed Redis.
+      } finally {
+        redis.disconnect();
+      }
     }
     if (prisma) {
       await prisma.$disconnect();

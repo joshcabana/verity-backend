@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { REDIS_CLIENT, type RedisClient } from '../src/common/redis.provider';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 
@@ -25,6 +26,7 @@ function extractRefreshCookie(res: request.Response): string {
 
 describe('Auth refresh (e2e)', () => {
   let app: INestApplication<App>;
+  let redis: RedisClient;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -33,9 +35,14 @@ describe('Auth refresh (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.listen(0, '127.0.0.1');
+    redis = app.get<RedisClient>(REDIS_CLIENT);
   });
 
   afterEach(async () => {
+    if (redis) {
+      await redis.quit();
+      redis.disconnect();
+    }
     await app.close();
   });
 
