@@ -120,6 +120,9 @@ describe('ChatService (unit)', () => {
         senderId: 'user-a',
       }),
     );
+    const payload = notificationsService.notifyUsers.mock.calls[0][2];
+    expect(payload).not.toHaveProperty('preview');
+    expect(payload).not.toHaveProperty('text');
   });
 
   it('blocks message access when users are blocked', async () => {

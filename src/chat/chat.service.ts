@@ -87,7 +87,6 @@ export class ChatService {
         matchId: message.matchId,
         messageId: message.id,
         senderId: message.senderId,
-        preview: message.text.slice(0, 120),
       },
     );
 

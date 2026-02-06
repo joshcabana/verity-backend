@@ -19,6 +19,12 @@ jobs:
         run: npm ci
       - name: Run unit tests
         run: npm test
+      - name: Enforce push notification privacy payload
+        run: |
+          if grep -n "preview:" src/chat/chat.service.ts; then
+            echo "Push payload must not include message preview text."
+            exit 1
+          fi
       - name: Run moderation accuracy suite
         run: npm test -- --runTestsByPath test/moderation/accuracy.spec.ts
       - name: Build backend
@@ -83,6 +89,10 @@ jobs:
           cache-dependency-path: verity-web/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Generate legal content
+        run: npm run generate:legal
+      - name: Verify generated legal content is committed
+        run: git diff --exit-code -- src/legal/generated.ts
       - name: Run web unit tests
         run: npm test
       - name: Build web app

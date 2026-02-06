@@ -225,11 +225,14 @@ Staging helpers:
 ### E2E Quick Commands
 
 ```bash
-# Single test, keep containers
-scripts/e2e-local-run.sh
+# Recommended: single flow in Dockerized local env
+npm run test:e2e:local
 
-# Full suite, then clean containers
-scripts/e2e-local-run.sh all clean
+# Recommended: full e2e suite in Dockerized local env
+npm run test:e2e:local:all
+
+# Cleanup local e2e containers/network
+npm run test:e2e:local:clean
 ```
 
 ## Running E2E Tests
@@ -240,21 +243,24 @@ set `DATABASE_URL` and `REDIS_URL` automatically.
 Run a single flow test (keeps containers running):
 
 ```bash
-scripts/e2e-local-run.sh
+npm run test:e2e:local
 npm run test:e2e -- --runTestsByPath test/e2e/auth.flow.spec.ts
 ```
 
 Run the full flow suite:
 
 ```bash
-scripts/e2e-local-run.sh all clean
-npm run test:e2e -- --runTestsByPath \\
-  test/e2e/auth.flow.spec.ts \\
-  test/e2e/matching-and-video.flow.spec.ts \\
-  test/e2e/match-and-chat.flow.spec.ts \\
-  test/e2e/payments.flow.spec.ts \\
+npm run test:e2e:local:all
+npm run test:e2e -- --runTestsByPath \
+  test/e2e/auth.flow.spec.ts \
+  test/e2e/matching-and-video.flow.spec.ts \
+  test/e2e/match-and-chat.flow.spec.ts \
+  test/e2e/payments.flow.spec.ts \
   test/e2e/moderation.flow.spec.ts
 ```
+
+Note: running `npm run test:e2e` directly requires `DATABASE_URL` and `REDIS_URL`.
+Use the `test:e2e:local*` scripts above to avoid environment setup mistakes.
 
 ### Legal Drafts (Australia-First Beta)
 
@@ -288,19 +294,19 @@ In production/CI, continue using `npx prisma migrate deploy`.
 One-click local E2E (Docker + Postgres + Redis, single test):
 
 ```bash
-scripts/e2e-local.sh
+npm run test:e2e:local
 ```
 
 Run the full E2E suite:
 
 ```bash
-scripts/e2e-local-all.sh
+npm run test:e2e:local:all
 ```
 
 Clean up local E2E containers/network:
 
 ```bash
-scripts/e2e-local-clean.sh
+npm run test:e2e:local:clean
 ```
 
 Check local E2E container/network status:

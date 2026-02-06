@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "generate:legal": "node ./scripts/generate-legal-content.mjs",
+    "predev": "npm run generate:legal",
     "dev": "vite",
+    "prebuild": "npm run generate:legal",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
