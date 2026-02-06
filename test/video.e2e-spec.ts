@@ -52,6 +52,12 @@ class FakeVideoGateway {
   }
 }
 
+class FakeNotificationsService {
+  async notifyUsers() {
+    return;
+  }
+}
+
 describe('Video session timer (e2e)', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -71,6 +77,7 @@ describe('Video session timer (e2e)', () => {
       new FakePrismaService() as unknown as any,
       new VideoService(),
       gateway as unknown as any,
+      new FakeNotificationsService() as unknown as any,
       redis as unknown as any,
     );
 
@@ -111,6 +118,7 @@ describe('Video session timer (e2e)', () => {
       new FakePrismaService() as unknown as any,
       new VideoService(),
       gateway as unknown as any,
+      new FakeNotificationsService() as unknown as any,
       redis as unknown as any,
     );
 

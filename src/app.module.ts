@@ -9,6 +9,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
 import { SessionModule } from './session/session.module';
 import { VideoModule } from './video/video.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { VideoModule } from './video/video.module';
     ChatModule,
     PaymentsModule,
     ModerationModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

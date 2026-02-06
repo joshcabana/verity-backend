@@ -183,6 +183,7 @@ export async function resetDatabase(prisma: PrismaClient) {
         "Message",
         "Match",
         "Block",
+        "PushToken",
         "Session",
         "TokenTransaction",
         "ModerationEvent",
@@ -199,6 +200,7 @@ export async function resetDatabase(prisma: PrismaClient) {
   await prisma.message.deleteMany();
   await prisma.match.deleteMany();
   await prisma.block.deleteMany();
+  await prisma.pushToken.deleteMany();
   await prisma.session.deleteMany();
   await prisma.tokenTransaction.deleteMany();
   await prisma.moderationEvent.deleteMany();

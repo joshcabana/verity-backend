@@ -11,6 +11,12 @@ class FakeChatGateway {
   }
 }
 
+class FakeNotificationsService {
+  async notifyUsers() {
+    return;
+  }
+}
+
 class FakePrismaService {
   users = new Map<string, User>();
   matches = new Map<string, Match>();
@@ -86,6 +92,7 @@ describe('Chat & identity reveal (e2e)', () => {
     const chatService = new ChatService(
       prisma as unknown as any,
       gateway as any,
+      new FakeNotificationsService() as any,
     );
     const matchesService = new MatchesService(prisma as unknown as any);
 
@@ -153,6 +160,7 @@ describe('Chat & identity reveal (e2e)', () => {
     const chatService = new ChatService(
       prisma as unknown as any,
       gateway as any,
+      new FakeNotificationsService() as any,
     );
 
     const match: Match = {

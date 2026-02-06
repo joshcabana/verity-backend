@@ -116,6 +116,12 @@ class FakeVideoGateway {
   }
 }
 
+class FakeNotificationsService {
+  async notifyUsers() {
+    return;
+  }
+}
+
 describe('Match decision (e2e)', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -134,6 +140,7 @@ describe('Match decision (e2e)', () => {
       prisma as unknown as any,
       {} as any,
       gateway as unknown as any,
+      new FakeNotificationsService() as unknown as any,
       redis as unknown as any,
     );
 
@@ -176,6 +183,7 @@ describe('Match decision (e2e)', () => {
       prisma as unknown as any,
       {} as any,
       gateway as unknown as any,
+      new FakeNotificationsService() as unknown as any,
       redis as unknown as any,
     );
 
@@ -217,6 +225,7 @@ describe('Match decision (e2e)', () => {
       prisma as unknown as any,
       {} as any,
       gateway as unknown as any,
+      new FakeNotificationsService() as unknown as any,
       redis as unknown as any,
     );
 

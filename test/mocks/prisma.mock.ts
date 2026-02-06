@@ -46,6 +46,12 @@ export function createPrismaMock() {
       updateMany: jest.fn(),
       deleteMany: jest.fn(),
     },
+    pushToken: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+      updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
     message: {
       findMany: jest.fn(),
       create: jest.fn(),

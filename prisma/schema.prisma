@@ -43,6 +43,7 @@ model User {
   reportsReceived ModerationReport[] @relation("ReportsReceived")
   blocksMade    Block[]  @relation("BlocksMade")
   blocksReceived Block[] @relation("BlocksReceived")
+  pushTokens    PushToken[]
 }
 
 model RefreshToken {
@@ -171,4 +172,27 @@ model Block {
   @@unique([blockerId, blockedId])
   @@index([blockerId, liftedAt])
   @@index([blockedId, liftedAt])
+}
+
+model PushToken {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  userId    String
+  token     String       @unique
+  platform  PushPlatform
+  deviceId  String?
+  lastSeenAt DateTime    @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([platform, revokedAt])
+}
+
+enum PushPlatform {
+  WEB
+  IOS
+  ANDROID
 }

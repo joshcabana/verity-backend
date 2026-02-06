@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing';
 import { ChatService } from '../../src/chat/chat.service';
 import { ChatGateway } from '../../src/chat/chat.gateway';
 import { MatchesService } from '../../src/matches/matches.service';
+import { NotificationsService } from '../../src/notifications/notifications.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { createPrismaMock } from '../mocks/prisma.mock';
 import { ChatGatewayMock } from '../mocks/gateway.mock';
@@ -15,16 +16,19 @@ describe('ChatService (unit)', () => {
   let service: ChatService;
   let prisma: ReturnType<typeof createPrismaMock>;
   let gateway: ChatGatewayMock;
+  let notificationsService: { notifyUsers: jest.Mock };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
     gateway = new ChatGatewayMock();
+    notificationsService = { notifyUsers: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         ChatService,
         { provide: PrismaService, useValue: prisma },
         { provide: ChatGateway, useValue: gateway },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 
@@ -108,6 +112,14 @@ describe('ChatService (unit)', () => {
 
     expect(message.text).toBe('Hello');
     expect(gateway.events).toHaveLength(2);
+    expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
+      ['user-b'],
+      'chat_message_new',
+      expect.objectContaining({
+        matchId: 'match-1',
+        senderId: 'user-a',
+      }),
+    );
   });
 
   it('blocks message access when users are blocked', async () => {
@@ -124,6 +136,7 @@ describe('ChatService (unit)', () => {
     await expect(
       service.sendMessage('match-1', 'user-a', 'Hello'),
     ).rejects.toThrow(ForbiddenException);
+    expect(notificationsService.notifyUsers).not.toHaveBeenCalled();
   });
 });
 

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Message } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatGateway } from './chat.gateway';
 
@@ -15,6 +16,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gateway: ChatGateway,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async listMessages(
@@ -76,6 +78,18 @@ export class ChatService {
 
     this.gateway.emitMessage(match.userAId, payload);
     this.gateway.emitMessage(match.userBId, payload);
+
+    const recipientId = match.userAId === userId ? match.userBId : match.userAId;
+    void this.notificationsService.notifyUsers(
+      [recipientId],
+      'chat_message_new',
+      {
+        matchId: message.matchId,
+        messageId: message.id,
+        senderId: message.senderId,
+        preview: message.text.slice(0, 120),
+      },
+    );
 
     return message;
   }

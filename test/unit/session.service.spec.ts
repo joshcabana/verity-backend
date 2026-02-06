@@ -10,6 +10,7 @@ import { PrismaService } from '../../src/prisma/prisma.service';
 import { VideoService } from '../../src/video/video.service';
 import { VideoGateway } from '../../src/video/video.gateway';
 import { REDIS_CLIENT } from '../../src/common/redis.provider';
+import { NotificationsService } from '../../src/notifications/notifications.service';
 import { createPrismaMock } from '../mocks/prisma.mock';
 import { createRedisMock } from '../mocks/redis.mock';
 
@@ -29,6 +30,7 @@ describe('SessionService (unit)', () => {
   let redis: ReturnType<typeof createRedisMock>;
   let videoService: { buildSessionTokens: jest.Mock };
   let videoGateway: any;
+  let notificationsService: { notifyUsers: jest.Mock };
 
   beforeEach(async () => {
     jest.useFakeTimers();
@@ -65,6 +67,7 @@ describe('SessionService (unit)', () => {
         })),
       },
     };
+    notificationsService = { notifyUsers: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -72,6 +75,7 @@ describe('SessionService (unit)', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: VideoService, useValue: videoService },
         { provide: VideoGateway, useValue: videoGateway },
+        { provide: NotificationsService, useValue: notificationsService },
         { provide: REDIS_CLIENT, useValue: redis },
       ],
     }).compile();
@@ -212,6 +216,14 @@ describe('SessionService (unit)', () => {
     expect(result.outcome).toBe('mutual');
     expect(result.matchId).toBe('match-1');
     expect(videoGateway.server.to).toHaveBeenCalled();
+    expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
+      ['user-a', 'user-b'],
+      'match_mutual',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        matchId: 'match-1',
+      }),
+    );
   });
 
   it('uses existing match on mutual decision', async () => {

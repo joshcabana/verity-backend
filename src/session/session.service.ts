@@ -11,6 +11,7 @@ import type { Session } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
+import { NotificationsService } from '../notifications/notifications.service';
 import { VideoGateway } from '../video/video.gateway';
 import { VideoService } from '../video/video.service';
 
@@ -40,6 +41,7 @@ export class SessionService implements OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly videoService: VideoService,
     private readonly videoGateway: VideoGateway,
+    private readonly notificationsService: NotificationsService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
   ) {}
 
@@ -367,6 +369,14 @@ export class SessionService implements OnModuleDestroy {
 
     if (outcome === 'mutual') {
       this.emitMatchMutual(session, matchId ?? '');
+      void this.notificationsService.notifyUsers(
+        [session.userAId, session.userBId],
+        'match_mutual',
+        {
+          sessionId: session.id,
+          matchId,
+        },
+      );
     } else {
       this.emitMatchNonMutual(session);
     }
