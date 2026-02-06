@@ -1,4 +1,11 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { apiJson, decodeToken, getAccessToken, setAccessToken } from '../api/client';
 
 type AuthContextValue = {
@@ -19,6 +26,26 @@ export type SignUpInput = {
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const PUSH_TOKEN_KEY = 'verity_web_push_token';
+
+function getStoredPushToken(): string | null {
+  return localStorage.getItem(PUSH_TOKEN_KEY);
+}
+
+function getOrCreatePushToken(): string {
+  const existing = getStoredPushToken();
+  if (existing) {
+    return existing;
+  }
+
+  const randomPart =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const token = `web-${randomPart}`;
+  localStorage.setItem(PUSH_TOKEN_KEY, token);
+  return token;
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -60,8 +87,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [loading, setToken]);
 
   const signOut = useCallback(() => {
+    const pushToken = getStoredPushToken();
+    if (token) {
+      void apiJson('/auth/logout-all', { method: 'POST' });
+      if (pushToken) {
+        void apiJson('/notifications/tokens', {
+          method: 'DELETE',
+          body: { token: pushToken },
+        });
+      }
+    }
     setToken(null);
-  }, [setToken]);
+  }, [setToken, token]);
 
   const deleteAccount = useCallback(async () => {
     if (!token) {
@@ -73,6 +110,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     setToken(null);
   }, [token, setToken]);
+
+  useEffect(() => {
+    if (!token || !userId) {
+      return;
+    }
+    const pushToken = getOrCreatePushToken();
+    const deviceId =
+      typeof navigator !== 'undefined'
+        ? navigator.userAgent.slice(0, 120)
+        : undefined;
+    void apiJson('/notifications/tokens', {
+      method: 'POST',
+      body: {
+        token: pushToken,
+        platform: 'WEB',
+        deviceId,
+      },
+    });
+  }, [token, userId]);
 
   const value = useMemo(
     () => ({
