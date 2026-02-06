@@ -50,4 +50,33 @@ describe('ReportDialog', () => {
       await screen.findByText(/we could not submit the report. please try again/i),
     ).toBeInTheDocument();
   });
+
+  it('focuses reason field on open and closes on escape', async () => {
+    render(<ReportDialog reportedUserId="user-2" />);
+
+    const trigger = screen.getByRole('button', { name: /report user/i });
+    fireEvent.click(trigger);
+
+    const reason = screen.getByLabelText(/reason/i);
+    expect(reason).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(trigger).toHaveFocus();
+  });
+
+  it('closes when clicking the modal backdrop', async () => {
+    render(<ReportDialog reportedUserId="user-2" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /report user/i }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.mouseDown(dialog);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
 });

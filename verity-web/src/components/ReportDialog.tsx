@@ -23,6 +23,8 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
   const offline = typeof navigator !== 'undefined' && !navigator.onLine;
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const reasonRef = useRef<HTMLSelectElement | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState(REASONS[0].value);
   const [details, setDetails] = useState('');
@@ -46,6 +48,10 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
   };
 
   const handleClose = () => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     setOpen(false);
     triggerRef.current?.focus();
   };
@@ -71,7 +77,8 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
         return;
       }
       setStatus('sent');
-      setTimeout(() => {
+      closeTimerRef.current = window.setTimeout(() => {
+        closeTimerRef.current = null;
         handleClose();
       }, 900);
     } catch {
@@ -89,6 +96,34 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
       if (event.key === 'Escape') {
         event.preventDefault();
         handleClose();
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        const modal = modalRef.current;
+        if (!modal) {
+          return;
+        }
+        const focusables = Array.from(
+          modal.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((element) => !element.hasAttribute('disabled'));
+
+        if (focusables.length === 0) {
+          return;
+        }
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+
+        if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -96,6 +131,14 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <>
@@ -118,8 +161,14 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby="report-dialog-title"
+          aria-describedby="report-dialog-context"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              handleClose();
+            }
+          }}
         >
-          <div className="modal">
+          <div className="modal" ref={modalRef}>
             <div className="modal-header">
               <h3 id="report-dialog-title" className="section-title">
                 Report a safety issue
@@ -132,7 +181,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 Close
               </button>
             </div>
-            <p className="subtle">{contextLabel}</p>
+            <p className="subtle" id="report-dialog-context">{contextLabel}</p>
             <label className="subtle">
               Reason
               <select
@@ -159,14 +208,14 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
               />
             </label>
             {status === 'error' && (
-              <p className="subtle" style={{ color: '#dc2626' }}>
+              <p className="subtle" style={{ color: '#dc2626' }} role="alert">
                 {offline
                   ? 'You appear to be offline. Reconnect and try again.'
                   : 'We could not submit the report. Please try again.'}
               </p>
             )}
             {status === 'sent' && (
-              <p className="subtle" style={{ color: '#16a34a' }}>
+              <p className="subtle" style={{ color: '#16a34a' }} role="status">
                 Report submitted. Thank you for helping keep Verity safe.
               </p>
             )}
