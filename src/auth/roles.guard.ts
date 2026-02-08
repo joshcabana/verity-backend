@@ -53,7 +53,7 @@ export class RolesGuard implements CanActivate {
   private isAdminKeyFallbackAllowed() {
     const value = process.env.MODERATION_ADMIN_KEY_FALLBACK;
     if (!value) {
-      return true;
+      return false;
     }
     const normalized = value.trim().toLowerCase();
     return normalized === '1' || normalized === 'true' || normalized === 'yes';

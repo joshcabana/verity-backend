@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -10,6 +11,10 @@ import { Prisma, UserRole } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 import { CookieOptions, Response } from 'express';
 import { AnalyticsService } from '../analytics/analytics.service';
+import {
+  getAccessTokenSecret,
+  getRefreshTokenSecret,
+} from '../common/security-config';
 import { PrismaService } from '../prisma/prisma.service';
 
 const ACCESS_TOKEN_TTL = '15m';
@@ -156,35 +161,35 @@ export class AuthService {
       reportsReceived,
       pushTokens,
     ] = await Promise.all([
-        this.prisma.match.findMany({
-          where: { OR: [{ userAId: userId }, { userBId: userId }] },
-        }),
-        this.prisma.session.findMany({
-          where: { OR: [{ userAId: userId }, { userBId: userId }] },
-        }),
-        this.prisma.message.findMany({
-          where: { senderId: userId },
-        }),
-        this.prisma.tokenTransaction.findMany({ where: { userId } }),
-        this.prisma.moderationReport.findMany({
-          where: { reporterId: userId },
-        }),
-        this.prisma.moderationReport.findMany({
-          where: { reportedUserId: userId },
-        }),
-        this.prisma.pushToken.findMany({
-          where: { userId },
-          select: {
-            id: true,
-            createdAt: true,
-            updatedAt: true,
-            platform: true,
-            deviceId: true,
-            lastSeenAt: true,
-            revokedAt: true,
-          },
-        }),
-      ]);
+      this.prisma.match.findMany({
+        where: { OR: [{ userAId: userId }, { userBId: userId }] },
+      }),
+      this.prisma.session.findMany({
+        where: { OR: [{ userAId: userId }, { userBId: userId }] },
+      }),
+      this.prisma.message.findMany({
+        where: { senderId: userId },
+      }),
+      this.prisma.tokenTransaction.findMany({ where: { userId } }),
+      this.prisma.moderationReport.findMany({
+        where: { reporterId: userId },
+      }),
+      this.prisma.moderationReport.findMany({
+        where: { reportedUserId: userId },
+      }),
+      this.prisma.pushToken.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          platform: true,
+          deviceId: true,
+          lastSeenAt: true,
+          revokedAt: true,
+        },
+      }),
+    ]);
 
     return {
       user,
@@ -198,12 +203,12 @@ export class AuthService {
     };
   }
 
-  async verifyPhone(userId: string, phoneRaw: string, code?: string) {
+  async verifyPhone(userId: string, phoneRaw: string, code: string) {
     const phone = this.normalizePhone(phoneRaw);
     if (!phone) {
       throw new BadRequestException('Invalid phone number');
     }
-    this.assertVerificationCodePresent(code);
+    await this.assertVerificationCodeValid(phone, code);
 
     try {
       return await this.prisma.user.update({
@@ -218,12 +223,12 @@ export class AuthService {
     }
   }
 
-  async verifyEmail(userId: string, emailRaw: string, code?: string) {
+  async verifyEmail(userId: string, emailRaw: string, code: string) {
     const email = this.normalizeEmail(emailRaw);
     if (!email) {
       throw new BadRequestException('Invalid email address');
     }
-    this.assertVerificationCodePresent(code);
+    await this.assertVerificationCodeValid(email, code);
 
     try {
       return await this.prisma.user.update({
@@ -480,19 +485,11 @@ export class AuthService {
   }
 
   private get accessSecret(): string {
-    return (
-      process.env.JWT_ACCESS_SECRET ??
-      process.env.JWT_SECRET ??
-      'dev_access_secret'
-    );
+    return getAccessTokenSecret();
   }
 
   private get refreshSecret(): string {
-    return (
-      process.env.JWT_REFRESH_SECRET ??
-      process.env.JWT_SECRET ??
-      'dev_refresh_secret'
-    );
+    return getRefreshTokenSecret();
   }
 
   private getRefreshCookieOptions(): CookieOptions {
@@ -500,7 +497,9 @@ export class AuthService {
     const maxAge = REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
     const rawSameSite = process.env.REFRESH_COOKIE_SAMESITE?.toLowerCase();
     const sameSite =
-      rawSameSite === 'lax' || rawSameSite === 'none' || rawSameSite === 'strict'
+      rawSameSite === 'lax' ||
+      rawSameSite === 'none' ||
+      rawSameSite === 'strict'
         ? rawSameSite
         : 'strict';
     const domain = process.env.REFRESH_COOKIE_DOMAIN?.trim();
@@ -576,12 +575,47 @@ export class AuthService {
     });
   }
 
-  private assertVerificationCodePresent(code?: string) {
-    if (code === undefined) {
+  private async assertVerificationCodeValid(identifier: string, code: string) {
+    const trimmedCode = code.trim();
+    if (trimmedCode.length === 0) {
+      throw new BadRequestException('Verification code is required');
+    }
+
+    const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+    const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+    const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID?.trim();
+
+    if (!accountSid || !authToken || !verifyServiceSid) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new InternalServerErrorException(
+          'Verification provider is not configured',
+        );
+      }
       return;
     }
-    if (code.trim().length === 0) {
-      throw new BadRequestException('Verification code is required');
+
+    const response = await fetch(
+      `https://verify.twilio.com/v2/Services/${encodeURIComponent(verifyServiceSid)}/VerificationCheck`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          To: identifier,
+          Code: trimmedCode,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new UnauthorizedException('Invalid verification code');
+    }
+
+    const payload = (await response.json()) as { status?: string };
+    if (payload.status !== 'approved') {
+      throw new UnauthorizedException('Invalid verification code');
     }
   }
 }

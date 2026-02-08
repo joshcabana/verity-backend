@@ -1,15 +1,8 @@
-import {
-  Body,
-  Controller,
-  Param,
-  Post,
-  Req,
-  UnauthorizedException,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { IsIn } from 'class-validator';
 import type { Request } from 'express';
+import { getRequestUserId } from '../auth/request-user';
 import { SessionService } from './session.service';
 
 class SessionChoiceDto {
@@ -28,13 +21,7 @@ export class SessionController {
     @Param('id') sessionId: string,
     @Body() dto: SessionChoiceDto,
   ) {
-    const user = req.user as
-      | { sub?: string; id?: string; userId?: string }
-      | undefined;
-    const userId = user?.sub ?? user?.id ?? user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException('Invalid access token');
-    }
+    const userId = getRequestUserId(req);
     return this.sessionService.submitChoice(sessionId, userId, dto.choice);
   }
 }

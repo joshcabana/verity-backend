@@ -1,10 +1,10 @@
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class VerifyEmailDto {
   @IsEmail()
   email!: string;
 
-  @IsOptional()
   @IsString()
-  code?: string;
+  @MinLength(1)
+  code!: string;
 }

@@ -34,6 +34,7 @@
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^4.3.2",
     "jsdom": "^26.1.0",
+    "msw": "^2.12.9",
     "typescript": "^5.7.3",
     "vite": "^5.4.8",
     "vitest": "^2.1.8"

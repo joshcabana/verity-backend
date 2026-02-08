@@ -1,14 +1,7 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Post,
-  Req,
-  UnauthorizedException,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
+import { getRequestUserId } from '../auth/request-user';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 import { UnregisterPushTokenDto } from './dto/unregister-push-token.dto';
 import { NotificationsService } from './notifications.service';
@@ -20,7 +13,10 @@ export class NotificationsController {
   @Post('tokens')
   @UseGuards(AuthGuard('jwt'))
   async registerToken(@Req() req: Request, @Body() dto: RegisterPushTokenDto) {
-    return this.notificationsService.registerPushToken(this.getUserId(req), dto);
+    return this.notificationsService.registerPushToken(
+      getRequestUserId(req),
+      dto,
+    );
   }
 
   @Delete('tokens')
@@ -30,19 +26,8 @@ export class NotificationsController {
     @Body() dto: UnregisterPushTokenDto,
   ) {
     return this.notificationsService.unregisterPushToken(
-      this.getUserId(req),
+      getRequestUserId(req),
       dto.token,
     );
-  }
-
-  private getUserId(req: Request): string {
-    const user = req.user as
-      | { sub?: string; id?: string; userId?: string }
-      | undefined;
-    const userId = user?.sub ?? user?.id ?? user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException('Invalid access token');
-    }
-    return userId;
   }
 }

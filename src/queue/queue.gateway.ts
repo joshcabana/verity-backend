@@ -1,5 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import type { Session } from '@prisma/client';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -11,27 +12,23 @@ import {
   corsOriginResolver,
   getAccessTokenSecret,
 } from '../common/security-config';
-
-export type ChatMessagePayload = {
-  id: string;
-  matchId: string;
-  senderId: string;
-  text: string;
-  createdAt: string;
-};
+import { QueueService } from './queue.service';
 
 @Injectable()
 @WebSocketGateway({
-  namespace: '/chat',
+  namespace: '/queue',
   cors: { origin: corsOriginResolver, credentials: true },
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
-  private readonly logger = new Logger(ChatGateway.name);
+  private readonly jwt: JwtService;
+  private readonly logger = new Logger(QueueGateway.name);
 
-  constructor(private readonly jwt: JwtService) {}
+  constructor(private readonly queueService: QueueService) {
+    this.jwt = new JwtService({ secret: this.accessSecret });
+  }
 
   handleConnection(client: Socket) {
     const token = this.extractToken(client);
@@ -50,22 +47,36 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const data = client.data as { userId?: string };
       data.userId = payload.sub;
       void client.join(this.userRoom(payload.sub));
-    } catch (error) {
-      this.logger.warn(`Chat socket auth failed: ${error}`);
+    } catch {
       client.disconnect(true);
     }
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     const data = client.data as { userId?: string };
     const userId = data.userId;
     if (userId) {
-      void client.leave(this.userRoom(userId));
+      try {
+        await this.queueService.leaveQueue(userId);
+      } catch (error) {
+        this.logger.warn(`Failed to leave queue on disconnect: ${error}`);
+      }
     }
   }
 
-  emitMessage(userId: string, payload: ChatMessagePayload) {
-    this.server.to(this.userRoom(userId)).emit('message:new', payload);
+  emitMatch(userAId: string, userBId: string, session: Session) {
+    this.server.to(this.userRoom(userAId)).emit('match', {
+      sessionId: session.id,
+      partnerId: userBId,
+      queueKey: session.queueKey,
+      matchedAt: session.createdAt,
+    });
+    this.server.to(this.userRoom(userBId)).emit('match', {
+      sessionId: session.id,
+      partnerId: userAId,
+      queueKey: session.queueKey,
+      matchedAt: session.createdAt,
+    });
   }
 
   private userRoom(userId: string) {

@@ -33,11 +33,13 @@ Key variables used by the backend:
 - `DATABASE_URL`, `REDIS_URL`
 - `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
 - `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
+- `MODERATION_ADMIN_KEY`, `MODERATION_ADMIN_KEY_FALLBACK`
 - `PUSH_DISPATCH_WEBHOOK_URL` (optional, server-to-server push dispatch webhook)
 - `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `AGORA_TOKEN_TTL_SECONDS`
 - `HIVE_STREAM_URL`, `HIVE_SCREENSHOT_URL`, `HIVE_API_KEY`, `HIVE_WEBHOOK_SECRET`
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PLUS`, `STRIPE_PRICE_PRO`
 - `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` (required in production for identity verification)
 
 ## Docker (Backend)
 
@@ -182,6 +184,9 @@ Required secrets (store in Key Vault via Bicep params):
 - `HIVE_API_KEY`
 - `HIVE_WEBHOOK_SECRET`
 - `MODERATION_ADMIN_KEY`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_VERIFY_SERVICE_SID`
 - `PUSH_DISPATCH_WEBHOOK_URL`
 
 Non-secret values (safe as plain env vars):
@@ -190,6 +195,7 @@ Non-secret values (safe as plain env vars):
 - `APP_URL`
 - `AGORA_APP_ID`
 - `AGORA_TOKEN_TTL_SECONDS`
+- `MODERATION_ADMIN_KEY_FALLBACK` (recommended: `false`)
 - `HIVE_STREAM_URL`
 - `HIVE_SCREENSHOT_URL`
 - `STRIPE_SUCCESS_URL`
@@ -361,7 +367,7 @@ Security behavior:
 - Refresh tokens are stored in an httpOnly cookie named `refresh_token` with `sameSite=strict`.
 - In production, cookies are marked `secure` (HTTPS only).
 - `POST /auth/refresh` rotates refresh tokens and invalidates a refresh family on reuse.
-- `POST /auth/verify-phone` and `POST /auth/verify-email` link verified identifiers to the user.
+- `POST /auth/verify-phone` and `POST /auth/verify-email` verify codes through Twilio Verify before linking identifiers (required in production).
 - `POST /auth/logout-all` revokes all refresh tokens for the current user.
 
 ## Matching Queue System

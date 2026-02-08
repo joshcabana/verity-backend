@@ -74,7 +74,12 @@ export const Chat: React.FC = () => {
       if (payload.matchId !== matchId) {
         return;
       }
-      setLiveMessages((prev) => [...prev, payload]);
+      setLiveMessages((prev) => {
+        if (prev.some((message) => message.id === payload.id)) {
+          return prev;
+        }
+        return [...prev, payload];
+      });
     };
 
     socket.on('message:new', handleNew);
@@ -99,28 +104,57 @@ export const Chat: React.FC = () => {
     }
     const isFirstMessage = messages.length === 0;
     const content = draft.trim();
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      matchId,
+      senderId: userId ?? 'self',
+      text: content,
+      createdAt: new Date().toISOString(),
+    };
+
     setDraft('');
     setSendError(null);
+    setLiveMessages((prev) => [...prev, optimisticMessage]);
     try {
       const response = await apiJson<Message>(`/matches/${matchId}/messages`, {
         method: 'POST',
         body: { text: content },
       });
       if (response.ok && response.data) {
-        setLiveMessages((prev) => [...prev, response.data as Message]);
+        setLiveMessages((prev) => {
+          const withoutOptimistic = prev.filter(
+            (message) => message.id !== optimisticId,
+          );
+          if (
+            withoutOptimistic.some((message) => message.id === response.data?.id)
+          ) {
+            return withoutOptimistic;
+          }
+          return [...withoutOptimistic, response.data as Message];
+        });
         trackEvent(isFirstMessage ? 'first_message_sent' : 'message_sent', {
           matchId,
         });
         return;
       }
       if (response.status === 403) {
+        setLiveMessages((prev) =>
+          prev.filter((message) => message.id !== optimisticId),
+        );
         setLocallyBlocked(true);
         setSendError('Chat is unavailable because one of you has blocked the other.');
         return;
       }
+      setLiveMessages((prev) =>
+        prev.filter((message) => message.id !== optimisticId),
+      );
       setSendError('Unable to send message. Try again.');
       setDraft(content);
     } catch {
+      setLiveMessages((prev) =>
+        prev.filter((message) => message.id !== optimisticId),
+      );
       setSendError(
         offline
           ? 'You appear to be offline. Message not sent.'

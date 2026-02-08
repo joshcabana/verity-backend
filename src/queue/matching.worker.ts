@@ -9,7 +9,8 @@ import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { QueueGateway, QueueService } from './queue.service';
+import { QueueGateway } from './queue.gateway';
+import { QueueService } from './queue.service';
 
 const QUEUE_KEYS_SET = 'queue:keys';
 const TICK_INTERVAL_MS = 500;

@@ -7,6 +7,8 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { isOriginAllowed } from '../common/security-config';
 
 type WebVitalName = 'CLS' | 'INP' | 'LCP' | 'FCP' | 'TTFB';
 type WebVitalRating = 'good' | 'needs-improvement' | 'poor';
@@ -35,6 +37,7 @@ type FrontendErrorPayload = {
 @Controller('monitoring')
 export class MonitoringController {
   @Post('web-vitals')
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @HttpCode(202)
   captureWebVitals(
     @Headers('origin') origin: string | undefined,
@@ -57,6 +60,7 @@ export class MonitoringController {
   }
 
   @Post('frontend-errors')
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @HttpCode(202)
   captureFrontendError(
     @Headers('origin') origin: string | undefined,
@@ -78,17 +82,7 @@ export class MonitoringController {
   }
 
   private assertAllowedOrigin(origin: string | undefined) {
-    const rawOrigins = process.env.APP_ORIGINS ?? process.env.APP_URL ?? '';
-    const allowedOrigins = rawOrigins
-      .split(',')
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-
-    if (allowedOrigins.length === 0) {
-      return;
-    }
-
-    if (!origin || !allowedOrigins.includes(origin)) {
+    if (!isOriginAllowed(origin)) {
       throw new UnauthorizedException('Origin not allowed');
     }
   }
@@ -166,11 +160,7 @@ export class MonitoringController {
       return undefined;
     }
     const value = this.parseString(input, 'rating', 1, 32);
-    if (
-      value === 'good' ||
-      value === 'needs-improvement' ||
-      value === 'poor'
-    ) {
+    if (value === 'good' || value === 'needs-improvement' || value === 'poor') {
       return value;
     }
     throw new BadRequestException('Invalid rating');

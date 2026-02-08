@@ -1,0 +1,15 @@
+.git
+.gitignore
+node_modules
+dist
+coverage
+.env
+.env.*
+README.md
+verity-web
+verity-mobile
+load-test
+infra
+test
+scripts
+*.log

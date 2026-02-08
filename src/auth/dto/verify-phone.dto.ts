@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Matches } from 'class-validator';
+import { IsString, Matches, MinLength } from 'class-validator';
 
 export class VerifyPhoneDto {
   @IsString()
@@ -7,7 +7,7 @@ export class VerifyPhoneDto {
   })
   phone!: string;
 
-  @IsOptional()
   @IsString()
-  code?: string;
+  @MinLength(1)
+  code!: string;
 }

@@ -5,7 +5,8 @@ import { AnalyticsModule } from '../analytics/analytics.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { VideoModule } from '../video/video.module';
 import { QueueController } from './queue.controller';
-import { QueueService, QueueGateway } from './queue.service';
+import { QueueGateway } from './queue.gateway';
+import { QueueService } from './queue.service';
 import { MatchingWorker } from './matching.worker';
 
 @Module({

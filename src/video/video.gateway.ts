@@ -7,6 +7,10 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
+import {
+  corsOriginResolver,
+  getAccessTokenSecret,
+} from '../common/security-config';
 
 export type SessionStartPayload = {
   sessionId: string;
@@ -28,7 +32,7 @@ export type SessionEndPayload = {
 @Injectable()
 @WebSocketGateway({
   namespace: '/video',
-  cors: { origin: true, credentials: true },
+  cors: { origin: corsOriginResolver, credentials: true },
 })
 export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -98,10 +102,6 @@ export class VideoGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private get accessSecret(): string {
-    return (
-      process.env.JWT_ACCESS_SECRET ??
-      process.env.JWT_SECRET ??
-      'dev_access_secret'
-    );
+    return getAccessTokenSecret();
   }
 }

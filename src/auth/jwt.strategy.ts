@@ -1,17 +1,24 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import type { Request } from 'express';
+import { Strategy } from 'passport-jwt';
 import type { AccessPayload } from './auth.types';
+import { getAccessTokenSecret } from '../common/security-config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
+    // Passport's Strategy constructor typing is not strongly typed in this package.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey:
-        process.env.JWT_ACCESS_SECRET ??
-        process.env.JWT_SECRET ??
-        'dev_access_secret',
+      jwtFromRequest: (request: Request) => {
+        const header = request.headers.authorization;
+        if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
+          return null;
+        }
+        return header.slice(7);
+      },
+      secretOrKey: getAccessTokenSecret(),
       ignoreExpiration: false,
     });
   }

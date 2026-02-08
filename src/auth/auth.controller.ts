@@ -11,18 +11,21 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { SignupAnonymousDto } from './dto/signup-anonymous.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { VerifyPhoneDto } from './dto/verify-phone.dto';
 import { RefreshGuard } from './iefresh.guard';
+import { getRequestUserId } from './request-user';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup-anonymous')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async signupAnonymous(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -41,20 +44,23 @@ export class AuthController {
 
   @Post('verify-phone')
   @UseGuards(AuthGuard('jwt'))
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   async verifyPhone(@Req() req: Request, @Body() dto: VerifyPhoneDto) {
-    const userId = this.getUserId(req);
+    const userId = getRequestUserId(req);
     return this.authService.verifyPhone(userId, dto.phone, dto.code);
   }
 
   @Post('verify-email')
   @UseGuards(AuthGuard('jwt'))
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   async verifyEmail(@Req() req: Request, @Body() dto: VerifyEmailDto) {
-    const userId = this.getUserId(req);
+    const userId = getRequestUserId(req);
     return this.authService.verifyEmail(userId, dto.email, dto.code);
   }
 
   @Post('refresh')
   @UseGuards(RefreshGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(200)
   async refresh(
     @Req() req: Request,
@@ -82,21 +88,10 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const userId = this.getUserId(req);
+    const userId = getRequestUserId(req);
     await this.authService.logoutAll(userId);
     this.authService.clearRefreshCookie(res);
     return { success: true };
-  }
-
-  private getUserId(req: Request): string {
-    const user = req.user as
-      | { sub?: string; id?: string; userId?: string }
-      | undefined;
-    const userId = user?.sub ?? user?.id ?? user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException('Invalid access token');
-    }
-    return userId;
   }
 
   private getUserAgent(req: Request): string | undefined {
@@ -122,26 +117,14 @@ export class UsersController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   async getMe(@Req() req: Request) {
-    const user = req.user as
-      | { sub?: string; id?: string; userId?: string }
-      | undefined;
-    const userId = user?.sub ?? user?.id ?? user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException('Invalid access token');
-    }
+    const userId = getRequestUserId(req);
     return this.authService.getCurrentUser(userId);
   }
 
   @Get('me/export')
   @UseGuards(AuthGuard('jwt'))
   async exportMe(@Req() req: Request) {
-    const user = req.user as
-      | { sub?: string; id?: string; userId?: string }
-      | undefined;
-    const userId = user?.sub ?? user?.id ?? user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException('Invalid access token');
-    }
+    const userId = getRequestUserId(req);
     return this.authService.exportUserData(userId);
   }
 
@@ -151,13 +134,7 @@ export class UsersController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const user = req.user as
-      | { sub?: string; id?: string; userId?: string }
-      | undefined;
-    const userId = user?.sub ?? user?.id ?? user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException('Invalid access token');
-    }
+    const userId = getRequestUserId(req);
     await this.authService.deleteAccount(userId);
     this.authService.clearRefreshCookie(res);
     return { success: true };
