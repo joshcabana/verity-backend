@@ -5,11 +5,22 @@ import ThemedButton from '../../components/ThemedButton';
 import ThemedCard from '../../components/ThemedCard';
 import { createThemedInputStyles } from '../../components/themedStyles';
 import { useAuth } from '../../hooks/useAuth';
+import { apiJson } from '../../services/api';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
 
-const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? process.env.API_URL ?? 'http://localhost:3000';
+type UserProfileResponse = {
+  id: string;
+  displayName?: string | null;
+  age?: number | null;
+  gender?: string | null;
+  interests?: string[] | null;
+  bio?: string | null;
+  photos?: string[] | null;
+  email?: string | null;
+  phone?: string | null;
+  tokenBalance?: number | null;
+};
 
 export default function ProfileEditScreen() {
   const navigation = useNavigation();
@@ -53,12 +64,8 @@ export default function ProfileEditScreen() {
 
     setSaving(true);
     try {
-      const response = await fetch(`${API_URL}/users/me`, {
+      const response = await apiJson<UserProfileResponse>('/users/me', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
 
@@ -73,7 +80,12 @@ export default function ProfileEditScreen() {
         return;
       }
 
-      const updated = await response.json();
+      const updated = response.data;
+      if (!updated?.id) {
+        Alert.alert('Save failed', 'Unable to update your profile right now.');
+        return;
+      }
+
       await setUser({ ...(user ?? { id: updated.id }), ...updated });
       Alert.alert('Saved', 'Your profile has been updated.');
       navigation.goBack();

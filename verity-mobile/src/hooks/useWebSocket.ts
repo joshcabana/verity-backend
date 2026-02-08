@@ -20,55 +20,97 @@ type ChatMessagePayload = {
   receivedAt: number;
 };
 
+export type SessionStartPayload = {
+  sessionId: string;
+  channelName: string;
+  rtc: { token: string; uid: number };
+  rtm: { token: string; userId: string };
+  startAt: string;
+  endAt: string;
+  expiresAt: string;
+  durationSeconds: number;
+};
+
 type ChatEventStore = {
   lastMessage: ChatMessagePayload | null;
+  lastSessionStart: SessionStartPayload | null;
   setLastMessage: (message: ChatMessagePayload | null) => void;
+  setLastSessionStart: (payload: SessionStartPayload | null) => void;
 };
 
 const useChatEventStore = create<ChatEventStore>((set) => ({
   lastMessage: null,
+  lastSessionStart: null,
   setLastMessage: (message) => set({ lastMessage: message }),
+  setLastSessionStart: (lastSessionStart) => set({ lastSessionStart }),
 }));
 
-let socketSingleton: Socket | null = null;
+let queueSocketSingleton: Socket | null = null;
+let videoSocketSingleton: Socket | null = null;
 let chatSocketSingleton: Socket | null = null;
+let queueListenerAttached = false;
+let videoListenerAttached = false;
 let chatListenerAttached = false;
 
 export function useWebSocket() {
   const { token } = useAuth();
-  const [connected, setConnected] = useState(false);
+  const [queueConnected, setQueueConnected] = useState(false);
+  const [videoConnected, setVideoConnected] = useState(false);
   const [chatConnected, setChatConnected] = useState(false);
-  const initializedRef = useRef(false);
+  const queueInitRef = useRef(false);
+  const videoInitRef = useRef(false);
   const lastMessage = useChatEventStore((state) => state.lastMessage);
+  const lastSessionStart = useChatEventStore((state) => state.lastSessionStart);
 
   const setLastMessage = useMemo(() => useChatEventStore.getState().setLastMessage, []);
+  const setLastSessionStart = useMemo(
+    () => useChatEventStore.getState().setLastSessionStart,
+    [],
+  );
 
   useEffect(() => {
     if (!token) {
-      if (socketSingleton) {
-        socketSingleton.disconnect();
-        socketSingleton = null;
+      if (queueSocketSingleton) {
+        queueSocketSingleton.disconnect();
+        queueSocketSingleton = null;
+        queueListenerAttached = false;
+      }
+      if (videoSocketSingleton) {
+        videoSocketSingleton.disconnect();
+        videoSocketSingleton = null;
+        videoListenerAttached = false;
       }
       if (chatSocketSingleton) {
         chatSocketSingleton.disconnect();
         chatSocketSingleton = null;
         chatListenerAttached = false;
       }
-      setConnected(false);
+      setQueueConnected(false);
+      setVideoConnected(false);
       setChatConnected(false);
       setLastMessage(null);
+      setLastSessionStart(null);
       return;
     }
 
-    if (!socketSingleton) {
-      socketSingleton = io(WS_BASE, {
+    if (!queueSocketSingleton) {
+      queueSocketSingleton = io(`${WS_BASE}/queue`, {
+        transports: ['websocket'],
+        autoConnect: false,
+      });
+    }
+    if (!videoSocketSingleton) {
+      videoSocketSingleton = io(`${WS_BASE}/video`, {
         transports: ['websocket'],
         autoConnect: false,
       });
     }
 
-    socketSingleton.auth = { token };
-    socketSingleton.connect();
+    queueSocketSingleton.auth = { token };
+    queueSocketSingleton.connect();
+
+    videoSocketSingleton.auth = { token };
+    videoSocketSingleton.connect();
 
     if (!chatSocketSingleton) {
       chatSocketSingleton = io(`${WS_BASE}/chat`, {
@@ -80,15 +122,35 @@ export function useWebSocket() {
     chatSocketSingleton.auth = { token };
     chatSocketSingleton.connect();
 
-    setConnected(socketSingleton.connected);
+    setQueueConnected(queueSocketSingleton.connected);
+    setVideoConnected(videoSocketSingleton.connected);
     setChatConnected(chatSocketSingleton.connected);
 
-    if (!initializedRef.current) {
-      const handleConnect = () => setConnected(true);
-      const handleDisconnect = () => setConnected(false);
-      socketSingleton.on('connect', handleConnect);
-      socketSingleton.on('disconnect', handleDisconnect);
-      initializedRef.current = true;
+    if (!queueInitRef.current) {
+      const handleQueueConnect = () => setQueueConnected(true);
+      const handleQueueDisconnect = () => setQueueConnected(false);
+      queueSocketSingleton.on('connect', handleQueueConnect);
+      queueSocketSingleton.on('disconnect', handleQueueDisconnect);
+      queueInitRef.current = true;
+    }
+
+    if (!videoInitRef.current) {
+      const handleVideoConnect = () => setVideoConnected(true);
+      const handleVideoDisconnect = () => setVideoConnected(false);
+      videoSocketSingleton.on('connect', handleVideoConnect);
+      videoSocketSingleton.on('disconnect', handleVideoDisconnect);
+      videoInitRef.current = true;
+    }
+
+    if (videoSocketSingleton && !videoListenerAttached) {
+      videoSocketSingleton.on('session:start', (payload: SessionStartPayload) => {
+        setLastSessionStart(payload);
+      });
+      videoListenerAttached = true;
+    }
+
+    if (queueSocketSingleton && !queueListenerAttached) {
+      queueListenerAttached = true;
     }
 
     if (chatSocketSingleton && !chatListenerAttached) {
@@ -99,13 +161,18 @@ export function useWebSocket() {
       chatSocketSingleton.on('disconnect', () => setChatConnected(false));
       chatListenerAttached = true;
     }
-  }, [token]);
+  }, [token, setLastMessage, setLastSessionStart]);
 
   return {
-    socket: socketSingleton,
+    socket: videoSocketSingleton,
+    queueSocket: queueSocketSingleton,
+    videoSocket: videoSocketSingleton,
     chatSocket: chatSocketSingleton,
-    connected,
+    connected: queueConnected && videoConnected,
+    queueConnected,
+    videoConnected,
     chatConnected,
     lastMessage,
+    lastSessionStart,
   };
 }

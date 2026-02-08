@@ -135,6 +135,47 @@ describe('AuthService (unit)', () => {
     expect(user.id).toBe('user-1');
   });
 
+  it('updates current user profile fields', async () => {
+    prisma.user.update.mockResolvedValue({
+      id: 'user-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      displayName: 'Alex',
+      photos: ['https://example.com/a.jpg'],
+      bio: 'Hello',
+      age: 29,
+      gender: 'F',
+      interests: ['Travel'],
+      phone: null,
+      email: null,
+      tokenBalance: 2,
+    });
+
+    const updated = await service.updateCurrentUser('user-1', {
+      displayName: ' Alex ',
+      age: 29,
+      gender: ' F ',
+      interests: [' Travel '],
+      bio: ' Hello ',
+      photos: [' https://example.com/a.jpg '],
+    });
+
+    expect(updated.displayName).toBe('Alex');
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user-1' },
+        data: expect.objectContaining({
+          displayName: 'Alex',
+          age: 29,
+          gender: 'F',
+          interests: ['Travel'],
+          bio: 'Hello',
+          photos: ['https://example.com/a.jpg'],
+        }),
+      }),
+    );
+  });
+
   it('exports user data and throws when missing', async () => {
     prisma.user.findUnique.mockResolvedValueOnce(null);
 

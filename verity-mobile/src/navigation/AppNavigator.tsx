@@ -38,9 +38,12 @@ export type RootStackParamList = {
   Waiting: undefined;
   VideoCall: {
     sessionId?: string;
+    partnerId?: string;
+    partnerAnonymousId?: string;
+    queueKey?: string;
+    matchedAt?: string;
     channelToken?: string;
     agoraChannel?: string;
-    partnerAnonymousId?: string;
   };
   Decision: {
     sessionId?: string;

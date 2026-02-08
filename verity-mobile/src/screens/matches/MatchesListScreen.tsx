@@ -15,11 +15,11 @@ export default function MatchesListScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation();
   const { data, isFetching } = useMatchesQuery();
-  const { socket } = useWebSocket();
+  const { videoSocket } = useWebSocket();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!socket) {
+    if (!videoSocket) {
       return;
     }
     const handleMutual = (payload?: { matchId?: string; id?: string }) => {
@@ -29,11 +29,11 @@ export default function MatchesListScreen() {
         navigation.navigate('Chat' as never, { matchId } as never);
       }
     };
-    socket.on('match:mutual', handleMutual);
+    videoSocket.on('match:mutual', handleMutual);
     return () => {
-      socket.off('match:mutual', handleMutual);
+      videoSocket.off('match:mutual', handleMutual);
     };
-  }, [socket, navigation, queryClient]);
+  }, [videoSocket, navigation, queryClient]);
 
   return (
     <ThemedScreen>

@@ -8,6 +8,7 @@ import {
 type SetupOptions = {
   channel?: string;
   token?: string;
+  uid?: number;
   onJoinSuccess?: () => void;
   onUserJoined?: (uid: number) => void;
   onUserOffline?: (uid: number) => void;
@@ -45,7 +46,7 @@ export async function setupAgoraEngine(options: SetupOptions = {}) {
   }
 
   if (options.channel && options.token) {
-    await engine.joinChannel(options.token, options.channel, 0, {
+    await engine.joinChannel(options.token, options.channel, options.uid ?? 0, {
       clientRoleType: ClientRoleType.ClientRoleBroadcaster,
     });
   }

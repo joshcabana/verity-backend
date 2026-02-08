@@ -11,6 +11,11 @@ import { useQueue } from '../hooks/useQueue';
 import { useTheme } from '../theme/ThemeProvider';
 import { spacing, typography } from '../theme/tokens';
 
+const DEFAULT_QUEUE_REGION =
+  process.env.EXPO_PUBLIC_QUEUE_REGION ??
+  process.env.QUEUE_REGION ??
+  'au';
+
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { user, setUser } = useAuth();
@@ -40,7 +45,7 @@ export default function HomeScreen() {
     markTokenSpent(true);
 
     try {
-      await joinQueue();
+      await joinQueue(DEFAULT_QUEUE_REGION);
       navigation.navigate('Waiting' as never);
     } catch {
       await setUser({ ...(user ?? { id: '' }), tokenBalance });

@@ -55,7 +55,7 @@ describe('Onboarding flow', () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        data: { userId: 'user-1', accessToken: 'token-123' },
+        data: { user: { id: 'user-1' }, accessToken: 'token-123' },
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -80,6 +80,8 @@ describe('Onboarding flow', () => {
 
     await waitFor(() => expect(mockApiJson).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(mockSetToken).toHaveBeenCalledWith('token-123'));
-    await waitFor(() => expect(mockSetUser).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mockSetUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' })),
+    );
   });
 });

@@ -1,6 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
+import { createRequire } from 'module';
+import path from 'path';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { REDIS_CLIENT, type RedisClient } from '../src/common/redis.provider';
@@ -10,9 +12,13 @@ import { MatchingWorker } from '../src/queue/matching.worker';
 import { SessionService } from '../src/session/session.service';
 import { VideoService } from '../src/video/video.service';
 
-const path = require('path') as typeof import('path');
-const socketIoRoot = path.dirname(require.resolve('socket.io/package.json'));
-const io = require(path.join(socketIoRoot, 'client-dist', 'socket.io.js')) as (
+const nodeRequire = createRequire(__filename);
+const socketIoRoot = path.dirname(
+  nodeRequire.resolve('socket.io/package.json'),
+);
+const io = nodeRequire(
+  path.join(socketIoRoot, 'client-dist', 'socket.io.js'),
+) as (
   url: string,
   opts?: Record<string, unknown>,
 ) => {
@@ -84,6 +90,10 @@ class TestPaymentsService extends PaymentsService {
 
 export function setTestEnv() {
   process.env.NODE_ENV = 'test';
+  process.env.DATABASE_URL =
+    process.env.DATABASE_URL ??
+    'postgresql://postgres:postgres@localhost:5432/verity';
+  process.env.REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
   process.env.JWT_ACCESS_SECRET =
     process.env.JWT_ACCESS_SECRET ?? 'test_access_secret';
   process.env.JWT_REFRESH_SECRET =
@@ -254,7 +264,11 @@ export async function connectSocket(
     });
     socket.once('connect_error', (err: unknown) => {
       clearTimeout(timer);
-      reject(err);
+      reject(
+        err instanceof Error
+          ? err
+          : new Error(`Socket connect error: ${String(err)}`),
+      );
     });
   });
 

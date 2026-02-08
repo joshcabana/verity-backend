@@ -75,13 +75,19 @@ jest.mock('../../src/theme/ThemeProvider', () => ({
 }));
 
 jest.mock('../../src/hooks/useWebSocket', () => ({
-  useWebSocket: () => ({ socket: null, connected: false }),
+  useWebSocket: () => ({
+    socket: null,
+    queueSocket: null,
+    videoSocket: null,
+    chatSocket: null,
+    connected: false,
+  }),
 }));
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn().mockImplementation((input: RequestInfo) => {
+    global.fetch = jest.fn().mockImplementation((input: RequestInfo, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/tokens/balance')) {
         return Promise.resolve({
@@ -102,6 +108,17 @@ describe('SettingsScreen', () => {
           ok: true,
           status: 200,
           json: async () => ({ id: 'user-1', phone: '+15551234567' }),
+        }) as any;
+      }
+      if (url.endsWith('/users/me') && init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'user-1',
+            displayName: 'Taylor',
+            interests: ['Travel', 'Music'],
+          }),
         }) as any;
       }
       return Promise.resolve({
@@ -143,6 +160,32 @@ describe('SettingsScreen', () => {
     fireEvent.press(getByText('Edit Profile'));
 
     expect(getByText('Save Changes')).toBeTruthy();
+  });
+
+  it('saves profile edits through PATCH /users/me', async () => {
+    const linking = buildLinkingConfig('verity');
+    const initialState = getStateFromPath('/settings', linking.config);
+    const { getByText, getByPlaceholderText } = render(
+      <AppNavigator initialState={initialState ?? undefined} linkingOverride={linking} />,
+    );
+
+    fireEvent.press(getByText('Settings'));
+    fireEvent.press(getByText('Edit Profile'));
+    fireEvent.changeText(getByPlaceholderText('Your name'), 'Taylor');
+    fireEvent.press(getByText('Save Changes'));
+
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/users/me'),
+        expect.objectContaining({ method: 'PATCH' }),
+      ),
+    );
+
+    await waitFor(() =>
+      expect(mockSetUser).toHaveBeenCalledWith(
+        expect.objectContaining({ displayName: 'Taylor' }),
+      ),
+    );
   });
 
   it('opens the delete account confirmation screen', () => {

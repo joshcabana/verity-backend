@@ -59,3 +59,20 @@ Optional:
 - `k6` installed via Homebrew.
 - Awaiting staging `BASE_URL` and `STRIPE_WEBHOOK_SECRET` to execute tests.
 - Optional: confirm staging load-test window and Prometheus URL/token.
+
+## Execution Log
+- 2026-02-08T20:40:53Z: Operating mode updated to autonomous execution with regular note updates.
+- 2026-02-08T20:40:53Z: Current hard blocker remains staging endpoint discovery (`BASE_URL`) from an Azure subscription that actually owns deployed Container Apps.
+- 2026-02-08T20:40:53Z: Next executable actions, once `BASE_URL` resolves:
+  - run queue dry run (1k VUs, ~2m)
+  - run full queue ramp (10k VUs, 10m)
+  - run video sustain dry run (500 VUs, ~5m)
+  - run video sustain full (2k VUs, 45s holds)
+  - run token webhook spike and summarize threshold pass/fail
+- 2026-02-08T20:45:00Z: Verified all load scripts parse successfully with `k6 inspect` and expose expected stages/scenarios/thresholds.
+- 2026-02-08T20:45:00Z: Repository Actions secrets/variables are empty at repo scope, so GitHub workflow path cannot deploy or reveal a staging endpoint without external Azure access.
+- 2026-02-08T20:50:00Z: Inspected concurrent workspace changes per user request. Findings:
+  - `src/auth/*`, `test/e2e/auth.flow.spec.ts`, `test/unit/auth.service.spec.ts`, and `verity-mobile/src/hooks/useWebSocket.ts` are feature work (profile update + socket wiring) and do not alter load-test scripts directly.
+  - `test/e2e.setup.ts` now seeds default `DATABASE_URL`/`REDIS_URL` for tests; unrelated to k6 staging execution.
+  - `infra/azure/params.staging.json` exists with generated app names (`verity-stg-uebjgh-api`, etc.) but still uses placeholder public domains and secrets.
+- 2026-02-08T20:50:00Z: Integration decision: preserve all in-progress non-load-test files as-is; continue load-test execution path independently, using `params.staging.json` app name as a discovery hint once Azure subscription access is available.
