@@ -249,6 +249,30 @@ describe('QueueService (unit)', () => {
     expect(result).toEqual({ userA: 'user-a', userB: 'user-b' });
   });
 
+  it('requeues only the valid user when partner state belongs to another queue', async () => {
+    const queueKey = service.buildQueueKey('na', { mode: 'standard' });
+    const otherQueueKey = service.buildQueueKey('na', { mode: 'friends' });
+    await redis.set(
+      `queue:user:user-a`,
+      JSON.stringify({ queueKey, joinedAt: 1 }),
+    );
+    await redis.set(
+      `queue:user:user-b`,
+      JSON.stringify({ queueKey: otherQueueKey, joinedAt: 2 }),
+    );
+
+    const result = await service.validatePair(queueKey, {
+      userA: 'user-a',
+      userB: 'user-b',
+      scoreA: 1,
+      scoreB: 2,
+    });
+
+    expect(result).toBeNull();
+    expect(await redis.zrank(`queue:zset:${queueKey}`, 'user-a')).toBe(0);
+    expect(await redis.zrank(`queue:zset:${queueKey}`, 'user-b')).toBeNull();
+  });
+
   it('defers blocked pairs and returns null', async () => {
     const queueKey = service.buildQueueKey('na', { mode: 'standard' });
     await redis.set(
@@ -295,6 +319,7 @@ describe('QueueService (unit)', () => {
     const result = await service.popPair(queueKey);
 
     expect(result).toBeNull();
+    expect(await redis.zrank(`queue:zset:${queueKey}`, 'user-a')).toBe(0);
   });
 
   it('releases acquired locks when lockUsers fails mid-way', async () => {
@@ -450,6 +475,24 @@ describe('QueueGateway (unit)', () => {
     await gateway.handleDisconnect(client);
 
     expect(queueService.leaveQueue).toHaveBeenCalledWith('user-1');
+  });
+
+  it('skips leaveQueue when another socket for the user is still connected', async () => {
+    gateway.server = {
+      to: jest.fn(() => ({ emit: jest.fn() })),
+      sockets: {
+        adapter: {
+          rooms: new Map([['user:user-1', new Set(['socket-2'])]]),
+        },
+      },
+    } as any;
+    const client = {
+      data: { userId: 'user-1' },
+    } as any;
+
+    await gateway.handleDisconnect(client);
+
+    expect(queueService.leaveQueue).not.toHaveBeenCalled();
   });
 
   it('emits match payload to both users', () => {

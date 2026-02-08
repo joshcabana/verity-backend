@@ -67,6 +67,7 @@ export function createPrismaMock() {
     match: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      upsert: jest.fn(),
       findMany: jest.fn(),
       deleteMany: jest.fn(),
     },

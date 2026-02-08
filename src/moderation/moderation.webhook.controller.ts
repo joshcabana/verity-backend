@@ -27,6 +27,7 @@ export class ModerationWebhookController {
       typeof body === 'string' ? (JSON.parse(body) as unknown) : (body ?? {});
     return this.moderationService.handleWebhook(
       payload as Parameters<ModerationService['handleWebhook']>[0],
+      { signature, timestamp },
     );
   }
 }

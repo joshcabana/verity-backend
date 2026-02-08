@@ -70,7 +70,7 @@ export const Session: React.FC = () => {
       setStatus('ended');
       trackEvent('session_ended', {
         sessionId: payload.sessionId,
-        reason: payload.reason,
+        endReason: payload.reason,
       });
     };
 

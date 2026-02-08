@@ -80,6 +80,7 @@ AZURE_RG=verity-staging scripts/deploy-staging.sh
 - Container Apps use a user-assigned managed identity.
 - Secrets are stored in Key Vault and referenced by the apps.
 - ACR pulls are handled via the same identity (no registry passwords stored in app config).
+- Worker runtime uses `node dist/main.js` with `ENABLE_MATCHING_WORKER=true` so only the worker app runs queue matching loops.
 
 ## Front Door + Custom Domain (Optional)
 

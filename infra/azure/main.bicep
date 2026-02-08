@@ -55,6 +55,37 @@ param wsUrl string
 @description('External App URL.')
 param appUrl string
 
+@description('Allowed CORS origins (comma-separated). Defaults to appUrl when empty.')
+param appOrigins string = ''
+
+@description('Refresh cookie SameSite policy.')
+param refreshCookieSameSite string = 'strict'
+
+@description('Refresh cookie domain (optional).')
+param refreshCookieDomain string = ''
+
+@description('Push dispatch webhook URL (optional).')
+param pushDispatchWebhookUrl string = ''
+
+@secure()
+@description('Moderation admin key.')
+param moderationAdminKey string = ''
+
+@description('Enable fallback moderation key behavior.')
+param moderationAdminKeyFallback bool = false
+
+@secure()
+@description('Twilio account SID (optional in non-production).')
+param twilioAccountSid string = ''
+
+@secure()
+@description('Twilio auth token (optional in non-production).')
+param twilioAuthToken string = ''
+
+@secure()
+@description('Twilio Verify service SID (optional in non-production).')
+param twilioVerifyServiceSid string = ''
+
 @description('API container target port.')
 param apiTargetPort int = 3000
 
@@ -291,6 +322,7 @@ var postgresHost = '${postgresServerName}.postgres.database.azure.com'
 var databaseUrl = 'postgres://${postgresAdminLogin}:${postgresAdminPassword}@${postgresHost}:5432/${postgresDbName}?sslmode=require'
 var redisKeys = listKeys(redis.id, redisApiVersion)
 var redisUrl = 'rediss://:${redisKeys.primaryKey}@${redis.properties.hostName}:6380'
+var resolvedAppOrigins = empty(appOrigins) ? appUrl : appOrigins
 resource kvDatabaseUrl 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: '${keyVault.name}/database-url'
   properties: {
@@ -361,6 +393,34 @@ resource kvHiveWebhookSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   }
 }
 
+resource kvModerationAdminKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  name: '${keyVault.name}/moderation-admin-key'
+  properties: {
+    value: moderationAdminKey
+  }
+}
+
+resource kvTwilioAccountSid 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  name: '${keyVault.name}/twilio-account-sid'
+  properties: {
+    value: twilioAccountSid
+  }
+}
+
+resource kvTwilioAuthToken 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  name: '${keyVault.name}/twilio-auth-token'
+  properties: {
+    value: twilioAuthToken
+  }
+}
+
+resource kvTwilioVerifyServiceSid 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  name: '${keyVault.name}/twilio-verify-service-sid'
+  properties: {
+    value: twilioVerifyServiceSid
+  }
+}
+
 var apiSecrets = [
   { name: 'database-url', keyVaultUrl: kvDatabaseUrl.properties.secretUriWithVersion, identity: appIdentity.id }
   { name: 'redis-url', keyVaultUrl: kvRedisUrl.properties.secretUriWithVersion, identity: appIdentity.id }
@@ -372,6 +432,10 @@ var apiSecrets = [
   { name: 'agora-app-certificate', keyVaultUrl: kvAgoraCert.properties.secretUriWithVersion, identity: appIdentity.id }
   { name: 'hive-api-key', keyVaultUrl: kvHiveApiKey.properties.secretUriWithVersion, identity: appIdentity.id }
   { name: 'hive-webhook-secret', keyVaultUrl: kvHiveWebhookSecret.properties.secretUriWithVersion, identity: appIdentity.id }
+  { name: 'moderation-admin-key', keyVaultUrl: kvModerationAdminKey.properties.secretUriWithVersion, identity: appIdentity.id }
+  { name: 'twilio-account-sid', keyVaultUrl: kvTwilioAccountSid.properties.secretUriWithVersion, identity: appIdentity.id }
+  { name: 'twilio-auth-token', keyVaultUrl: kvTwilioAuthToken.properties.secretUriWithVersion, identity: appIdentity.id }
+  { name: 'twilio-verify-service-sid', keyVaultUrl: kvTwilioVerifyServiceSid.properties.secretUriWithVersion, identity: appIdentity.id }
 ]
 
 resource apiApp 'Microsoft.App/containerApps@2023-05-01' = {
@@ -411,14 +475,24 @@ resource apiApp 'Microsoft.App/containerApps@2023-05-01' = {
           env: [
             { name: 'NODE_ENV', value: 'production' }
             { name: 'PORT', value: string(apiTargetPort) }
+            { name: 'ENABLE_MATCHING_WORKER', value: 'false' }
             { name: 'API_URL', value: apiUrl }
             { name: 'WS_URL', value: wsUrl }
             { name: 'APP_URL', value: appUrl }
+            { name: 'APP_ORIGINS', value: resolvedAppOrigins }
+            { name: 'REFRESH_COOKIE_SAMESITE', value: refreshCookieSameSite }
+            { name: 'REFRESH_COOKIE_DOMAIN', value: refreshCookieDomain }
+            { name: 'PUSH_DISPATCH_WEBHOOK_URL', value: pushDispatchWebhookUrl }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'REDIS_URL', secretRef: 'redis-url' }
             { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
             { name: 'JWT_ACCESS_SECRET', secretRef: 'jwt-access-secret' }
             { name: 'JWT_REFRESH_SECRET', secretRef: 'jwt-refresh-secret' }
+            { name: 'MODERATION_ADMIN_KEY', secretRef: 'moderation-admin-key' }
+            { name: 'MODERATION_ADMIN_KEY_FALLBACK', value: moderationAdminKeyFallback ? 'true' : 'false' }
+            { name: 'TWILIO_ACCOUNT_SID', secretRef: 'twilio-account-sid' }
+            { name: 'TWILIO_AUTH_TOKEN', secretRef: 'twilio-auth-token' }
+            { name: 'TWILIO_VERIFY_SERVICE_SID', secretRef: 'twilio-verify-service-sid' }
             { name: 'AGORA_APP_ID', value: agoraAppId }
             { name: 'AGORA_APP_CERTIFICATE', secretRef: 'agora-app-certificate' }
             { name: 'AGORA_TOKEN_TTL_SECONDS', value: string(agoraTokenTtlSeconds) }
@@ -471,7 +545,7 @@ resource workerApp 'Microsoft.App/containerApps@2023-05-01' = {
           image: workerImage
           command: [
             'node'
-            'dist/queue/matching.worker.js'
+            'dist/main.js'
           ]
           resources: {
             cpu: 0.25
@@ -479,11 +553,25 @@ resource workerApp 'Microsoft.App/containerApps@2023-05-01' = {
           }
           env: [
             { name: 'NODE_ENV', value: 'production' }
+            { name: 'PORT', value: string(apiTargetPort) }
+            { name: 'ENABLE_MATCHING_WORKER', value: 'true' }
+            { name: 'API_URL', value: apiUrl }
+            { name: 'WS_URL', value: wsUrl }
+            { name: 'APP_URL', value: appUrl }
+            { name: 'APP_ORIGINS', value: resolvedAppOrigins }
+            { name: 'REFRESH_COOKIE_SAMESITE', value: refreshCookieSameSite }
+            { name: 'REFRESH_COOKIE_DOMAIN', value: refreshCookieDomain }
+            { name: 'PUSH_DISPATCH_WEBHOOK_URL', value: pushDispatchWebhookUrl }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'REDIS_URL', secretRef: 'redis-url' }
             { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
             { name: 'JWT_ACCESS_SECRET', secretRef: 'jwt-access-secret' }
             { name: 'JWT_REFRESH_SECRET', secretRef: 'jwt-refresh-secret' }
+            { name: 'MODERATION_ADMIN_KEY', secretRef: 'moderation-admin-key' }
+            { name: 'MODERATION_ADMIN_KEY_FALLBACK', value: moderationAdminKeyFallback ? 'true' : 'false' }
+            { name: 'TWILIO_ACCOUNT_SID', secretRef: 'twilio-account-sid' }
+            { name: 'TWILIO_AUTH_TOKEN', secretRef: 'twilio-auth-token' }
+            { name: 'TWILIO_VERIFY_SERVICE_SID', secretRef: 'twilio-verify-service-sid' }
             { name: 'AGORA_APP_ID', value: agoraAppId }
             { name: 'AGORA_APP_CERTIFICATE', secretRef: 'agora-app-certificate' }
             { name: 'AGORA_TOKEN_TTL_SECONDS', value: string(agoraTokenTtlSeconds) }

@@ -196,20 +196,28 @@ describe('ModerationService (unit)', () => {
     expect(() => service.verifyWebhookSignature(Buffer.from('a'))).toThrow(
       BadRequestException,
     );
+    expect(() =>
+      service.verifyWebhookSignature(Buffer.from('a'), 'sha256=deadbeef'),
+    ).toThrow(BadRequestException);
   });
 
-  it('rejects stale timestamps and invalid signatures', () => {
+  it('rejects stale timestamps, invalid timestamps, and invalid signatures', () => {
     process.env.HIVE_WEBHOOK_SECRET = 'secret';
 
     const raw = Buffer.from('payload');
     const oldTs = (Date.now() - 10 * 60 * 1000).toString();
+    const validTs = Date.now().toString();
 
     expect(() =>
       service.verifyWebhookSignature(raw, 'sha256=deadbeef', oldTs),
     ).toThrow(BadRequestException);
 
     expect(() =>
-      service.verifyWebhookSignature(raw, 'sha256=deadbeef'),
+      service.verifyWebhookSignature(raw, 'sha256=deadbeef', 'invalid'),
+    ).toThrow(BadRequestException);
+
+    expect(() =>
+      service.verifyWebhookSignature(raw, 'sha256=deadbeef', validTs),
     ).toThrow(BadRequestException);
   });
 
@@ -220,13 +228,17 @@ describe('ModerationService (unit)', () => {
       .update(raw)
       .digest('hex');
     const timestamp = Date.now().toString();
+    const secondTimestamp = Math.floor(Date.now() / 1000).toString();
 
     expect(() =>
       service.verifyWebhookSignature(raw, `sha256=${signature}`, timestamp),
     ).not.toThrow();
+    expect(() =>
+      service.verifyWebhookSignature(raw, `sha256=${signature}`, secondTimestamp),
+    ).not.toThrow();
   });
 
-  it('accepts valid webhook signature', () => {
+  it('rejects missing webhook timestamp even when signature is valid', () => {
     process.env.HIVE_WEBHOOK_SECRET = 'secret';
     const raw = Buffer.from('payload');
     const signature = createHmac('sha256', 'secret')
@@ -235,7 +247,7 @@ describe('ModerationService (unit)', () => {
 
     expect(() =>
       service.verifyWebhookSignature(raw, `sha256=${signature}`),
-    ).not.toThrow();
+    ).toThrow(BadRequestException);
   });
 
   it('rejects missing sessionId in webhook', async () => {
@@ -284,6 +296,43 @@ describe('ModerationService (unit)', () => {
     expect(prisma.moderationEvent.create).toHaveBeenCalledTimes(1);
     expect(sessionService.endSession).toHaveBeenCalled();
     expect(videoGateway.server.to).toHaveBeenCalled();
+  });
+
+  it('deduplicates repeated webhook deliveries for the same signature and timestamp', async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: 'session-1',
+      userAId: 'user-a',
+      userBId: 'user-b',
+    });
+    prisma.moderationEvent.create.mockResolvedValue({ id: 'event-1' });
+    prisma.moderationEvent.count.mockResolvedValue(0);
+
+    await service.handleWebhook(
+      {
+        sessionId: 'session-1',
+        userId: 'user-a',
+        violation: true,
+      },
+      {
+        signature: 'sha256=abc123',
+        timestamp: '1704067200000',
+      },
+    );
+
+    await service.handleWebhook(
+      {
+        sessionId: 'session-1',
+        userId: 'user-a',
+        violation: true,
+      },
+      {
+        signature: 'sha256=abc123',
+        timestamp: '1704067200000',
+      },
+    );
+
+    expect(prisma.moderationEvent.create).toHaveBeenCalledTimes(1);
+    expect(sessionService.endSession).toHaveBeenCalledTimes(1);
   });
 
   it('handles violations for both session users when userId missing', async () => {

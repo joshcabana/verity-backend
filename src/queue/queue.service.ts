@@ -20,7 +20,6 @@ const USER_LOCK_PREFIX = 'queue:lock:';
 const USER_MATCHED_PREFIX = 'queue:matched:';
 
 const LOCK_TTL_MS = 3000;
-const QUEUE_TTL_MS = 5 * 60 * 1000;
 const MATCHED_TTL_MS = 60 * 60 * 1000;
 
 export type QueueJoinInput = {
@@ -68,12 +67,14 @@ export class QueueService {
     if (!lockValue) {
       const existing = await this.redis.get(queueUserKey);
       if (existing) {
-        const state = JSON.parse(existing) as QueueEntryState;
-        const position = await this.redis.zrank(
-          this.queueZsetKey(state.queueKey),
-          userId,
-        );
-        return { status: 'already_queued', queueKey: state.queueKey, position };
+        const state = this.parseQueueEntryState(existing);
+        if (state) {
+          const position = await this.redis.zrank(
+            this.queueZsetKey(state.queueKey),
+            userId,
+          );
+          return { status: 'already_queued', queueKey: state.queueKey, position };
+        }
       }
       throw new ConflictException('Queue operation in progress');
     }
@@ -81,12 +82,14 @@ export class QueueService {
     try {
       const existing = await this.redis.get(queueUserKey);
       if (existing) {
-        const state = JSON.parse(existing) as QueueEntryState;
-        const position = await this.redis.zrank(
-          this.queueZsetKey(state.queueKey),
-          userId,
-        );
-        return { status: 'already_queued', queueKey: state.queueKey, position };
+        const state = this.parseQueueEntryState(existing);
+        if (state) {
+          const position = await this.redis.zrank(
+            this.queueZsetKey(state.queueKey),
+            userId,
+          );
+          return { status: 'already_queued', queueKey: state.queueKey, position };
+        }
       }
 
       const updated = await this.prisma.user.updateMany({
@@ -106,8 +109,6 @@ export class QueueService {
           .set(
             queueUserKey,
             JSON.stringify({ queueKey, joinedAt } satisfies QueueEntryState),
-            'PX',
-            QUEUE_TTL_MS,
           )
           .sadd(QUEUE_KEYS_SET, queueKey)
           .exec();
@@ -178,6 +179,20 @@ export class QueueService {
     const popped = await this.redis.zpopmin(zsetKey, 2);
 
     if (popped.length < 4) {
+      if (popped.length > 0) {
+        const requeueArgs: Array<number | string> = [];
+        for (let index = 0; index + 1 < popped.length; index += 2) {
+          const member = popped[index];
+          const score = Number(popped[index + 1]);
+          if (!Number.isFinite(score)) {
+            continue;
+          }
+          requeueArgs.push(score, member);
+        }
+        if (requeueArgs.length > 0) {
+          await this.redis.zadd(zsetKey, ...requeueArgs);
+        }
+      }
       return null;
     }
 
@@ -194,21 +209,25 @@ export class QueueService {
     pair: QueuePair,
   ): Promise<{ userA: string; userB: string } | null> {
     const zsetKey = this.queueZsetKey(queueKey);
-    const [stateA, stateB] = await this.redis.mget(
+    const [rawStateA, rawStateB] = await this.redis.mget(
       this.userQueueKey(pair.userA),
       this.userQueueKey(pair.userB),
     );
+    const stateA = this.parseQueueEntryState(rawStateA);
+    const stateB = this.parseQueueEntryState(rawStateB);
+    const userAInQueue = stateA?.queueKey === queueKey;
+    const userBInQueue = stateB?.queueKey === queueKey;
 
-    if (!stateA && !stateB) {
+    if (!userAInQueue && !userBInQueue) {
       return null;
     }
 
-    if (!stateA) {
+    if (!userAInQueue) {
       await this.redis.zadd(zsetKey, pair.scoreB, pair.userB);
       return null;
     }
 
-    if (!stateB) {
+    if (!userBInQueue) {
       await this.redis.zadd(zsetKey, pair.scoreA, pair.userA);
       return null;
     }
@@ -381,6 +400,30 @@ export class QueueService {
       scoreBase + 1,
       pair.userB,
     );
+  }
+
+  private parseQueueEntryState(raw: string | null): QueueEntryState | null {
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<QueueEntryState>;
+      if (
+        typeof parsed.queueKey !== 'string' ||
+        parsed.queueKey.length === 0 ||
+        typeof parsed.joinedAt !== 'number' ||
+        !Number.isFinite(parsed.joinedAt)
+      ) {
+        return null;
+      }
+      return {
+        queueKey: parsed.queueKey,
+        joinedAt: parsed.joinedAt,
+      };
+    } catch {
+      return null;
+    }
   }
 }
 

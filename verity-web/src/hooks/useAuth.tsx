@@ -72,22 +72,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
     setLoading(true);
-    const response = await apiJson<{ accessToken?: string }>(
-      '/auth/signup-anonymous',
-      {
-        method: 'POST',
-        body: input,
-      },
-    );
-    if (response.ok && response.data?.accessToken) {
-      setToken(response.data.accessToken);
-      trackEvent('auth_signup_completed', {
-        hasDob: Boolean(input?.dateOfBirth),
-      });
-    } else {
-      throw new Error('Signup failed');
+    try {
+      const response = await apiJson<{ accessToken?: string }>(
+        '/auth/signup-anonymous',
+        {
+          method: 'POST',
+          body: input,
+        },
+      );
+      if (response.ok && response.data?.accessToken) {
+        setToken(response.data.accessToken);
+        trackEvent('auth_signup_completed', {
+          hasDob: Boolean(input?.dateOfBirth),
+        });
+      } else {
+        throw new Error('Signup failed');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [loading, setToken]);
 
   const signOut = useCallback(() => {

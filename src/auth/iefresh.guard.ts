@@ -18,7 +18,13 @@ function parseCookies(header?: string): Record<string, string> {
     if (!rawKey) {
       return acc;
     }
-    acc[rawKey] = decodeURIComponent(rest.join('='));
+    const rawValue = rest.join('=');
+    try {
+      acc[rawKey] = decodeURIComponent(rawValue);
+    } catch {
+      // Keep raw cookie value when percent-decoding fails.
+      acc[rawKey] = rawValue;
+    }
     return acc;
   }, {});
 }

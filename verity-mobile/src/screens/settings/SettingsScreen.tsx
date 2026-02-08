@@ -29,6 +29,8 @@ export default function SettingsScreen() {
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [emailInput, setEmailInput] = useState(user?.email ?? '');
   const [phoneInput, setPhoneInput] = useState(user?.phone ?? '');
+  const [emailCodeInput, setEmailCodeInput] = useState('');
+  const [phoneCodeInput, setPhoneCodeInput] = useState('');
 
   const appVersion = useMemo(
     () => Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '1.0.0',
@@ -89,10 +91,17 @@ export default function SettingsScreen() {
       Alert.alert('Email required', 'Enter a valid email address.');
       return;
     }
+    if (!emailCodeInput.trim()) {
+      Alert.alert('Code required', 'Enter the verification code for your email.');
+      return;
+    }
     try {
       const response = await authenticatedFetch('/auth/verify-email', {
         method: 'POST',
-        body: JSON.stringify({ email: emailInput.trim() }),
+        body: JSON.stringify({
+          email: emailInput.trim(),
+          code: emailCodeInput.trim(),
+        }),
       });
       if (!response) {
         return;
@@ -114,10 +123,17 @@ export default function SettingsScreen() {
       Alert.alert('Phone required', 'Enter a valid phone number.');
       return;
     }
+    if (!phoneCodeInput.trim()) {
+      Alert.alert('Code required', 'Enter the verification code for your phone.');
+      return;
+    }
     try {
       const response = await authenticatedFetch('/auth/verify-phone', {
         method: 'POST',
-        body: JSON.stringify({ phone: phoneInput.trim() }),
+        body: JSON.stringify({
+          phone: phoneInput.trim(),
+          code: phoneCodeInput.trim(),
+        }),
       });
       if (!response) {
         return;
@@ -184,6 +200,15 @@ export default function SettingsScreen() {
           placeholder="you@email.com"
           placeholderTextColor={colors.muted}
         />
+        <TextInput
+          style={[inputStyles.input, styles.inputSpacing]}
+          value={emailCodeInput}
+          onChangeText={setEmailCodeInput}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="Email verification code"
+          placeholderTextColor={colors.muted}
+        />
         <ThemedButton
           label="Verify Email"
           variant="secondary"
@@ -198,6 +223,15 @@ export default function SettingsScreen() {
           onChangeText={setPhoneInput}
           keyboardType="phone-pad"
           placeholder="+1 555 555 5555"
+          placeholderTextColor={colors.muted}
+        />
+        <TextInput
+          style={[inputStyles.input, styles.inputSpacing]}
+          value={phoneCodeInput}
+          onChangeText={setPhoneCodeInput}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="Phone verification code"
           placeholderTextColor={colors.muted}
         />
         <ThemedButton label="Verify Phone" variant="secondary" onPress={handleVerifyPhone} />
