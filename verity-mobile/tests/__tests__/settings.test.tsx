@@ -87,7 +87,7 @@ jest.mock('../../src/hooks/useWebSocket', () => ({
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn().mockImplementation((input: RequestInfo, init?: RequestInit) => {
+    globalThis.fetch = jest.fn().mockImplementation((input: RequestInfo, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/tokens/balance')) {
         return Promise.resolve({
@@ -175,7 +175,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(getByText('Save Changes'));
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/users/me'),
         expect.objectContaining({ method: 'PATCH' }),
       ),
@@ -213,7 +213,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(getByTestId('confirm-delete-button'));
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/users/me'),
         expect.objectContaining({ method: 'DELETE' }),
       ),
@@ -237,7 +237,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(getByText('Verify Email'));
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/verify-email'),
         expect.objectContaining({ method: 'POST' }),
       ),
@@ -255,7 +255,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(getByText('Verify Phone'));
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/verify-phone'),
         expect.objectContaining({ method: 'POST' }),
       ),

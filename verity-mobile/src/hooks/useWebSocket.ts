@@ -85,6 +85,8 @@ export function useWebSocket() {
         chatSocketSingleton = null;
         chatListenerAttached = false;
       }
+      queueInitRef.current = false;
+      videoInitRef.current = false;
       setQueueConnected(false);
       setVideoConnected(false);
       setChatConnected(false);

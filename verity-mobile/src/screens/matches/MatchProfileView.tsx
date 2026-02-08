@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import PhotoCarousel from '../../components/PhotoCarousel';
 import ThemedButton from '../../components/ThemedButton';
 import ThemedCard from '../../components/ThemedCard';
+import type { RootStackParamList } from '../../navigation/AppNavigator';
 import { MatchItem, useMatchesQuery } from '../../queries/useMatchesQuery';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
@@ -13,9 +15,11 @@ type MatchProfileParams = {
   match?: MatchItem;
 };
 
+type MatchProfileNavigation = NativeStackNavigationProp<RootStackParamList>;
+
 export default function MatchProfileView() {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<MatchProfileNavigation>();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = route.params as MatchProfileParams | undefined;
@@ -62,9 +66,7 @@ export default function MatchProfileView() {
       <ThemedButton
         label="Open chat"
         variant="primary"
-        onPress={() =>
-          navigation.navigate('Chat' as never, { matchId: match.id } as never)
-        }
+        onPress={() => navigation.navigate('Chat', { matchId: match.id })}
       />
     </ScrollView>
   );

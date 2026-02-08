@@ -1,19 +1,23 @@
 import React, { useEffect, useMemo } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import PhotoCarousel from '../../components/PhotoCarousel';
 import ThemedCard from '../../components/ThemedCard';
 import ThemedScreen from '../../components/ThemedScreen';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import type { RootStackParamList } from '../../navigation/AppNavigator';
 import { MatchItem, useMatchesQuery } from '../../queries/useMatchesQuery';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
 
+type MatchesNavigation = NativeStackNavigationProp<RootStackParamList>;
+
 export default function MatchesListScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const navigation = useNavigation();
+  const navigation = useNavigation<MatchesNavigation>();
   const { data, isFetching } = useMatchesQuery();
   const { videoSocket } = useWebSocket();
   const queryClient = useQueryClient();
@@ -26,7 +30,7 @@ export default function MatchesListScreen() {
       void queryClient.invalidateQueries({ queryKey: ['matches'] });
       const matchId = payload?.matchId ?? payload?.id;
       if (matchId) {
-        navigation.navigate('Chat' as never, { matchId } as never);
+        navigation.navigate('Chat', { matchId });
       }
     };
     videoSocket.on('match:mutual', handleMutual);
@@ -47,7 +51,7 @@ export default function MatchesListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => navigation.navigate('Chat' as never, { matchId: item.id } as never)}
+            onPress={() => navigation.navigate('Chat', { matchId: item.id })}
           >
             <MatchCard match={item} />
           </TouchableOpacity>

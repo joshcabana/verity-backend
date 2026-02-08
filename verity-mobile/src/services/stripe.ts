@@ -30,12 +30,17 @@ export async function openCheckoutSession(url: string) {
 }
 
 export function parseStripeRedirect(url: string): StripeRedirectResult {
-  const parsed = Linking.parse(url);
-  const path = parsed.path ?? '';
-  const sessionId =
-    typeof parsed.queryParams?.session_id === 'string'
-      ? parsed.queryParams.session_id
-      : undefined;
+  let path = '';
+  let sessionId: string | undefined;
+
+  try {
+    const parsed = new URL(url);
+    path = parsed.pathname.replace(/^\//, '');
+    sessionId = parsed.searchParams.get('session_id') ?? undefined;
+  } catch {
+    path = '';
+    sessionId = undefined;
+  }
 
   if (path.startsWith('tokens/success')) {
     return { status: 'success', sessionId };

@@ -6,6 +6,7 @@ import {
   NavigationContainer,
   type InitialState,
   type LinkingOptions,
+  type NavigatorScreenParams,
   useNavigation,
   useNavigationContainerRef,
   useRoute,
@@ -21,18 +22,13 @@ import MatchProfileView from '../screens/matches/MatchProfileView';
 import ChatScreen from '../screens/chat/ChatScreen';
 import TokenShopScreen from '../screens/TokenShopScreen';
 import { PendingRoute, useAuth } from '../hooks/useAuth';
-import OnboardingStack from './OnboardingStack';
+import OnboardingStack, { type OnboardingStackParamList } from './OnboardingStack';
 import { useTheme } from '../theme/ThemeProvider';
 import { spacing } from '../theme/tokens';
 
 export type RootStackParamList = {
-  Onboarding: undefined;
-  Main:
-    | {
-        screen?: keyof MainTabParamList;
-        params?: Record<string, unknown>;
-      }
-    | undefined;
+  Onboarding: NavigatorScreenParams<OnboardingStackParamList> | undefined;
+  Main: NavigatorScreenParams<MainTabParamList> | undefined;
   ProfileEdit: undefined;
   DeleteAccount: undefined;
   Waiting: undefined;
