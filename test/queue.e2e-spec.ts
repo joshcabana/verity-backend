@@ -64,6 +64,19 @@ describe('Queue (e2e)', () => {
     await redis.flushdb();
   });
 
+  async function createAuthedUser() {
+    const signup = await request(app.getHttpServer())
+      .post('/auth/signup-anonymous')
+      .expect(201);
+    const user = signup.body.user as { id: string };
+    const token = signup.body.accessToken as string;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { tokenBalance: 1 },
+    });
+    return { user, token };
+  }
+
   it('matches two concurrent joins within 3 seconds', async () => {
     const signupA = await request(app.getHttpServer())
       .post('/auth/signup-anonymous')
@@ -141,5 +154,62 @@ describe('Queue (e2e)', () => {
 
     expect(balanceById.get(userA.id)).toBe(0);
     expect(balanceById.get(userB.id)).toBe(0);
+  });
+
+  it('only matches users queued in the same city', async () => {
+    const [userA, userB, userC] = await Promise.all([
+      createAuthedUser(),
+      createAuthedUser(),
+      createAuthedUser(),
+    ]);
+
+    const [joinA, joinB, joinC] = await Promise.all([
+      request(app.getHttpServer())
+        .post('/queue/join')
+        .set('Authorization', `Bearer ${userA.token}`)
+        .send({ city: 'canberra', preferences: { mode: 'standard' } })
+        .expect(201),
+      request(app.getHttpServer())
+        .post('/queue/join')
+        .set('Authorization', `Bearer ${userB.token}`)
+        .send({ city: 'sydney', preferences: { mode: 'standard' } })
+        .expect(201),
+      request(app.getHttpServer())
+        .post('/queue/join')
+        .set('Authorization', `Bearer ${userC.token}`)
+        .send({ city: 'canberra', preferences: { mode: 'standard' } })
+        .expect(201),
+    ]);
+
+    expect(joinA.body.queueKey).toBe(joinC.body.queueKey);
+    expect(joinA.body.queueKey).not.toBe(joinB.body.queueKey);
+
+    if (worker && joinA.body.queueKey) {
+      await (worker as any).processQueueKey?.(joinA.body.queueKey);
+    }
+
+    const deadline = Date.now() + 10_000;
+    let session = null;
+    while (Date.now() < deadline) {
+      if (worker) {
+        await (worker as any).tick?.();
+      }
+      session = await prisma.session.findFirst({
+        where: {
+          OR: [
+            { userAId: userA.user.id, userBId: userC.user.id },
+            { userAId: userC.user.id, userBId: userA.user.id },
+          ],
+        },
+      });
+      if (session) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    expect(session).toBeTruthy();
+    const unmatchedQueueState = await redis.get(`queue:user:${userB.user.id}`);
+    expect(unmatchedQueueState).toBeTruthy();
   });
 });

@@ -9,9 +9,10 @@ const navigateMock = vi.fn();
 const apiJsonMock = vi.fn();
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>(
-    'react-router-dom',
-  );
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>(
+      'react-router-dom',
+    );
   return {
     ...actual,
     useNavigate: () => navigateMock,
@@ -57,7 +58,7 @@ describe('Home and Waiting queue flow', () => {
     await waitFor(() => {
       expect(apiJsonMock).toHaveBeenCalledWith('/queue/join', {
         method: 'POST',
-        body: { region: 'au', preferences: {} },
+        body: { city: 'canberra', preferences: {} },
       });
       expect(navigateMock).toHaveBeenCalledWith('/waiting');
     });
