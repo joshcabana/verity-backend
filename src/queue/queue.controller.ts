@@ -6,8 +6,13 @@ import { getRequestUserId } from '../auth/request-user';
 import { QueueService } from './queue.service';
 
 class JoinQueueDto {
+  @IsOptional()
   @IsString()
-  region!: string;
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
 
   @IsOptional()
   @IsObject()
@@ -23,6 +28,7 @@ export class QueueController {
   async joinQueue(@Req() req: Request, @Body() dto: JoinQueueDto) {
     const userId = getRequestUserId(req);
     return this.queueService.joinQueue(userId, {
+      city: dto.city,
       region: dto.region,
       preferences: dto.preferences,
     });

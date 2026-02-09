@@ -21,9 +21,11 @@ const USER_MATCHED_PREFIX = 'queue:matched:';
 
 const LOCK_TTL_MS = 3000;
 const MATCHED_TTL_MS = 60 * 60 * 1000;
+const DEFAULT_QUEUE_CITY = 'canberra';
 
 export type QueueJoinInput = {
-  region: string;
+  city?: string;
+  region?: string;
   preferences?: Record<string, unknown>;
 };
 
@@ -60,7 +62,8 @@ export class QueueService {
     if (banned) {
       throw new UnauthorizedException('Account is temporarily suspended');
     }
-    const queueKey = this.buildQueueKey(input.region, input.preferences);
+    const queueCity = this.resolveQueueCity(input);
+    const queueKey = this.buildQueueKey(queueCity, input.preferences);
     const queueUserKey = this.userQueueKey(userId);
 
     const lockValue = await this.acquireLock(userId);
@@ -73,7 +76,11 @@ export class QueueService {
             this.queueZsetKey(state.queueKey),
             userId,
           );
-          return { status: 'already_queued', queueKey: state.queueKey, position };
+          return {
+            status: 'already_queued',
+            queueKey: state.queueKey,
+            position,
+          };
         }
       }
       throw new ConflictException('Queue operation in progress');
@@ -88,7 +95,11 @@ export class QueueService {
             this.queueZsetKey(state.queueKey),
             userId,
           );
-          return { status: 'already_queued', queueKey: state.queueKey, position };
+          return {
+            status: 'already_queued',
+            queueKey: state.queueKey,
+            position,
+          };
         }
       }
 
@@ -132,6 +143,7 @@ export class QueueService {
         userId,
         name: 'queue_joined',
         properties: {
+          city: queueCity,
           queueKey,
           status: 'queued',
           position: position ?? -1,
@@ -308,16 +320,40 @@ export class QueueService {
   }
 
   buildQueueKey(
-    regionRaw: string,
+    cityRaw: string,
     preferences?: Record<string, unknown>,
   ): string {
-    const region = regionRaw?.trim().toLowerCase();
-    if (!region) {
-      throw new BadRequestException('Region is required');
+    const city = this.normalizeQueueCity(cityRaw);
+    if (!city) {
+      throw new BadRequestException('City is required');
     }
     const stable = stableStringify(preferences ?? {});
     const hash = createHash('sha256').update(stable).digest('hex').slice(0, 12);
-    return `${region}:${hash}`;
+    return `${city}:${hash}`;
+  }
+
+  private resolveQueueCity(input: QueueJoinInput): string {
+    const city = this.normalizeQueueCity(input.city);
+    if (city) {
+      return city;
+    }
+    const legacyRegion = this.normalizeQueueCity(input.region);
+    if (legacyRegion) {
+      return legacyRegion;
+    }
+    return DEFAULT_QUEUE_CITY;
+  }
+
+  private normalizeQueueCity(value: string | undefined): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return normalized.length > 0 ? normalized : null;
   }
 
   private queueZsetKey(queueKey: string) {

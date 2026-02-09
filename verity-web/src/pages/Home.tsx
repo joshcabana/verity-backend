@@ -10,13 +10,22 @@ const PACKS = [
   { id: 'pro', label: 'Pro', tokens: 30 },
 ] as const;
 
+const CITY_OPTIONS = [
+  { value: 'canberra', label: 'Canberra' },
+  { value: 'sydney', label: 'Sydney' },
+  { value: 'melbourne', label: 'Melbourne' },
+  { value: 'brisbane', label: 'Brisbane' },
+  { value: 'perth', label: 'Perth' },
+  { value: 'adelaide', label: 'Adelaide' },
+] as const;
+
 type BalanceResponse = { tokenBalance: number };
 
 type PurchaseResponse = { url?: string };
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [region, setRegion] = useState('au');
+  const [city, setCity] = useState('canberra');
   const [joining, setJoining] = useState(false);
 
   const balanceQuery = useQuery({
@@ -38,14 +47,14 @@ export const Home: React.FC = () => {
       return;
     }
     trackEvent('queue_join_requested', {
-      region,
+      city,
     });
     setJoining(true);
     const response = await apiJson<{ queueKey?: string; position?: number }>(
       '/queue/join',
       {
-      method: 'POST',
-      body: { region, preferences: {} },
+        method: 'POST',
+        body: { city, preferences: {} },
       },
     );
     setJoining(false);
@@ -54,6 +63,7 @@ export const Home: React.FC = () => {
       return;
     }
     trackEvent('queue_joined', {
+      city,
       queueKey: response.data?.queueKey ?? '',
       position: response.data?.position ?? -1,
     });
@@ -95,20 +105,19 @@ export const Home: React.FC = () => {
           <strong>{balanceLabel}</strong>
         </div>
         <label className="subtle">
-          Region
-          <input
+          City
+          <select
             className="input"
-            list="region-options"
-            value={region}
-            onChange={(event) => setRegion(event.target.value)}
-          />
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+          >
+            {CITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
-        <datalist id="region-options">
-          <option value="au" />
-          <option value="na" />
-          <option value="eu" />
-          <option value="apac" />
-        </datalist>
         <div className="inline" style={{ marginTop: '16px' }}>
           <button className="button" onClick={handleJoin} disabled={!canJoin}>
             {joining ? 'Joining...' : 'Join queue'}
@@ -128,7 +137,8 @@ export const Home: React.FC = () => {
         <div className="callout" style={{ marginTop: '18px' }}>
           <strong>Queue safety</strong>
           <p className="subtle">
-            Sessions end automatically after 45 seconds. You can leave the queue at any time.
+            Sessions end automatically after 45 seconds. You can leave the queue
+            at any time.
           </p>
         </div>
       </div>
