@@ -16,6 +16,34 @@ function isProductionEnv(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
+function parseBooleanEnv(value?: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized === '1' ||
+    normalized === 'true' ||
+    normalized === 'yes' ||
+    normalized === 'on'
+  );
+}
+
+function allowInsecureDevSecrets(): boolean {
+  return (
+    !isProductionEnv() &&
+    parseBooleanEnv(process.env.ALLOW_INSECURE_DEV_SECRETS)
+  );
+}
+
+function missingSecretError(secretName: string): Error {
+  return new Error(
+    `Missing ${secretName} (or JWT_SECRET). Set ${secretName} or JWT_SECRET. ` +
+      'To use insecure dev fallback secrets, set ALLOW_INSECURE_DEV_SECRETS=true in non-production only.',
+  );
+}
+
 export function getAllowedOrigins(): string[] {
   const rawOrigins = process.env.APP_ORIGINS ?? process.env.APP_URL ?? '';
   return rawOrigins
@@ -53,13 +81,11 @@ export function getAccessTokenSecret(): string {
     return accessSecret;
   }
 
-  if (isProductionEnv()) {
-    throw new Error(
-      'Missing JWT_ACCESS_SECRET (or JWT_SECRET) in production environment',
-    );
+  if (allowInsecureDevSecrets()) {
+    return DEV_ACCESS_SECRET;
   }
 
-  return DEV_ACCESS_SECRET;
+  throw missingSecretError('JWT_ACCESS_SECRET');
 }
 
 export function getRefreshTokenSecret(): string {
@@ -71,11 +97,9 @@ export function getRefreshTokenSecret(): string {
     return refreshSecret;
   }
 
-  if (isProductionEnv()) {
-    throw new Error(
-      'Missing JWT_REFRESH_SECRET (or JWT_SECRET) in production environment',
-    );
+  if (allowInsecureDevSecrets()) {
+    return DEV_REFRESH_SECRET;
   }
 
-  return DEV_REFRESH_SECRET;
+  throw missingSecretError('JWT_REFRESH_SECRET');
 }
