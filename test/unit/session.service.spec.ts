@@ -341,6 +341,114 @@ describe('SessionService (unit)', () => {
     expect(videoGateway.emitSessionEnd).toHaveBeenCalledTimes(2);
   });
 
+  it('uses SCAN and not KEYS during recovery', async () => {
+    const scanSpy = jest.spyOn(redis as any, 'scan');
+    const keysSpy = jest.spyOn(redis as any, 'keys');
+    await redis.set(
+      'session:state:session-1',
+      sessionStateJson(new Date(Date.now() + 5000).toISOString()),
+      'PX',
+      60 * 60 * 1000,
+    );
+
+    await service.onModuleInit();
+
+    expect(scanSpy).toHaveBeenCalled();
+    expect(keysSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips recovery when stored decision is already resolved', async () => {
+    const finalized = JSON.stringify({
+      status: 'resolved',
+      outcome: 'non_mutual',
+    });
+    const finalizeSpy = jest.spyOn(service as any, 'finalizeDecision');
+    await redis.set(
+      'session:choice:deadline:session-1',
+      new Date(Date.now() - 1000).toISOString(),
+      'PX',
+      60 * 60 * 1000,
+    );
+    await redis.set(
+      'session:decision:session-1',
+      finalized,
+      'PX',
+      60 * 60 * 1000,
+    );
+
+    await service.onModuleInit();
+
+    expect(finalizeSpy).not.toHaveBeenCalled();
+    expect(await redis.get('session:decision:session-1')).toBe(finalized);
+    expect(prisma.session.findUnique).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('finalizes pending stored decision when pending deadline has passed', async () => {
+    prisma.session.findUnique.mockResolvedValue(baseSession);
+    await redis.set(
+      'session:choice:deadline:session-1',
+      new Date(Date.now() + 60_000).toISOString(),
+      'PX',
+      60 * 60 * 1000,
+    );
+    await redis.set(
+      'session:decision:session-1',
+      JSON.stringify({
+        status: 'pending',
+        deadline: new Date(Date.now() - 1000).toISOString(),
+      }),
+      'PX',
+      60 * 60 * 1000,
+    );
+
+    await service.onModuleInit();
+
+    const decision = await redis.get('session:decision:session-1');
+    expect(decision).toBeTruthy();
+    expect(JSON.parse(decision as string)).toMatchObject({
+      status: 'resolved',
+      outcome: 'non_mutual',
+    });
+  });
+
+  it('reschedules from pending stored decision deadline when still in future', async () => {
+    prisma.session.findUnique.mockResolvedValue(baseSession);
+    const pendingDeadline = new Date(Date.now() + 5000).toISOString();
+    await redis.set(
+      'session:choice:deadline:session-1',
+      new Date(Date.now() - 1000).toISOString(),
+      'PX',
+      60 * 60 * 1000,
+    );
+    await redis.set(
+      'session:decision:session-1',
+      JSON.stringify({
+        status: 'pending',
+        deadline: pendingDeadline,
+      }),
+      'PX',
+      60 * 60 * 1000,
+    );
+
+    await service.onModuleInit();
+
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
+    const pending = await redis.get('session:decision:session-1');
+    expect(JSON.parse(pending as string)).toMatchObject({
+      status: 'pending',
+      deadline: pendingDeadline,
+    });
+
+    await jest.advanceTimersByTimeAsync(5000);
+
+    const resolved = await redis.get('session:decision:session-1');
+    expect(JSON.parse(resolved as string)).toMatchObject({
+      status: 'resolved',
+      outcome: 'non_mutual',
+    });
+  });
+
   it('finalizes overdue choice window on module init', async () => {
     await redis.set(
       'session:state:session-1',
@@ -365,6 +473,49 @@ describe('SessionService (unit)', () => {
       outcome: 'non_mutual',
     });
     expect(prisma.match.upsert).not.toHaveBeenCalled();
+  });
+
+  it('logs recovery summaries with counts and duration', async () => {
+    const logger = (service as any).logger;
+    const logSpy = jest.spyOn(logger, 'log').mockImplementation();
+
+    await service.onModuleInit();
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Session recovery summary'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Choice recovery summary'),
+    );
+  });
+
+  it('truncates recovery work when scan budget is exceeded', async () => {
+    const logger = (service as any).logger;
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation();
+    const logSpy = jest.spyOn(logger, 'log').mockImplementation();
+    const baseScan = (redis as any).scan.bind(redis);
+    jest.spyOn(redis as any, 'scan').mockImplementation(
+      async (cursor: string | number, ...args: Array<string | number>) => {
+        const pattern = String(args[1] ?? '');
+        if (pattern === 'session:state:*' && String(cursor) === '0') {
+          const oversized = Array.from(
+            { length: 10_050 },
+            (_, index) => `session:state:session-${index}`,
+          );
+          return ['0', oversized] as [string, string[]];
+        }
+        return baseScan(cursor, ...args);
+      },
+    );
+
+    await service.onModuleInit();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Session recovery truncated'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('truncated=true'),
+    );
   });
 
   it('cleanupExpiredSessions logs when deletions occur', async () => {
