@@ -20,3 +20,10 @@ Last updated: 2026-02-09
 2. scripts/preflight-env.sh
 3. scripts/deploy-staging.sh
 4. post-deploy smoke checks
+
+## Backend deploy continuation (Option 1)
+- Ignored verity-mobile changes per user choice.
+- Preflight still blocked by missing deploy env vars.
+- Azure auth attempted again via device login.
+- Current device code: PEYT67USJ
+- Device login URL: https://microsoft.com/devicelogin
