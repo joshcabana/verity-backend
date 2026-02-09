@@ -63,4 +63,4 @@ docker run --rm --network "$NETWORK_NAME" \
     && tar --exclude=node_modules --exclude=.git -C /repo -cf - . | tar -C /tmp/app -xf - \
     && npm ci \
     && DATABASE_URL='postgres://postgres:postgres@${PG_CONTAINER}:5432/verity' npx prisma db push --accept-data-loss \
-    && DATABASE_URL='postgres://postgres:postgres@${PG_CONTAINER}:5432/verity' REDIS_URL='redis://${REDIS_CONTAINER}:6379' npm run test:e2e"
+    && DATABASE_URL='postgres://postgres:postgres@${PG_CONTAINER}:5432/verity' REDIS_URL='redis://${REDIS_CONTAINER}:6379' JWT_ACCESS_SECRET='test_access_secret' JWT_REFRESH_SECRET='test_refresh_secret' JWT_SECRET='test_shared_secret' npm run test:e2e"
