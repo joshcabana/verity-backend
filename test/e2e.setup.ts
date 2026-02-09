@@ -246,33 +246,52 @@ export async function connectSocket(
   namespace: string,
   token: string,
 ) {
-  const socket = io(`${baseUrl}${namespace}`, {
-    transports: ['websocket'],
-    auth: { token },
-    forceNew: true,
-    reconnection: false,
-  });
+  const connectTimeoutMs = 10_000;
+  const maxAttempts = 2;
+  let lastError: unknown;
 
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`Socket connect timeout: ${namespace}`)),
-      5000,
-    );
-    socket.once('connect', () => {
-      clearTimeout(timer);
-      resolve();
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const socket = io(`${baseUrl}${namespace}`, {
+      transports: ['websocket'],
+      auth: { token },
+      forceNew: true,
+      reconnection: false,
     });
-    socket.once('connect_error', (err: unknown) => {
-      clearTimeout(timer);
-      reject(
-        err instanceof Error
-          ? err
-          : new Error(`Socket connect error: ${String(err)}`),
-      );
-    });
-  });
 
-  return socket;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error(`Socket connect timeout: ${namespace}`)),
+          connectTimeoutMs,
+        );
+        socket.once('connect', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        socket.once('connect_error', (err: unknown) => {
+          clearTimeout(timer);
+          reject(
+            err instanceof Error
+              ? err
+              : new Error(`Socket connect error: ${String(err)}`),
+          );
+        });
+      });
+
+      return socket;
+    } catch (error) {
+      lastError = error;
+      socket.disconnect();
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Socket connect failed: ${namespace}`);
 }
 
 export function waitForEvent<T = any>(
