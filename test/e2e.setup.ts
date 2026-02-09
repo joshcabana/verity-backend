@@ -1,8 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
-import { createRequire } from 'module';
-import path from 'path';
+import { io } from 'socket.io-client';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { REDIS_CLIENT, type RedisClient } from '../src/common/redis.provider';
@@ -11,23 +10,6 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { MatchingWorker } from '../src/queue/matching.worker';
 import { SessionService } from '../src/session/session.service';
 import { VideoService } from '../src/video/video.service';
-
-const nodeRequire = createRequire(__filename);
-const socketIoRoot = path.dirname(
-  nodeRequire.resolve('socket.io/package.json'),
-);
-const io = nodeRequire(
-  path.join(socketIoRoot, 'client-dist', 'socket.io.js'),
-) as (
-  url: string,
-  opts?: Record<string, unknown>,
-) => {
-  on: (event: string, handler: (...args: any[]) => void) => void;
-  once: (event: string, handler: (...args: any[]) => void) => void;
-  emit: (event: string, payload?: unknown) => void;
-  disconnect: () => void;
-  connected: boolean;
-};
 
 export type TestAppContext = {
   app: INestApplication<App>;
