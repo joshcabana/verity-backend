@@ -233,13 +233,18 @@ describe('SettingsScreen', () => {
 
     const emailInput = getByPlaceholderText('you@email.com');
     fireEvent.changeText(emailInput, 'alex@example.com');
+    const emailCodeInput = getByPlaceholderText('Email verification code');
+    fireEvent.changeText(emailCodeInput, '123456');
 
     fireEvent.press(getByText('Verify Email'));
 
     await waitFor(() =>
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/verify-email'),
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'alex@example.com', code: '123456' }),
+        }),
       ),
     );
 
@@ -251,13 +256,18 @@ describe('SettingsScreen', () => {
 
     const phoneInput = getByPlaceholderText('+1 555 555 5555');
     fireEvent.changeText(phoneInput, '+15551234567');
+    const phoneCodeInput = getByPlaceholderText('Phone verification code');
+    fireEvent.changeText(phoneCodeInput, '654321');
 
     fireEvent.press(getByText('Verify Phone'));
 
     await waitFor(() =>
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/verify-phone'),
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ phone: '+15551234567', code: '654321' }),
+        }),
       ),
     );
 

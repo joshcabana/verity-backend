@@ -82,6 +82,28 @@ AZURE_RG=verity-staging scripts/deploy-staging.sh
 - ACR pulls are handled via the same identity (no registry passwords stored in app config).
 - Worker runtime uses `node dist/main.js` with `ENABLE_MATCHING_WORKER=true` so only the worker app runs queue matching loops.
 
+## Low-Risk PostgreSQL Hardening
+
+These settings are optional and default to the current behavior for compatibility:
+
+- `postgresPublicNetworkAccess`: `Enabled` (default) or `Disabled`
+- `postgresAllowAzureServices`: `true` (default) keeps the `AllowAzureServices` rule
+- `postgresFirewallRules`: additional named IP ranges when public access is enabled
+
+Example hardened public config:
+
+```json
+"postgresPublicNetworkAccess": { "value": "Enabled" },
+"postgresAllowAzureServices": { "value": false },
+"postgresFirewallRules": {
+  "value": [
+    { "name": "office", "startIpAddress": "203.0.113.10", "endIpAddress": "203.0.113.10" }
+  ]
+}
+```
+
+For full private networking, set `postgresPublicNetworkAccess` to `Disabled` only after adding private connectivity for your Container Apps environment.
+
 ## Front Door + Custom Domain (Optional)
 
 Front Door provides a global anycast entrypoint, TLS, and WAF options.

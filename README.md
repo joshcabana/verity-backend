@@ -32,6 +32,7 @@ All env vars are documented in `.env.production.example`.
 Key variables used by the backend:
 - `DATABASE_URL`, `REDIS_URL`
 - `ENABLE_MATCHING_WORKER` (`false` for API app, `true` for dedicated worker app)
+- `postgresPublicNetworkAccess`, `postgresAllowAzureServices`, `postgresFirewallRules` (infra hardening toggles in Bicep params)
 - `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
 - `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
 - `MODERATION_ADMIN_KEY`, `MODERATION_ADMIN_KEY_FALLBACK`

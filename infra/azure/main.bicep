@@ -37,6 +37,19 @@ param postgresAdminLogin string
 @description('PostgreSQL admin password.')
 param postgresAdminPassword string
 
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+@description('PostgreSQL public network access mode. Keep Enabled by default for compatibility.')
+param postgresPublicNetworkAccess string = 'Enabled'
+
+@description('Allow all Azure services to reach PostgreSQL (0.0.0.0 firewall rule).')
+param postgresAllowAzureServices bool = true
+
+@description('Additional PostgreSQL firewall rules when public access is enabled.')
+param postgresFirewallRules array = []
+
 @description('Redis cache name (globally unique).')
 param redisName string
 
@@ -251,7 +264,7 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2022-12-01' = {
       mode: 'Disabled'
     }
     network: {
-      publicNetworkAccess: 'Enabled'
+      publicNetworkAccess: postgresPublicNetworkAccess
     }
   }
 }
@@ -261,13 +274,21 @@ resource postgresDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2022-12
   properties: {}
 }
 
-resource postgresFirewall 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2022-12-01' = {
+resource postgresFirewall 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2022-12-01' = if (postgresPublicNetworkAccess == 'Enabled' && postgresAllowAzureServices) {
   name: '${postgres.name}/AllowAzureServices'
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '0.0.0.0'
   }
 }
+
+resource postgresExtraFirewallRules 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2022-12-01' = [for rule in postgresFirewallRules: if (postgresPublicNetworkAccess == 'Enabled') {
+  name: '${postgres.name}/${string(rule.name)}'
+  properties: {
+    startIpAddress: string(rule.startIpAddress)
+    endIpAddress: string(rule.endIpAddress)
+  }
+}]
 
 resource redis 'Microsoft.Cache/Redis@2023-04-01' = {
   name: redisName
@@ -323,6 +344,9 @@ var databaseUrl = 'postgres://${postgresAdminLogin}:${postgresAdminPassword}@${p
 var redisKeys = listKeys(redis.id, redisApiVersion)
 var redisUrl = 'rediss://:${redisKeys.primaryKey}@${redis.properties.hostName}:6380'
 var resolvedAppOrigins = empty(appOrigins) ? appUrl : appOrigins
+var moderationAdminKeyFallbackValue = moderationAdminKeyFallback ? 'true' : 'false'
+var apiContainerCpu = json('0.5')
+var workerContainerCpu = json('0.25')
 resource kvDatabaseUrl 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: '${keyVault.name}/database-url'
   properties: {
@@ -469,7 +493,7 @@ resource apiApp 'Microsoft.App/containerApps@2023-05-01' = {
           name: 'api'
           image: apiImage
           resources: {
-            cpu: 0.5
+            cpu: apiContainerCpu
             memory: '1.0Gi'
           }
           env: [
@@ -489,7 +513,7 @@ resource apiApp 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'JWT_ACCESS_SECRET', secretRef: 'jwt-access-secret' }
             { name: 'JWT_REFRESH_SECRET', secretRef: 'jwt-refresh-secret' }
             { name: 'MODERATION_ADMIN_KEY', secretRef: 'moderation-admin-key' }
-            { name: 'MODERATION_ADMIN_KEY_FALLBACK', value: moderationAdminKeyFallback ? 'true' : 'false' }
+            { name: 'MODERATION_ADMIN_KEY_FALLBACK', value: moderationAdminKeyFallbackValue }
             { name: 'TWILIO_ACCOUNT_SID', secretRef: 'twilio-account-sid' }
             { name: 'TWILIO_AUTH_TOKEN', secretRef: 'twilio-auth-token' }
             { name: 'TWILIO_VERIFY_SERVICE_SID', secretRef: 'twilio-verify-service-sid' }
@@ -548,7 +572,7 @@ resource workerApp 'Microsoft.App/containerApps@2023-05-01' = {
             'dist/main.js'
           ]
           resources: {
-            cpu: 0.25
+            cpu: workerContainerCpu
             memory: '0.5Gi'
           }
           env: [
@@ -568,7 +592,7 @@ resource workerApp 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'JWT_ACCESS_SECRET', secretRef: 'jwt-access-secret' }
             { name: 'JWT_REFRESH_SECRET', secretRef: 'jwt-refresh-secret' }
             { name: 'MODERATION_ADMIN_KEY', secretRef: 'moderation-admin-key' }
-            { name: 'MODERATION_ADMIN_KEY_FALLBACK', value: moderationAdminKeyFallback ? 'true' : 'false' }
+            { name: 'MODERATION_ADMIN_KEY_FALLBACK', value: moderationAdminKeyFallbackValue }
             { name: 'TWILIO_ACCOUNT_SID', secretRef: 'twilio-account-sid' }
             { name: 'TWILIO_AUTH_TOKEN', secretRef: 'twilio-auth-token' }
             { name: 'TWILIO_VERIFY_SERVICE_SID', secretRef: 'twilio-verify-service-sid' }
