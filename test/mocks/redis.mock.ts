@@ -33,6 +33,38 @@ class InMemoryRedis {
     this.expiries.delete(key);
   }
 
+  private allKeys() {
+    const keys = new Set<string>();
+    for (const key of this.store.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    for (const key of this.hashes.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    for (const key of this.zsets.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    for (const key of this.sets.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    return Array.from(keys);
+  }
+
+  private patternToRegex(pattern: string) {
+    const escaped = pattern
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*');
+    return new RegExp(`^${escaped}$`);
+  }
+
   private hasKey(key: string) {
     if (this.isExpired(key)) {
       return false;
@@ -83,6 +115,39 @@ class InMemoryRedis {
 
   async mget(...keys: string[]) {
     return Promise.all(keys.map((key) => this.get(key)));
+  }
+
+  async keys(pattern: string) {
+    const regex = this.patternToRegex(pattern);
+    return this.allKeys().filter((key) => regex.test(key));
+  }
+
+  async scan(cursor: string | number, ...args: Array<string | number>) {
+    const current = Math.max(0, Number(cursor) || 0);
+    let pattern = '*';
+    let count = 10;
+
+    for (let i = 0; i < args.length; i += 2) {
+      const option = String(args[i]).toUpperCase();
+      const value = args[i + 1];
+      if (option === 'MATCH' && value !== undefined) {
+        pattern = String(value);
+      }
+      if (option === 'COUNT' && value !== undefined) {
+        const parsedCount = Number(value);
+        if (Number.isFinite(parsedCount) && parsedCount > 0) {
+          count = parsedCount;
+        }
+      }
+    }
+
+    const regex = this.patternToRegex(pattern);
+    const all = this.allKeys().filter((key) => regex.test(key));
+    const page = all.slice(current, current + count);
+    const nextCursor =
+      current + count >= all.length ? '0' : String(current + count);
+
+    return [nextCursor, page] as [string, string[]];
   }
 
   async hget(key: string, field: string) {

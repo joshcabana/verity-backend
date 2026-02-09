@@ -44,14 +44,36 @@ describe('security-config', () => {
     expect(() => getRefreshTokenSecret()).toThrow('Missing JWT_REFRESH_SECRET');
   });
 
-  it('allows local fallback secrets outside production', () => {
+  it('throws outside production when JWT secrets are missing by default', () => {
     process.env.NODE_ENV = 'development';
+    delete process.env.JWT_SECRET;
+    delete process.env.JWT_ACCESS_SECRET;
+    delete process.env.JWT_REFRESH_SECRET;
+
+    expect(() => getAccessTokenSecret()).toThrow('Missing JWT_ACCESS_SECRET');
+    expect(() => getRefreshTokenSecret()).toThrow('Missing JWT_REFRESH_SECRET');
+  });
+
+  it('allows local fallback secrets when insecure override is enabled', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.ALLOW_INSECURE_DEV_SECRETS = 'true';
     delete process.env.JWT_SECRET;
     delete process.env.JWT_ACCESS_SECRET;
     delete process.env.JWT_REFRESH_SECRET;
 
     expect(getAccessTokenSecret()).toBe('dev_access_secret');
     expect(getRefreshTokenSecret()).toBe('dev_refresh_secret');
+  });
+
+  it('ignores insecure override in production', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ALLOW_INSECURE_DEV_SECRETS = 'true';
+    delete process.env.JWT_SECRET;
+    delete process.env.JWT_ACCESS_SECRET;
+    delete process.env.JWT_REFRESH_SECRET;
+
+    expect(() => getAccessTokenSecret()).toThrow('Missing JWT_ACCESS_SECRET');
+    expect(() => getRefreshTokenSecret()).toThrow('Missing JWT_REFRESH_SECRET');
   });
 
   it('applies APP_ORIGINS allowlist when configured', () => {

@@ -92,6 +92,8 @@ model Session {
   userB User @relation("UserBSessions", fields: [userBId], references: [id])
 
   @@index([queueKey])
+  @@index([userAId])
+  @@index([userBId])
 }
 
 model Match {
@@ -151,6 +153,8 @@ model ModerationEvent {
   userId    String
 
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model ModerationReport {

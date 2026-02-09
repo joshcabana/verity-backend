@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
   OnModuleDestroy,
+  OnModuleInit,
   Optional,
 } from '@nestjs/common';
 import type { Session } from '@prisma/client';
@@ -23,6 +24,9 @@ const SESSION_LOCK_TTL_MS = 10_000;
 const CHOICE_WINDOW_MS = 60_000;
 const CHOICE_STATE_TTL_MS = 2 * 60 * 60 * 1000;
 const SESSION_RETENTION_MS = 24 * 60 * 60 * 1000;
+const RECOVERY_SCAN_COUNT = 200;
+const RECOVERY_MAX_KEYS = 10_000;
+const RECOVERY_MAX_DURATION_MS = 5_000;
 
 type SessionChoice = 'MATCH' | 'PASS';
 
@@ -30,8 +34,30 @@ type ChoiceResult =
   | { status: 'pending'; deadline: string }
   | { status: 'resolved'; outcome: 'mutual' | 'non_mutual'; matchId?: string };
 
+type SessionStateRecord = {
+  sessionId: string;
+  userAId: string;
+  userBId: string;
+  endAt: string;
+};
+
+type ResolvedChoiceResult = Extract<ChoiceResult, { status: 'resolved' }>;
+type PendingChoiceResult = Extract<ChoiceResult, { status: 'pending' }>;
+
+type ParsedStoredDecision =
+  | { kind: 'none' }
+  | { kind: 'invalid' }
+  | { kind: 'resolved'; value: ResolvedChoiceResult }
+  | { kind: 'pending'; value: PendingChoiceResult; deadline: Date };
+
+type ScanKeysResult = {
+  keys: string[];
+  scanned: number;
+  truncated: boolean;
+};
+
 @Injectable()
-export class SessionService implements OnModuleDestroy {
+export class SessionService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SessionService.name);
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly choiceTimers = new Map<
@@ -48,6 +74,11 @@ export class SessionService implements OnModuleDestroy {
     @Optional() private readonly analyticsService?: AnalyticsService,
   ) {}
 
+  async onModuleInit() {
+    await this.recoverSessionEndTimers();
+    await this.recoverChoiceTimeouts();
+  }
+
   onModuleDestroy() {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
@@ -57,6 +88,162 @@ export class SessionService implements OnModuleDestroy {
       clearTimeout(timer);
     }
     this.choiceTimers.clear();
+  }
+
+  private async recoverSessionEndTimers() {
+    const startedAt = Date.now();
+    const scanResult = await this.scanKeys('session:state:*');
+    let truncated = scanResult.truncated;
+    let invalidState = 0;
+    let skippedEnded = 0;
+    let finalizedOverdue = 0;
+    let rescheduled = 0;
+
+    for (const key of scanResult.keys) {
+      if (Date.now() - startedAt >= RECOVERY_MAX_DURATION_MS) {
+        truncated = true;
+        break;
+      }
+
+      const state = this.parseSessionState(await this.redis.get(key));
+      if (!state) {
+        invalidState += 1;
+        continue;
+      }
+
+      const ended = await this.redis.get(this.sessionEndedKey(state.sessionId));
+      if (ended) {
+        skippedEnded += 1;
+        continue;
+      }
+
+      const endAt = this.parseIsoDate(state.endAt);
+      if (!endAt) {
+        invalidState += 1;
+        this.logger.warn(`Skipping invalid session endAt for ${state.sessionId}`);
+        continue;
+      }
+
+      if (endAt.getTime() <= Date.now()) {
+        await this.endSession(
+          this.buildSyntheticSession(state.sessionId, state.userAId, state.userBId),
+          'timeout',
+        );
+        finalizedOverdue += 1;
+        continue;
+      }
+
+      this.scheduleSessionEnd(state.sessionId, state.userAId, state.userBId, endAt);
+      rescheduled += 1;
+    }
+
+    const durationMs = Date.now() - startedAt;
+    if (truncated) {
+      this.logger.warn(
+        `Session recovery truncated scanned=${scanResult.scanned} durationMs=${durationMs}`,
+      );
+    }
+    this.logger.log(
+      `Session recovery summary scanned=${scanResult.scanned} invalidState=${invalidState} skippedEnded=${skippedEnded} finalizedOverdue=${finalizedOverdue} rescheduled=${rescheduled} truncated=${truncated} durationMs=${durationMs}`,
+    );
+  }
+
+  private async recoverChoiceTimeouts() {
+    const startedAt = Date.now();
+    const scanResult = await this.scanKeys('session:choice:deadline:*');
+    let truncated = scanResult.truncated;
+    let skippedResolved = 0;
+    let pendingFinalized = 0;
+    let pendingRescheduled = 0;
+    let deadlineFromKeyFinalized = 0;
+    let deadlineFromKeyRescheduled = 0;
+    let invalidDecisionPayload = 0;
+    let invalidOrMissingDeadline = 0;
+    let missingParticipants = 0;
+
+    for (const key of scanResult.keys) {
+      if (Date.now() - startedAt >= RECOVERY_MAX_DURATION_MS) {
+        truncated = true;
+        break;
+      }
+
+      const sessionId = key.replace('session:choice:deadline:', '');
+      if (sessionId.length === 0) {
+        invalidOrMissingDeadline += 1;
+        continue;
+      }
+
+      const parsedDecision = await this.readStoredDecision(sessionId);
+      if (parsedDecision.kind === 'resolved') {
+        skippedResolved += 1;
+        continue;
+      }
+
+      let deadline: Date | null = null;
+      let deadlineSource: 'pending' | 'key' = 'key';
+
+      if (parsedDecision.kind === 'pending') {
+        deadline = parsedDecision.deadline;
+        deadlineSource = 'pending';
+      } else {
+        if (parsedDecision.kind === 'invalid') {
+          invalidDecisionPayload += 1;
+        }
+        const rawDeadline = await this.redis.get(key);
+        if (!rawDeadline) {
+          invalidOrMissingDeadline += 1;
+          continue;
+        }
+        deadline = this.parseIsoDate(rawDeadline);
+        if (!deadline) {
+          invalidOrMissingDeadline += 1;
+          this.logger.warn(`Skipping invalid choice deadline for ${sessionId}`);
+          continue;
+        }
+      }
+
+      const participants = await this.resolveSessionParticipants(sessionId);
+      if (!participants) {
+        missingParticipants += 1;
+        continue;
+      }
+
+      if (deadline.getTime() <= Date.now()) {
+        await this.finalizeDecision(
+          this.buildSyntheticSession(sessionId, participants.userAId, participants.userBId),
+          'PASS',
+          'PASS',
+        );
+        if (deadlineSource === 'pending') {
+          pendingFinalized += 1;
+        } else {
+          deadlineFromKeyFinalized += 1;
+        }
+        continue;
+      }
+
+      this.scheduleChoiceTimeout(
+        sessionId,
+        participants.userAId,
+        participants.userBId,
+        deadline,
+      );
+      if (deadlineSource === 'pending') {
+        pendingRescheduled += 1;
+      } else {
+        deadlineFromKeyRescheduled += 1;
+      }
+    }
+
+    const durationMs = Date.now() - startedAt;
+    if (truncated) {
+      this.logger.warn(
+        `Choice recovery truncated scanned=${scanResult.scanned} durationMs=${durationMs}`,
+      );
+    }
+    this.logger.log(
+      `Choice recovery summary scanned=${scanResult.scanned} skippedResolved=${skippedResolved} pendingFinalized=${pendingFinalized} pendingRescheduled=${pendingRescheduled} deadlineFromKeyFinalized=${deadlineFromKeyFinalized} deadlineFromKeyRescheduled=${deadlineFromKeyRescheduled} invalidDecisionPayload=${invalidDecisionPayload} invalidOrMissingDeadline=${invalidOrMissingDeadline} missingParticipants=${missingParticipants} truncated=${truncated} durationMs=${durationMs}`,
+    );
   }
 
   async handleSessionCreated(session: Session) {
@@ -212,18 +399,16 @@ export class SessionService implements OnModuleDestroy {
     userBId: string,
     endAt: Date,
   ) {
+    const existingTimer = this.timers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.timers.delete(sessionId);
+    }
+
     const delay = Math.max(0, endAt.getTime() - Date.now());
     const timer = setTimeout(() => {
       void this.endSession(
-        {
-          id: sessionId,
-          userAId,
-          userBId,
-          region: null,
-          queueKey: null,
-          createdAt: new Date(0),
-          updatedAt: new Date(0),
-        } as Session,
+        this.buildSyntheticSession(sessionId, userAId, userBId),
         'timeout',
       );
     }, delay);
@@ -358,9 +543,9 @@ export class SessionService implements OnModuleDestroy {
     choiceB: SessionChoice,
   ): Promise<ChoiceResult> {
     const decisionKey = this.sessionDecisionKey(session.id);
-    const existing = await this.getDecision(session.id);
-    if (existing) {
-      return existing;
+    const existing = await this.readStoredDecision(session.id);
+    if (existing.kind === 'resolved') {
+      return existing.value;
     }
 
     const outcome =
@@ -394,17 +579,35 @@ export class SessionService implements OnModuleDestroy {
         ? { status: 'resolved', outcome, matchId }
         : { status: 'resolved', outcome };
 
-    const stored = await this.redis.set(
-      decisionKey,
-      JSON.stringify(payload),
-      'PX',
-      CHOICE_STATE_TTL_MS,
-      'NX',
-    );
+    const stored =
+      existing.kind === 'pending'
+        ? await this.redis.set(
+            decisionKey,
+            JSON.stringify(payload),
+            'PX',
+            CHOICE_STATE_TTL_MS,
+          )
+        : await this.redis.set(
+            decisionKey,
+            JSON.stringify(payload),
+            'PX',
+            CHOICE_STATE_TTL_MS,
+            'NX',
+          );
 
     if (!stored) {
-      const cached = await this.getDecision(session.id);
-      return cached ?? payload;
+      const cached = await this.readStoredDecision(session.id);
+      if (cached.kind === 'resolved') {
+        return cached.value;
+      }
+      if (cached.kind === 'pending') {
+        await this.redis.set(
+          decisionKey,
+          JSON.stringify(payload),
+          'PX',
+          CHOICE_STATE_TTL_MS,
+        );
+      }
     }
 
     this.analyticsService?.trackServerEvent({
@@ -484,11 +687,11 @@ export class SessionService implements OnModuleDestroy {
   }
 
   private async getDecision(sessionId: string): Promise<ChoiceResult | null> {
-    const stored = await this.redis.get(this.sessionDecisionKey(sessionId));
-    if (!stored) {
+    const parsed = await this.readStoredDecision(sessionId);
+    if (parsed.kind === 'none' || parsed.kind === 'invalid') {
       return null;
     }
-    return JSON.parse(stored) as ChoiceResult;
+    return parsed.value;
   }
 
   private async ensureChoiceDeadline(sessionId: string): Promise<Date> {
@@ -515,22 +718,16 @@ export class SessionService implements OnModuleDestroy {
     userBId: string,
     deadline: Date,
   ) {
-    if (this.choiceTimers.has(sessionId)) {
-      return;
+    const existingTimer = this.choiceTimers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.choiceTimers.delete(sessionId);
     }
 
     const delay = Math.max(0, deadline.getTime() - Date.now());
     const timer = setTimeout(() => {
       void this.finalizeDecision(
-        {
-          id: sessionId,
-          userAId,
-          userBId,
-          region: null,
-          queueKey: null,
-          createdAt: new Date(0),
-          updatedAt: new Date(0),
-        } as Session,
+        this.buildSyntheticSession(sessionId, userAId, userBId),
         'PASS',
         'PASS',
       );
@@ -547,6 +744,153 @@ export class SessionService implements OnModuleDestroy {
     if (result.count > 0) {
       this.logger.log(`Deleted ${result.count} expired sessions`);
     }
+  }
+
+  private async resolveSessionParticipants(
+    sessionId: string,
+  ): Promise<{ userAId: string; userBId: string } | null> {
+    const state = this.parseSessionState(
+      await this.redis.get(this.sessionStateKey(sessionId)),
+    );
+    if (state) {
+      return { userAId: state.userAId, userBId: state.userBId };
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { userAId: true, userBId: true },
+    });
+    if (!session) {
+      this.logger.warn(`Skipping choice recovery for missing session ${sessionId}`);
+      return null;
+    }
+
+    return session;
+  }
+
+  private async scanKeys(pattern: string): Promise<ScanKeysResult> {
+    const keys = new Set<string>();
+    let cursor = '0';
+    let scanned = 0;
+    const startedAt = Date.now();
+    let truncated = false;
+
+    do {
+      const [nextCursor, pageKeys] = await this.redis.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        RECOVERY_SCAN_COUNT,
+      );
+      scanned += pageKeys.length;
+      for (const key of pageKeys) {
+        if (keys.size >= RECOVERY_MAX_KEYS) {
+          truncated = true;
+          break;
+        }
+        keys.add(key);
+      }
+      cursor = nextCursor;
+      if (truncated || Date.now() - startedAt >= RECOVERY_MAX_DURATION_MS) {
+        truncated = true;
+        break;
+      }
+    } while (cursor !== '0');
+
+    return { keys: Array.from(keys), scanned, truncated };
+  }
+
+  private buildSyntheticSession(
+    sessionId: string,
+    userAId: string,
+    userBId: string,
+  ): Session {
+    return {
+      id: sessionId,
+      userAId,
+      userBId,
+      region: null,
+      queueKey: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+  }
+
+  private parseSessionState(raw: string | null): SessionStateRecord | null {
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<SessionStateRecord>;
+      if (
+        typeof parsed.sessionId !== 'string' ||
+        typeof parsed.userAId !== 'string' ||
+        typeof parsed.userBId !== 'string' ||
+        typeof parsed.endAt !== 'string'
+      ) {
+        return null;
+      }
+      return {
+        sessionId: parsed.sessionId,
+        userAId: parsed.userAId,
+        userBId: parsed.userBId,
+        endAt: parsed.endAt,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async readStoredDecision(
+    sessionId: string,
+  ): Promise<ParsedStoredDecision> {
+    const raw = await this.redis.get(this.sessionDecisionKey(sessionId));
+    return this.parseStoredDecision(raw);
+  }
+
+  private parseStoredDecision(raw: string | null): ParsedStoredDecision {
+    if (!raw) {
+      return { kind: 'none' };
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<ChoiceResult>;
+      if (
+        parsed.status === 'resolved' &&
+        (parsed.outcome === 'mutual' || parsed.outcome === 'non_mutual')
+      ) {
+        const resolved: ResolvedChoiceResult =
+          typeof parsed.matchId === 'string'
+            ? { status: 'resolved', outcome: parsed.outcome, matchId: parsed.matchId }
+            : { status: 'resolved', outcome: parsed.outcome };
+        return { kind: 'resolved', value: resolved };
+      }
+
+      if (parsed.status === 'pending' && typeof parsed.deadline === 'string') {
+        const deadline = this.parseIsoDate(parsed.deadline);
+        if (!deadline) {
+          return { kind: 'invalid' };
+        }
+        return {
+          kind: 'pending',
+          value: { status: 'pending', deadline: parsed.deadline },
+          deadline,
+        };
+      }
+
+      return { kind: 'invalid' };
+    } catch {
+      return { kind: 'invalid' };
+    }
+  }
+
+  private parseIsoDate(value: string): Date | null {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed;
   }
 
   private sessionStateKey(sessionId: string) {
