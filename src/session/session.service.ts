@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
   OnModuleDestroy,
+  OnModuleInit,
   Optional,
 } from '@nestjs/common';
 import type { Session } from '@prisma/client';
@@ -30,8 +31,15 @@ type ChoiceResult =
   | { status: 'pending'; deadline: string }
   | { status: 'resolved'; outcome: 'mutual' | 'non_mutual'; matchId?: string };
 
+type SessionStateRecord = {
+  sessionId: string;
+  userAId: string;
+  userBId: string;
+  endAt: string;
+};
+
 @Injectable()
-export class SessionService implements OnModuleDestroy {
+export class SessionService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SessionService.name);
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly choiceTimers = new Map<
@@ -48,6 +56,11 @@ export class SessionService implements OnModuleDestroy {
     @Optional() private readonly analyticsService?: AnalyticsService,
   ) {}
 
+  async onModuleInit() {
+    await this.recoverSessionEndTimers();
+    await this.recoverChoiceTimeouts();
+  }
+
   onModuleDestroy() {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
@@ -57,6 +70,86 @@ export class SessionService implements OnModuleDestroy {
       clearTimeout(timer);
     }
     this.choiceTimers.clear();
+  }
+
+  private async recoverSessionEndTimers() {
+    const sessionStateKeys = await this.redis.keys('session:state:*');
+
+    for (const key of sessionStateKeys) {
+      const state = this.parseSessionState(await this.redis.get(key));
+      if (!state) {
+        continue;
+      }
+
+      const ended = await this.redis.get(this.sessionEndedKey(state.sessionId));
+      if (ended) {
+        continue;
+      }
+
+      const endAt = new Date(state.endAt);
+      if (Number.isNaN(endAt.getTime())) {
+        this.logger.warn(`Skipping invalid session endAt for ${state.sessionId}`);
+        continue;
+      }
+
+      if (endAt.getTime() <= Date.now()) {
+        await this.endSession(
+          this.buildSyntheticSession(state.sessionId, state.userAId, state.userBId),
+          'timeout',
+        );
+        continue;
+      }
+
+      this.scheduleSessionEnd(state.sessionId, state.userAId, state.userBId, endAt);
+    }
+  }
+
+  private async recoverChoiceTimeouts() {
+    const deadlineKeys = await this.redis.keys('session:choice:deadline:*');
+
+    for (const key of deadlineKeys) {
+      const sessionId = key.replace('session:choice:deadline:', '');
+      if (sessionId.length === 0) {
+        continue;
+      }
+
+      const decision = await this.redis.get(this.sessionDecisionKey(sessionId));
+      if (decision) {
+        continue;
+      }
+
+      const rawDeadline = await this.redis.get(key);
+      if (!rawDeadline) {
+        continue;
+      }
+
+      const deadline = new Date(rawDeadline);
+      if (Number.isNaN(deadline.getTime())) {
+        this.logger.warn(`Skipping invalid choice deadline for ${sessionId}`);
+        continue;
+      }
+
+      const participants = await this.resolveSessionParticipants(sessionId);
+      if (!participants) {
+        continue;
+      }
+
+      if (deadline.getTime() <= Date.now()) {
+        await this.finalizeDecision(
+          this.buildSyntheticSession(sessionId, participants.userAId, participants.userBId),
+          'PASS',
+          'PASS',
+        );
+        continue;
+      }
+
+      this.scheduleChoiceTimeout(
+        sessionId,
+        participants.userAId,
+        participants.userBId,
+        deadline,
+      );
+    }
   }
 
   async handleSessionCreated(session: Session) {
@@ -212,18 +305,16 @@ export class SessionService implements OnModuleDestroy {
     userBId: string,
     endAt: Date,
   ) {
+    const existingTimer = this.timers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.timers.delete(sessionId);
+    }
+
     const delay = Math.max(0, endAt.getTime() - Date.now());
     const timer = setTimeout(() => {
       void this.endSession(
-        {
-          id: sessionId,
-          userAId,
-          userBId,
-          region: null,
-          queueKey: null,
-          createdAt: new Date(0),
-          updatedAt: new Date(0),
-        } as Session,
+        this.buildSyntheticSession(sessionId, userAId, userBId),
         'timeout',
       );
     }, delay);
@@ -515,22 +606,16 @@ export class SessionService implements OnModuleDestroy {
     userBId: string,
     deadline: Date,
   ) {
-    if (this.choiceTimers.has(sessionId)) {
-      return;
+    const existingTimer = this.choiceTimers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.choiceTimers.delete(sessionId);
     }
 
     const delay = Math.max(0, deadline.getTime() - Date.now());
     const timer = setTimeout(() => {
       void this.finalizeDecision(
-        {
-          id: sessionId,
-          userAId,
-          userBId,
-          region: null,
-          queueKey: null,
-          createdAt: new Date(0),
-          updatedAt: new Date(0),
-        } as Session,
+        this.buildSyntheticSession(sessionId, userAId, userBId),
         'PASS',
         'PASS',
       );
@@ -546,6 +631,69 @@ export class SessionService implements OnModuleDestroy {
     });
     if (result.count > 0) {
       this.logger.log(`Deleted ${result.count} expired sessions`);
+    }
+  }
+
+  private async resolveSessionParticipants(
+    sessionId: string,
+  ): Promise<{ userAId: string; userBId: string } | null> {
+    const state = this.parseSessionState(
+      await this.redis.get(this.sessionStateKey(sessionId)),
+    );
+    if (state) {
+      return { userAId: state.userAId, userBId: state.userBId };
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { userAId: true, userBId: true },
+    });
+    if (!session) {
+      this.logger.warn(`Skipping choice recovery for missing session ${sessionId}`);
+      return null;
+    }
+
+    return session;
+  }
+
+  private buildSyntheticSession(
+    sessionId: string,
+    userAId: string,
+    userBId: string,
+  ): Session {
+    return {
+      id: sessionId,
+      userAId,
+      userBId,
+      region: null,
+      queueKey: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+  }
+
+  private parseSessionState(raw: string | null): SessionStateRecord | null {
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<SessionStateRecord>;
+      if (
+        typeof parsed.sessionId !== 'string' ||
+        typeof parsed.userAId !== 'string' ||
+        typeof parsed.userBId !== 'string' ||
+        typeof parsed.endAt !== 'string'
+      ) {
+        return null;
+      }
+      return {
+        sessionId: parsed.sessionId,
+        userAId: parsed.userAId,
+        userBId: parsed.userBId,
+        endAt: parsed.endAt,
+      };
+    } catch {
+      return null;
     }
   }
 

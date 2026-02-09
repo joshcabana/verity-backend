@@ -33,6 +33,38 @@ class InMemoryRedis {
     this.expiries.delete(key);
   }
 
+  private allKeys() {
+    const keys = new Set<string>();
+    for (const key of this.store.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    for (const key of this.hashes.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    for (const key of this.zsets.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    for (const key of this.sets.keys()) {
+      if (!this.isExpired(key)) {
+        keys.add(key);
+      }
+    }
+    return Array.from(keys);
+  }
+
+  private patternToRegex(pattern: string) {
+    const escaped = pattern
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*');
+    return new RegExp(`^${escaped}$`);
+  }
+
   private hasKey(key: string) {
     if (this.isExpired(key)) {
       return false;
@@ -83,6 +115,11 @@ class InMemoryRedis {
 
   async mget(...keys: string[]) {
     return Promise.all(keys.map((key) => this.get(key)));
+  }
+
+  async keys(pattern: string) {
+    const regex = this.patternToRegex(pattern);
+    return this.allKeys().filter((key) => regex.test(key));
   }
 
   async hget(key: string, field: string) {

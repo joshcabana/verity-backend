@@ -25,6 +25,16 @@ const baseSession: Session = {
   updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 };
 
+const sessionStateJson = (endAt: string) =>
+  JSON.stringify({
+    sessionId: 'session-1',
+    userAId: 'user-a',
+    userBId: 'user-b',
+    channelName: 'channel-1',
+    startAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
+    endAt,
+  });
+
 describe('SessionService (unit)', () => {
   let service: SessionService;
   let prisma: ReturnType<typeof createPrismaMock>;
@@ -88,6 +98,7 @@ describe('SessionService (unit)', () => {
   });
 
   afterEach(() => {
+    service.onModuleDestroy();
     jest.useRealTimers();
     jest.clearAllMocks();
   });
@@ -289,6 +300,71 @@ describe('SessionService (unit)', () => {
     const result = await service.submitChoice('session-1', 'user-b', 'MATCH');
 
     expect(result.outcome).toBe('mutual');
+  });
+
+  it('recovers overdue endSession on module init', async () => {
+    const overdueEndAt = new Date(Date.now() - 1000).toISOString();
+    await redis.set(
+      'session:state:session-1',
+      sessionStateJson(overdueEndAt),
+      'PX',
+      60 * 60 * 1000,
+    );
+    await redis.set('session:active:user-a', 'session-1');
+    await redis.set('session:active:user-b', 'session-1');
+
+    await service.onModuleInit();
+
+    expect(await redis.get('session:ended:session-1')).toBe('1');
+    expect(await redis.get('session:active:user-a')).toBeNull();
+    expect(await redis.get('session:active:user-b')).toBeNull();
+    expect(videoGateway.emitSessionEnd).toHaveBeenCalledTimes(2);
+  });
+
+  it('reschedules future session end on module init', async () => {
+    const futureEndAt = new Date(Date.now() + 5000).toISOString();
+    await redis.set(
+      'session:state:session-1',
+      sessionStateJson(futureEndAt),
+      'PX',
+      60 * 60 * 1000,
+    );
+
+    await service.onModuleInit();
+
+    expect(videoGateway.emitSessionEnd).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
+
+    await jest.advanceTimersByTimeAsync(5000);
+
+    expect(await redis.get('session:ended:session-1')).toBe('1');
+    expect(videoGateway.emitSessionEnd).toHaveBeenCalledTimes(2);
+  });
+
+  it('finalizes overdue choice window on module init', async () => {
+    await redis.set(
+      'session:state:session-1',
+      sessionStateJson(new Date(Date.now() - 60_000).toISOString()),
+      'PX',
+      60 * 60 * 1000,
+    );
+    await redis.set('session:ended:session-1', '1', 'PX', 60 * 60 * 1000, 'NX');
+    await redis.set(
+      'session:choice:deadline:session-1',
+      new Date(Date.now() - 1000).toISOString(),
+      'PX',
+      60 * 60 * 1000,
+    );
+
+    await service.onModuleInit();
+
+    const decision = await redis.get('session:decision:session-1');
+    expect(decision).toBeTruthy();
+    expect(JSON.parse(decision as string)).toMatchObject({
+      status: 'resolved',
+      outcome: 'non_mutual',
+    });
+    expect(prisma.match.upsert).not.toHaveBeenCalled();
   });
 
   it('cleanupExpiredSessions logs when deletions occur', async () => {
