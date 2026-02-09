@@ -124,6 +124,17 @@ describe('QueueService (unit)', () => {
     expect(result.queueKey.startsWith('canberra:')).toBe(true);
   });
 
+  it('maps legacy region au to canberra', async () => {
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.joinQueue('user-1', {
+      region: 'au',
+      preferences: { mode: 'standard' },
+    });
+
+    expect(result.queueKey.startsWith('canberra:')).toBe(true);
+  });
+
   it('prefers city over region when both are provided', async () => {
     prisma.user.updateMany.mockResolvedValue({ count: 1 });
 

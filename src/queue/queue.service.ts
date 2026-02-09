@@ -257,12 +257,12 @@ export class QueueService {
     userBId: string,
     queueKey: string,
   ): Promise<Session> {
-    const [region] = queueKey.split(':');
+    const [city] = queueKey.split(':');
     const session = await this.prisma.session.create({
       data: {
         userAId,
         userBId,
-        region,
+        region: city,
         queueKey,
       },
     });
@@ -338,6 +338,9 @@ export class QueueService {
       return city;
     }
     const legacyRegion = this.normalizeQueueCity(input.region);
+    if (legacyRegion === 'au') {
+      return DEFAULT_QUEUE_CITY;
+    }
     if (legacyRegion) {
       return legacyRegion;
     }
