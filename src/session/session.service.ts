@@ -24,6 +24,7 @@ const SESSION_LOCK_TTL_MS = 10_000;
 const CHOICE_WINDOW_MS = 60_000;
 const CHOICE_STATE_TTL_MS = 2 * 60 * 60 * 1000;
 const SESSION_RETENTION_MS = 24 * 60 * 60 * 1000;
+const RECOVERY_SCAN_COUNT = 200;
 
 type SessionChoice = 'MATCH' | 'PASS';
 
@@ -73,7 +74,7 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async recoverSessionEndTimers() {
-    const sessionStateKeys = await this.redis.keys('session:state:*');
+    const sessionStateKeys = await this.scanKeys('session:state:*');
 
     for (const key of sessionStateKeys) {
       const state = this.parseSessionState(await this.redis.get(key));
@@ -105,7 +106,7 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async recoverChoiceTimeouts() {
-    const deadlineKeys = await this.redis.keys('session:choice:deadline:*');
+    const deadlineKeys = await this.scanKeys('session:choice:deadline:*');
 
     for (const key of deadlineKeys) {
       const sessionId = key.replace('session:choice:deadline:', '');
@@ -654,6 +655,27 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     }
 
     return session;
+  }
+
+  private async scanKeys(pattern: string): Promise<string[]> {
+    const keys = new Set<string>();
+    let cursor = '0';
+
+    do {
+      const [nextCursor, pageKeys] = await this.redis.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        RECOVERY_SCAN_COUNT,
+      );
+      for (const key of pageKeys) {
+        keys.add(key);
+      }
+      cursor = nextCursor;
+    } while (cursor !== '0');
+
+    return Array.from(keys);
   }
 
   private buildSyntheticSession(

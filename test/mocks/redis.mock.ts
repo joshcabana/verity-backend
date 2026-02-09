@@ -122,6 +122,34 @@ class InMemoryRedis {
     return this.allKeys().filter((key) => regex.test(key));
   }
 
+  async scan(cursor: string | number, ...args: Array<string | number>) {
+    const current = Math.max(0, Number(cursor) || 0);
+    let pattern = '*';
+    let count = 10;
+
+    for (let i = 0; i < args.length; i += 2) {
+      const option = String(args[i]).toUpperCase();
+      const value = args[i + 1];
+      if (option === 'MATCH' && value !== undefined) {
+        pattern = String(value);
+      }
+      if (option === 'COUNT' && value !== undefined) {
+        const parsedCount = Number(value);
+        if (Number.isFinite(parsedCount) && parsedCount > 0) {
+          count = parsedCount;
+        }
+      }
+    }
+
+    const regex = this.patternToRegex(pattern);
+    const all = this.allKeys().filter((key) => regex.test(key));
+    const page = all.slice(current, current + count);
+    const nextCursor =
+      current + count >= all.length ? '0' : String(current + count);
+
+    return [nextCursor, page] as [string, string[]];
+  }
+
   async hget(key: string, field: string) {
     if (this.isExpired(key)) {
       return null;
