@@ -137,14 +137,19 @@ export async function createTestApp(options?: {
   const prisma = app.get(PrismaService);
   const redis = app.get<RedisClient>(REDIS_CLIENT);
   const worker = app.get(MatchingWorker);
+  const httpServer = app.getHttpServer();
+  const address = httpServer.address() as { port?: number } | null;
+  if (!address?.port) {
+    throw new Error('Failed to determine test app port');
+  }
 
   return {
     app,
     prisma,
     redis,
     worker,
-    baseUrl: await app.getUrl(),
-    httpServer: app.getHttpServer(),
+    baseUrl: `http://127.0.0.1:${address.port}`,
+    httpServer,
   };
 }
 
