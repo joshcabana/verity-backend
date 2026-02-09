@@ -10,32 +10,59 @@ import ThemedButton from '../components/ThemedButton';
 import { useTheme } from '../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../theme/tokens';
 
+const LEGACY_BOOTSTRAP_FALLBACK_DELAY_MS = 1500;
+const DEFAULT_CALL_DURATION_SECONDS = 45;
+
 type VideoCallParams = {
   sessionId?: string;
+  partnerId?: string;
+  partnerAnonymousId?: string;
+  queueKey?: string;
+  matchedAt?: string;
   channelToken?: string;
   agoraChannel?: string;
-  partnerAnonymousId?: string;
 };
 
 export default function VideoCallScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const params = route.params as VideoCallParams | undefined;
-  const sessionId = params?.sessionId;
-  const channelToken = params?.channelToken;
-  const agoraChannel = params?.agoraChannel;
+  const routeSessionId = params?.sessionId;
 
   const { colors } = useTheme();
-  const { socket } = useWebSocket();
+  const { videoSocket, lastSessionStart } = useWebSocket();
+  const [legacyBootstrapEnabled, setLegacyBootstrapEnabled] = useState(false);
+  const sessionStart =
+    lastSessionStart &&
+    (!routeSessionId || lastSessionStart.sessionId === routeSessionId)
+      ? lastSessionStart
+      : null;
+  const sessionId = routeSessionId ?? sessionStart?.sessionId;
+  const channelToken =
+    sessionStart?.rtc.token ??
+    (legacyBootstrapEnabled ? params?.channelToken : undefined);
+  const agoraChannel =
+    sessionStart?.channelName ??
+    (legacyBootstrapEnabled ? params?.agoraChannel : undefined);
+  const rtcUid = sessionStart?.rtc.uid;
+  const durationSeconds =
+    sessionStart?.durationSeconds ?? DEFAULT_CALL_DURATION_SECONDS;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [muted, setMuted] = useState(false);
   const [cameraFront, setCameraFront] = useState(true);
   const [remoteUid, setRemoteUid] = useState<number | null>(null);
   const [joined, setJoined] = useState(false);
-  const [statusText, setStatusText] = useState('Connecting...');
+  const [statusText, setStatusText] = useState('Waiting for session to start...');
 
   const endSession = useCallback(() => {
     leaveAgoraChannel();
+    if (!sessionId) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' as never, params: { screen: 'Home' } as never }],
+      });
+      return;
+    }
     navigation.reset({
       index: 0,
       routes: [{ name: 'Decision' as never, params: { sessionId } as never }],
@@ -43,8 +70,19 @@ export default function VideoCallScreen() {
   }, [navigation, sessionId]);
 
   useEffect(() => {
+    if (sessionStart) {
+      setLegacyBootstrapEnabled(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setLegacyBootstrapEnabled(true);
+    }, LEGACY_BOOTSTRAP_FALLBACK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [sessionStart, routeSessionId]);
+
+  useEffect(() => {
     if (!agoraChannel || !channelToken) {
-      setStatusText('Missing session details.');
+      setStatusText('Waiting for session to start...');
       return;
     }
 
@@ -52,6 +90,7 @@ export default function VideoCallScreen() {
     setupAgoraEngine({
       channel: agoraChannel,
       token: channelToken,
+      uid: rtcUid,
       onJoinSuccess: () => {
         if (!isMounted) return;
         setJoined(true);
@@ -79,10 +118,10 @@ export default function VideoCallScreen() {
       isMounted = false;
       leaveAgoraChannel();
     };
-  }, [agoraChannel, channelToken]);
+  }, [agoraChannel, channelToken, rtcUid]);
 
   useEffect(() => {
-    if (!socket) {
+    if (!videoSocket) {
       return;
     }
     const handleSessionEnd = (payload: { sessionId?: string }) => {
@@ -90,11 +129,11 @@ export default function VideoCallScreen() {
         endSession();
       }
     };
-    socket.on('session:end', handleSessionEnd);
+    videoSocket.on('session:end', handleSessionEnd);
     return () => {
-      socket.off('session:end', handleSessionEnd);
+      videoSocket.off('session:end', handleSessionEnd);
     };
-  }, [socket, sessionId, endSession]);
+  }, [videoSocket, sessionId, endSession]);
 
   const handleToggleMute = async () => {
     try {
@@ -117,11 +156,11 @@ export default function VideoCallScreen() {
     }
   };
 
-  if (!agoraChannel || !channelToken) {
+  if (!sessionId) {
     return (
       <View style={styles.center}>
         <Text style={styles.title}>Unable to start call</Text>
-        <Text style={styles.subtitle}>Missing channel details.</Text>
+        <Text style={styles.subtitle}>Missing session details.</Text>
         <ThemedButton label="Back to Home" onPress={() => navigation.goBack()} />
       </View>
     );
@@ -138,7 +177,7 @@ export default function VideoCallScreen() {
 
       <View style={styles.overlay}>
         <CountdownTimer
-          durationSeconds={45}
+          durationSeconds={durationSeconds}
           isActive={joined}
           onComplete={endSession}
           testID="call-countdown"

@@ -18,6 +18,25 @@ import { apiJson } from '../../services/api';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
 
+type UserProfilePayload = {
+  id?: string;
+  displayName?: string | null;
+  age?: number | null;
+  gender?: string | null;
+  interests?: string[] | null;
+  bio?: string | null;
+  photos?: string[] | null;
+  email?: string | null;
+  phone?: string | null;
+  tokenBalance?: number | null;
+};
+
+type SignupAnonymousResponse = {
+  user?: UserProfilePayload;
+  userId?: string;
+  accessToken?: string;
+};
+
 const INTEREST_OPTIONS = [
   'Travel',
   'Music',
@@ -59,18 +78,24 @@ export default function ProfileSetupScreen() {
 
     setSubmitting(true);
     try {
-      const signup = await apiJson<{ userId: string; accessToken: string }>(
+      const signup = await apiJson<SignupAnonymousResponse>(
         '/auth/signup-anonymous',
         { method: 'POST' },
       );
 
-      if (!signup.ok || !signup.data?.accessToken || !signup.data?.userId) {
+      const accessToken = signup.data?.accessToken;
+      const userId = signup.data?.user?.id ?? signup.data?.userId;
+      if (!signup.ok || !accessToken || !userId) {
         Alert.alert('Signup failed', 'Unable to create your account. Please try again.');
         return;
       }
 
-      await setToken(signup.data.accessToken);
-      await setUser({ id: signup.data.userId, displayName: displayName.trim() });
+      await setToken(accessToken);
+      await setUser({
+        ...(signup.data?.user ?? {}),
+        id: userId,
+        displayName: displayName.trim(),
+      });
 
       const payload = {
         displayName: displayName.trim(),
@@ -81,10 +106,10 @@ export default function ProfileSetupScreen() {
         bio: bio.trim() || undefined,
       };
 
-      const profile = await apiJson<Record<string, unknown>>('/users/me', {
+      const profile = await apiJson<UserProfilePayload>('/users/me', {
         method: 'PATCH',
         body: JSON.stringify(payload),
-        tokenOverride: signup.data.accessToken,
+        tokenOverride: accessToken,
       });
 
       if (profile.status === 401 || profile.status === 403) {
@@ -99,8 +124,9 @@ export default function ProfileSetupScreen() {
       }
 
       await setUser({
-        id: signup.data.userId,
+        ...(signup.data?.user ?? {}),
         ...(profile.data ?? {}),
+        id: userId,
         displayName: displayName.trim(),
       });
       navigation.getParent()?.reset({

@@ -1,20 +1,40 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import VideoCallScreen from '../VideoCallScreen';
-import { setupAgoraEngine, leaveAgoraChannel } from '../../services/agora';
+import { leaveAgoraChannel, setupAgoraEngine } from '../../services/agora';
 
 const mockReset = jest.fn();
 const mockGoBack = jest.fn();
 
-let routeParams: Record<string, unknown> | undefined = {
+type SessionStartPayload = {
+  sessionId: string;
+  channelName: string;
+  rtc: { token: string; uid: number };
+  rtm: { token: string; userId: string };
+  startAt: string;
+  endAt: string;
+  expiresAt: string;
+  durationSeconds: number;
+};
+
+let mockRouteParams: Record<string, unknown> | undefined = {
   sessionId: 'session-1',
-  channelToken: 'token-1',
-  agoraChannel: 'room-1',
+};
+
+let mockLastSessionStartPayload: SessionStartPayload | null = {
+  sessionId: 'session-1',
+  channelName: 'room-1',
+  rtc: { token: 'token-1', uid: 777 },
+  rtm: { token: 'rtm-token', userId: 'user-1' },
+  startAt: new Date().toISOString(),
+  endAt: new Date(Date.now() + 45_000).toISOString(),
+  expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  durationSeconds: 45,
 };
 
 const socketHandlers: Record<string, (payload?: { sessionId?: string }) => void> = {};
 
-const socketMock = {
+const mockSocket = {
   on: jest.fn((event: string, handler: (payload?: { sessionId?: string }) => void) => {
     socketHandlers[event] = handler;
   }),
@@ -28,11 +48,15 @@ jest.mock('@react-navigation/native', () => ({
     reset: mockReset,
     goBack: mockGoBack,
   }),
-  useRoute: () => ({ params: routeParams }),
+  useRoute: () => ({ params: mockRouteParams }),
 }));
 
 jest.mock('../../hooks/useWebSocket', () => ({
-  useWebSocket: () => ({ socket: socketMock }),
+  useWebSocket: () => ({
+    videoSocket: mockSocket,
+    socket: mockSocket,
+    lastSessionStart: mockLastSessionStartPayload,
+  }),
 }));
 
 const mockMuteLocalAudioStream = jest.fn();
@@ -46,10 +70,14 @@ jest.mock('../../services/agora', () => ({
 jest.mock('../../components/CountdownTimer', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function MockCountdownTimer(props: { isActive: boolean; testID?: string }) {
+  return function MockCountdownTimer(props: {
+    isActive: boolean;
+    testID?: string;
+    durationSeconds: number;
+  }) {
     return (
       <Text testID={props.testID || 'countdown'}>
-        {props.isActive ? 'active' : 'inactive'}
+        {props.isActive ? `active-${props.durationSeconds}` : `inactive-${props.durationSeconds}`}
       </Text>
     );
   };
@@ -95,10 +123,16 @@ jest.mock('../../theme/ThemeProvider', () => ({
 describe('VideoCallScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    routeParams = {
+    mockRouteParams = { sessionId: 'session-1' };
+    mockLastSessionStartPayload = {
       sessionId: 'session-1',
-      channelToken: 'token-1',
-      agoraChannel: 'room-1',
+      channelName: 'room-1',
+      rtc: { token: 'token-1', uid: 777 },
+      rtm: { token: 'rtm-token', userId: 'user-1' },
+      startAt: new Date().toISOString(),
+      endAt: new Date(Date.now() + 45_000).toISOString(),
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      durationSeconds: 45,
     };
     Object.keys(socketHandlers).forEach((key) => delete socketHandlers[key]);
 
@@ -119,7 +153,11 @@ describe('VideoCallScreen', () => {
     });
   });
 
-  it('renders video views and activates the timer after join', async () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('bootstraps from session:start payload and activates the timer', async () => {
     const { getByTestId, getByText } = render(<VideoCallScreen />);
 
     expect(getByTestId('local-video')).toBeTruthy();
@@ -127,7 +165,15 @@ describe('VideoCallScreen', () => {
 
     await waitFor(() => expect(getByText('Live now')).toBeTruthy());
     await waitFor(() =>
-      expect(getByTestId('call-countdown').props.children).toBe('active'),
+      expect(getByTestId('call-countdown').props.children).toBe('active-45'),
+    );
+
+    expect(setupAgoraEngine).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'room-1',
+        token: 'token-1',
+        uid: 777,
+      }),
     );
   });
 
@@ -137,11 +183,11 @@ describe('VideoCallScreen', () => {
     await waitFor(() => expect(getByText('Live now')).toBeTruthy());
 
     fireEvent.press(getByText('Mute'));
-    expect(mockMuteLocalAudioStream).toHaveBeenCalledWith(true);
+    await waitFor(() => expect(mockMuteLocalAudioStream).toHaveBeenCalledWith(true));
     expect(getByText('Unmute')).toBeTruthy();
 
     fireEvent.press(getByText('Rear cam'));
-    expect(mockSwitchCamera).toHaveBeenCalled();
+    await waitFor(() => expect(mockSwitchCamera).toHaveBeenCalled());
     expect(getByText('Front cam')).toBeTruthy();
   });
 
@@ -168,8 +214,36 @@ describe('VideoCallScreen', () => {
     });
   });
 
+  it('falls back to legacy route params after the timeout gate', async () => {
+    jest.useFakeTimers();
+    mockRouteParams = {
+      sessionId: 'session-1',
+      channelToken: 'legacy-token',
+      agoraChannel: 'legacy-room',
+    };
+    mockLastSessionStartPayload = null;
+
+    render(<VideoCallScreen />);
+
+    expect(setupAgoraEngine).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(1_600);
+    });
+
+    await waitFor(() =>
+      expect(setupAgoraEngine).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel: 'legacy-room',
+          token: 'legacy-token',
+        }),
+      ),
+    );
+  });
+
   it('shows a fallback when session params are missing', () => {
-    routeParams = undefined;
+    mockRouteParams = undefined;
+    mockLastSessionStartPayload = null;
 
     const { getByText } = render(<VideoCallScreen />);
 

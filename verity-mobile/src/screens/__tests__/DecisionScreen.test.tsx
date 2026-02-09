@@ -145,10 +145,10 @@ describe('TokenShopScreen', () => {
     }));
 
     server.use(
-      rest.get(`${API_URL}/tokens/balance`, (_req, res, ctx) =>
+      rest.get(`${API_URL}/tokens/balance`, (_req: any, res: any, ctx: any) =>
         res(ctx.status(200), ctx.json({ tokenBalance: 2 })),
       ),
-      rest.post(`${API_URL}/tokens/purchase`, (_req, res, ctx) =>
+      rest.post(`${API_URL}/tokens/purchase`, (_req: any, res: any, ctx: any) =>
         res(
           ctx.status(200),
           ctx.json({ checkoutUrl: 'https://checkout.example.com', sessionId: 'sess-1' }),
@@ -176,7 +176,7 @@ describe('TokenShopScreen', () => {
     jest.useFakeTimers();
 
     server.use(
-      rest.get(`${API_URL}/tokens/balance`, (_req, res, ctx) =>
+      rest.get(`${API_URL}/tokens/balance`, (_req: any, res: any, ctx: any) =>
         res(ctx.status(200), ctx.json({ tokenBalance: 5 })),
       ),
     );

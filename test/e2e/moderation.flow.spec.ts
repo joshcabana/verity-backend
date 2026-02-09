@@ -91,7 +91,7 @@ describe('Moderation flow (e2e)', () => {
     );
 
     const secret = process.env.HIVE_WEBHOOK_SECRET ?? 'hive_test_secret';
-    const timestamp = Date.now().toString();
+    let timestamp = Date.now();
 
     const sendViolation = async () => {
       const payload = {
@@ -100,6 +100,8 @@ describe('Moderation flow (e2e)', () => {
         violation: true,
         reason: 'test-violation',
       };
+      const deliveryTimestamp = String(timestamp);
+      timestamp += 1;
       const raw = Buffer.from(JSON.stringify(payload));
       const signature = createHmac('sha256', secret)
         .update(raw)
@@ -108,7 +110,7 @@ describe('Moderation flow (e2e)', () => {
       return request(context.app.getHttpServer())
         .post('/webhooks/hive')
         .set('x-hive-signature', `sha256=${signature}`)
-        .set('x-hive-timestamp', timestamp)
+        .set('x-hive-timestamp', deliveryTimestamp)
         .send(payload)
         .expect(201);
     };

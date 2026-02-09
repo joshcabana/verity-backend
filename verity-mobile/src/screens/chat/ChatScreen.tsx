@@ -109,7 +109,7 @@ export default function ChatScreen() {
         value={draft}
         onChange={setDraft}
         onSend={handleSend}
-        sending={sendMutation.isLoading}
+        sending={sendMutation.isPending}
       />
     </View>
   );

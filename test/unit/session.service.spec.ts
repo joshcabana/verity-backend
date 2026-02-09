@@ -209,8 +209,7 @@ describe('SessionService (unit)', () => {
 
   it('resolves mutual match and emits events', async () => {
     prisma.session.findUnique.mockResolvedValue(baseSession);
-    prisma.match.findUnique.mockResolvedValue(null);
-    prisma.match.create.mockResolvedValue({ id: 'match-1' });
+    prisma.match.upsert.mockResolvedValue({ id: 'match-1' });
     await redis.set('session:ended:session-1', '1', 'PX', 1000, 'NX');
 
     await service.submitChoice('session-1', 'user-a', 'MATCH');
@@ -232,14 +231,26 @@ describe('SessionService (unit)', () => {
 
   it('uses existing match on mutual decision', async () => {
     prisma.session.findUnique.mockResolvedValue(baseSession);
-    prisma.match.findUnique.mockResolvedValue({ id: 'match-1' });
+    prisma.match.upsert.mockResolvedValue({ id: 'match-1' });
     await redis.set('session:ended:session-1', '1', 'PX', 1000, 'NX');
 
     await service.submitChoice('session-1', 'user-a', 'MATCH');
     const result = await service.submitChoice('session-1', 'user-b', 'MATCH');
 
     expect(result.outcome).toBe('mutual');
-    expect(prisma.match.create).not.toHaveBeenCalled();
+    expect(prisma.match.upsert).toHaveBeenCalledWith({
+      where: {
+        userAId_userBId: {
+          userAId: 'user-a',
+          userBId: 'user-b',
+        },
+      },
+      update: {},
+      create: {
+        userAId: 'user-a',
+        userBId: 'user-b',
+      },
+    });
   });
 
   it('resolves non-mutual when PASS is submitted', async () => {
@@ -270,7 +281,7 @@ describe('SessionService (unit)', () => {
 
   it('skips emit when gateway server missing', async () => {
     prisma.session.findUnique.mockResolvedValue(baseSession);
-    prisma.match.findUnique.mockResolvedValue({ id: 'match-1' });
+    prisma.match.upsert.mockResolvedValue({ id: 'match-1' });
     await redis.set('session:ended:session-1', '1', 'PX', 1000, 'NX');
     videoGateway.server = undefined;
 

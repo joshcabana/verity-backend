@@ -16,7 +16,7 @@ type UseDecisionState = {
 
 export function useDecision(sessionId?: string): UseDecisionState {
   const { logout } = useAuth();
-  const { socket } = useWebSocket();
+  const { videoSocket } = useWebSocket();
   const [choice, setChoice] = useState<DecisionChoice | null>(null);
   const [status, setStatus] = useState<UseDecisionState['status']>('idle');
   const [result, setResult] = useState<{ outcome: 'mutual' | 'rejected'; matchId?: string } | null>(
@@ -56,6 +56,20 @@ export function useDecision(sessionId?: string): UseDecisionState {
         return;
       }
 
+      const data = response.data as
+        | { status?: 'pending' }
+        | { status?: 'resolved'; outcome?: 'mutual' | 'non_mutual'; matchId?: string }
+        | null;
+
+      if (data?.status === 'resolved') {
+        setResult({
+          outcome: data.outcome === 'mutual' ? 'mutual' : 'rejected',
+          matchId: data.outcome === 'mutual' ? data.matchId : undefined,
+        });
+        setStatus('resolved');
+        return;
+      }
+
       setStatus('waiting');
     },
     [sessionId, logout],
@@ -73,30 +87,37 @@ export function useDecision(sessionId?: string): UseDecisionState {
   }, [submitChoice]);
 
   useEffect(() => {
-    if (!socket) {
+    if (!videoSocket) {
       return;
     }
 
-    const handleMutual = (payload?: { matchId?: string }) => {
+    const handleMutual = (payload?: { sessionId?: string; matchId?: string }) => {
+      if (sessionId && payload?.sessionId && payload.sessionId !== sessionId) {
+        return;
+      }
       setResult({ outcome: 'mutual', matchId: payload?.matchId });
       setStatus('resolved');
     };
 
-    const handleRejected = () => {
+    const handleRejected = (payload?: { sessionId?: string }) => {
+      if (sessionId && payload?.sessionId && payload.sessionId !== sessionId) {
+        return;
+      }
       setResult({ outcome: 'rejected' });
       setStatus('resolved');
     };
 
-    socket.on('match:mutual', handleMutual);
-    socket.on('match:non_mutual', handleRejected);
-    socket.on('match:rejected', handleRejected);
+    videoSocket.on('match:mutual', handleMutual);
+    videoSocket.on('match:non_mutual', handleRejected);
+    // Compatibility fallback for one release while old event names are phased out.
+    videoSocket.on('match:rejected', handleRejected);
 
     return () => {
-      socket.off('match:mutual', handleMutual);
-      socket.off('match:non_mutual', handleRejected);
-      socket.off('match:rejected', handleRejected);
+      videoSocket.off('match:mutual', handleMutual);
+      videoSocket.off('match:non_mutual', handleRejected);
+      videoSocket.off('match:rejected', handleRejected);
     };
-  }, [socket]);
+  }, [sessionId, videoSocket]);
 
   useEffect(() => {
     return () => {

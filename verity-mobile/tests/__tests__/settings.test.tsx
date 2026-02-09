@@ -75,13 +75,19 @@ jest.mock('../../src/theme/ThemeProvider', () => ({
 }));
 
 jest.mock('../../src/hooks/useWebSocket', () => ({
-  useWebSocket: () => ({ socket: null, connected: false }),
+  useWebSocket: () => ({
+    socket: null,
+    queueSocket: null,
+    videoSocket: null,
+    chatSocket: null,
+    connected: false,
+  }),
 }));
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn().mockImplementation((input: RequestInfo) => {
+    globalThis.fetch = jest.fn().mockImplementation((input: RequestInfo, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/tokens/balance')) {
         return Promise.resolve({
@@ -102,6 +108,17 @@ describe('SettingsScreen', () => {
           ok: true,
           status: 200,
           json: async () => ({ id: 'user-1', phone: '+15551234567' }),
+        }) as any;
+      }
+      if (url.endsWith('/users/me') && init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'user-1',
+            displayName: 'Taylor',
+            interests: ['Travel', 'Music'],
+          }),
         }) as any;
       }
       return Promise.resolve({
@@ -145,6 +162,32 @@ describe('SettingsScreen', () => {
     expect(getByText('Save Changes')).toBeTruthy();
   });
 
+  it('saves profile edits through PATCH /users/me', async () => {
+    const linking = buildLinkingConfig('verity');
+    const initialState = getStateFromPath('/settings', linking.config);
+    const { getByText, getByPlaceholderText } = render(
+      <AppNavigator initialState={initialState ?? undefined} linkingOverride={linking} />,
+    );
+
+    fireEvent.press(getByText('Settings'));
+    fireEvent.press(getByText('Edit Profile'));
+    fireEvent.changeText(getByPlaceholderText('Your name'), 'Taylor');
+    fireEvent.press(getByText('Save Changes'));
+
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/users/me'),
+        expect.objectContaining({ method: 'PATCH' }),
+      ),
+    );
+
+    await waitFor(() =>
+      expect(mockSetUser).toHaveBeenCalledWith(
+        expect.objectContaining({ displayName: 'Taylor' }),
+      ),
+    );
+  });
+
   it('opens the delete account confirmation screen', () => {
     const linking = buildLinkingConfig('verity');
     const initialState = getStateFromPath('/settings', linking.config);
@@ -170,7 +213,7 @@ describe('SettingsScreen', () => {
     fireEvent.press(getByTestId('confirm-delete-button'));
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/users/me'),
         expect.objectContaining({ method: 'DELETE' }),
       ),
@@ -190,13 +233,18 @@ describe('SettingsScreen', () => {
 
     const emailInput = getByPlaceholderText('you@email.com');
     fireEvent.changeText(emailInput, 'alex@example.com');
+    const emailCodeInput = getByPlaceholderText('Email verification code');
+    fireEvent.changeText(emailCodeInput, '123456');
 
     fireEvent.press(getByText('Verify Email'));
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/verify-email'),
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'alex@example.com', code: '123456' }),
+        }),
       ),
     );
 
@@ -208,13 +256,18 @@ describe('SettingsScreen', () => {
 
     const phoneInput = getByPlaceholderText('+1 555 555 5555');
     fireEvent.changeText(phoneInput, '+15551234567');
+    const phoneCodeInput = getByPlaceholderText('Phone verification code');
+    fireEvent.changeText(phoneCodeInput, '654321');
 
     fireEvent.press(getByText('Verify Phone'));
 
     await waitFor(() =>
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/auth/verify-phone'),
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ phone: '+15551234567', code: '654321' }),
+        }),
       ),
     );
 

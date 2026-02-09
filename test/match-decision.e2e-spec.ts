@@ -92,6 +92,26 @@ class FakePrismaService {
       this.matches.push(match);
       return match;
     },
+    upsert: async ({
+      where,
+      create,
+    }: {
+      where: { userAId_userBId: { userAId: string; userBId: string } };
+      create: { userAId: string; userBId: string };
+      update: Record<string, never>;
+    }) => {
+      const { userAId, userBId } = where.userAId_userBId;
+      const existing = this.matches.find(
+        (match) => match.userAId === userAId && match.userBId === userBId,
+      );
+      if (existing) {
+        return existing;
+      }
+
+      const match = { id: `match-${this.matches.length + 1}`, ...create };
+      this.matches.push(match);
+      return match;
+    },
   };
 
   $use() {

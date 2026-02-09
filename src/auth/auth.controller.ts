@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Patch,
   Post,
   Req,
   Res,
@@ -17,6 +18,7 @@ import { AuthService } from './auth.service';
 import { SignupAnonymousDto } from './dto/signup-anonymous.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { VerifyPhoneDto } from './dto/verify-phone.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { RefreshGuard } from './iefresh.guard';
 import { getRequestUserId } from './request-user';
 
@@ -126,6 +128,13 @@ export class UsersController {
   async exportMe(@Req() req: Request) {
     const userId = getRequestUserId(req);
     return this.authService.exportUserData(userId);
+  }
+
+  @Patch('me')
+  @UseGuards(AuthGuard('jwt'))
+  async updateMe(@Req() req: Request, @Body() dto: UpdateUserProfileDto) {
+    const userId = getRequestUserId(req);
+    return this.authService.updateCurrentUser(userId, dto);
   }
 
   @Delete('me')

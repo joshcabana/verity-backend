@@ -373,26 +373,20 @@ export class SessionService implements OnModuleDestroy {
         session.userBId,
       );
 
-      const existingMatch = await this.prisma.match.findUnique({
+      const match = await this.prisma.match.upsert({
         where: {
           userAId_userBId: {
             userAId: userLow,
             userBId: userHigh,
           },
         },
+        update: {},
+        create: {
+          userAId: userLow,
+          userBId: userHigh,
+        },
       });
-
-      if (existingMatch) {
-        matchId = existingMatch.id;
-      } else {
-        const match = await this.prisma.match.create({
-          data: {
-            userAId: userLow,
-            userBId: userHigh,
-          },
-        });
-        matchId = match.id;
-      }
+      matchId = match.id;
     }
 
     const payload: ChoiceResult =

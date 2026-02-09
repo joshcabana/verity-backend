@@ -33,7 +33,8 @@ export class ChatService {
     }
     await this.assertNotBlocked(match.userAId, match.userBId);
 
-    const safeLimit = Math.max(1, Math.min(limit, 100));
+    const boundedLimit = Number.isFinite(limit) ? limit : DEFAULT_MESSAGE_LIMIT;
+    const safeLimit = Math.max(1, Math.min(boundedLimit, 100));
     const messages = await this.prisma.message.findMany({
       where: { matchId },
       orderBy: { createdAt: 'desc' },

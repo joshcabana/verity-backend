@@ -70,7 +70,7 @@ describe('Queue flow', () => {
 
     fireEvent.press(getByText('Go Live (1 token)'));
 
-    await waitFor(() => expect(mockJoinQueue).toHaveBeenCalled());
+    await waitFor(() => expect(mockJoinQueue).toHaveBeenCalledWith('au'));
     await waitFor(() => expect(mockSetUser).toHaveBeenCalled());
     await waitFor(() => expect(getByText('Finding match...')).toBeTruthy());
   });

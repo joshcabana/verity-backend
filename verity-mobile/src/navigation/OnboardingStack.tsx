@@ -5,7 +5,7 @@ import ExplainScreenOne from '../screens/onboarding/ExplainScreenOne';
 import ExplainScreenTwo from '../screens/onboarding/ExplainScreenTwo';
 import ProfileSetupScreen from '../screens/onboarding/ProfileSetupScreen';
 
-type OnboardingStackParamList = {
+export type OnboardingStackParamList = {
   Welcome: undefined;
   ExplainOne: undefined;
   ExplainTwo: undefined;

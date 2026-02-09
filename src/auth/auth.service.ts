@@ -11,6 +11,7 @@ import { Prisma, UserRole } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 import { CookieOptions, Response } from 'express';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import {
   getAccessTokenSecret,
   getRefreshTokenSecret,
@@ -201,6 +202,71 @@ export class AuthService {
       reportsReceived,
       pushTokens,
     };
+  }
+
+  async updateCurrentUser(userId: string, input: UpdateUserProfileDto) {
+    const data: Prisma.UserUpdateInput = {};
+
+    if (input.displayName !== undefined) {
+      const displayName = input.displayName.trim();
+      data.displayName = displayName.length > 0 ? displayName : null;
+    }
+
+    if (input.age !== undefined) {
+      data.age = input.age;
+    }
+
+    if (input.gender !== undefined) {
+      const gender = input.gender.trim();
+      data.gender = gender.length > 0 ? gender : null;
+    }
+
+    if (input.bio !== undefined) {
+      const bio = input.bio.trim();
+      data.bio = bio.length > 0 ? bio : null;
+    }
+
+    if (input.interests !== undefined) {
+      data.interests = input.interests
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+    }
+
+    if (input.photos !== undefined) {
+      const photos = input.photos
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+      data.photos = photos.length > 0 ? photos : Prisma.JsonNull;
+    }
+
+    try {
+      return await this.prisma.user.update({
+        where: { id: userId },
+        data,
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          displayName: true,
+          photos: true,
+          bio: true,
+          age: true,
+          gender: true,
+          interests: true,
+          phone: true,
+          email: true,
+          tokenBalance: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('User not found');
+      }
+      throw error;
+    }
   }
 
   async verifyPhone(userId: string, phoneRaw: string, code: string) {

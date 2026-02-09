@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { PushPlatform } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 
@@ -92,7 +91,10 @@ export class NotificationsService {
       this.logger.log(
         `Push dry-run event=${event} users=${uniqueUserIds.length} tokens=${tokens.length}`,
       );
-      return { attemptedUsers: uniqueUserIds.length, tokenCount: tokens.length };
+      return {
+        attemptedUsers: uniqueUserIds.length,
+        tokenCount: tokens.length,
+      };
     }
 
     try {
@@ -102,7 +104,7 @@ export class NotificationsService {
         deliveries: tokens.map((entry) => ({
           userId: entry.userId,
           token: entry.token,
-          platform: entry.platform as PushPlatform,
+          platform: entry.platform,
           data,
         })),
       };

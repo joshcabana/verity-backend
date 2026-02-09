@@ -60,6 +60,23 @@ describe('Auth flow (e2e)', () => {
 
     expect(me.body.id).toBe(signup.body.user.id);
 
+    const patch = await request(context.app.getHttpServer())
+      .patch('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        displayName: 'Ari',
+        age: 29,
+        gender: 'non-binary',
+        interests: ['Travel', 'Music'],
+        bio: 'Hello world',
+        photos: ['https://example.com/photo-1.jpg'],
+      })
+      .expect(200);
+
+    expect(patch.body.displayName).toBe('Ari');
+    expect(patch.body.age).toBe(29);
+    expect(patch.body.interests).toEqual(['Travel', 'Music']);
+
     const verifyEmail = await request(context.app.getHttpServer())
       .post('/auth/verify-email')
       .set('Authorization', `Bearer ${token}`)
@@ -81,7 +98,19 @@ describe('Auth flow (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
+    expect(updated.body.displayName).toBe('Ari');
     expect(updated.body.email).toBe('test@example.com');
     expect(updated.body.phone).toBe('+15555551234');
+  });
+
+  it('rejects profile updates without authentication', async () => {
+    if (!context) {
+      throw new Error('Missing test context');
+    }
+
+    await request(context.app.getHttpServer())
+      .patch('/users/me')
+      .send({ displayName: 'Ari' })
+      .expect(401);
   });
 });

@@ -4,7 +4,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
 import { REDIS_CLIENT } from '../common/redis.provider';
@@ -20,6 +20,7 @@ const REPORT_SPAM_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_REPORTS_PER_USER_PER_DAY = 10;
 const REPORT_ESCALATION_THRESHOLD = 3;
 const REPORT_ESCALATION_TTL_MS = 24 * 60 * 60 * 1000;
+const WEBHOOK_REPLAY_TTL_MS = 10 * 60 * 1000;
 
 type HiveViolationPayload = {
   sessionId: string;
@@ -31,6 +32,11 @@ type HiveViolationPayload = {
   severity?: string;
   timestamp?: string;
   reason?: string;
+};
+
+type HiveWebhookDelivery = {
+  signature?: string;
+  timestamp?: string;
 };
 
 @Injectable()
@@ -170,7 +176,8 @@ export class ModerationService {
   }
 
   async listBlocks(userId: string, limit = 100) {
-    const safeLimit = Math.max(1, Math.min(limit, 200));
+    const boundedLimit = Number.isFinite(limit) ? limit : 100;
+    const safeLimit = Math.max(1, Math.min(boundedLimit, 200));
     const blocks = await this.prisma.block.findMany({
       where: {
         blockerId: userId,
@@ -321,19 +328,31 @@ export class ModerationService {
       throw new BadRequestException('Missing Hive signature');
     }
 
-    if (timestamp) {
-      const ts = Number.parseInt(timestamp, 10);
-      if (Number.isFinite(ts)) {
-        const drift = Math.abs(Date.now() - ts);
-        if (drift > 5 * 60 * 1000) {
-          throw new BadRequestException('Stale Hive webhook timestamp');
-        }
-      }
+    if (!timestamp) {
+      throw new BadRequestException('Missing Hive webhook timestamp');
+    }
+
+    if (!/^\d{10,16}$/.test(timestamp)) {
+      throw new BadRequestException('Invalid Hive webhook timestamp');
+    }
+    let ts = Number(timestamp);
+    if (!Number.isFinite(ts)) {
+      throw new BadRequestException('Invalid Hive webhook timestamp');
+    }
+    if (ts < 1_000_000_000_000) {
+      ts *= 1000;
+    }
+    const drift = Math.abs(Date.now() - ts);
+    if (drift > 5 * 60 * 1000) {
+      throw new BadRequestException('Stale Hive webhook timestamp');
     }
 
     const rawSig = signature.startsWith('sha256=')
       ? signature.slice(7)
       : signature;
+    if (!/^[0-9a-fA-F]{64}$/.test(rawSig)) {
+      throw new BadRequestException('Invalid Hive signature');
+    }
     const computed = createHmac('sha256', secret).update(rawBody).digest('hex');
 
     const a = Buffer.from(rawSig, 'hex');
@@ -343,9 +362,22 @@ export class ModerationService {
     }
   }
 
-  async handleWebhook(payload: HiveViolationPayload) {
+  async handleWebhook(
+    payload: HiveViolationPayload,
+    delivery?: HiveWebhookDelivery,
+  ) {
     if (!payload.sessionId) {
       throw new BadRequestException('Missing sessionId');
+    }
+
+    if (delivery?.signature && delivery.timestamp) {
+      const accepted = await this.reserveWebhookDelivery(
+        delivery.signature,
+        delivery.timestamp,
+      );
+      if (!accepted) {
+        return { received: true };
+      }
     }
 
     if (!this.isViolation(payload)) {
@@ -456,11 +488,34 @@ export class ModerationService {
     return `moderation:ban:cooldown:${userId}`;
   }
 
+  private async reserveWebhookDelivery(
+    signature: string,
+    timestamp: string,
+  ): Promise<boolean> {
+    const normalizedSignature = signature.startsWith('sha256=')
+      ? signature.slice(7)
+      : signature;
+    const dedupeHash = createHash('sha256')
+      .update(`${timestamp}:${normalizedSignature}`)
+      .digest('hex');
+    const key = `moderation:hive:webhook:${dedupeHash}`;
+    const reserved = await this.redis.set(
+      key,
+      '1',
+      'PX',
+      WEBHOOK_REPLAY_TTL_MS,
+      'NX',
+    );
+    return Boolean(reserved);
+  }
+
   async listReports(status?: string, limit = 50) {
+    const boundedLimit = Number.isFinite(limit) ? limit : 50;
+    const safeLimit = Math.max(1, Math.min(boundedLimit, 200));
     return this.prisma.moderationReport.findMany({
       where: status ? { status } : undefined,
       orderBy: { createdAt: 'desc' },
-      take: Math.min(limit, 200),
+      take: safeLimit,
       select: {
         id: true,
         createdAt: true,

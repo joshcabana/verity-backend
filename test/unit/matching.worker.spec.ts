@@ -6,6 +6,7 @@ import { MatchingWorker } from '../../src/queue/matching.worker';
 import { QueueGateway, QueueService } from '../../src/queue/queue.service';
 
 describe('MatchingWorker (unit)', () => {
+  const originalEnv = { ...process.env };
   let worker: MatchingWorker;
   let queueService: {
     popPair: jest.Mock;
@@ -50,6 +51,19 @@ describe('MatchingWorker (unit)', () => {
     }).compile();
 
     worker = moduleRef.get(MatchingWorker);
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    worker.onModuleDestroy();
+  });
+
+  it('skips scheduling when worker is disabled by env', () => {
+    process.env.ENABLE_MATCHING_WORKER = 'false';
+
+    worker.onModuleInit();
+
+    expect((worker as unknown as { timer?: unknown }).timer).toBeUndefined();
   });
 
   it('dispatches queue match notification when a pair is matched', async () => {

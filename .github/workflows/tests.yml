@@ -142,3 +142,24 @@ jobs:
         env:
           CI: true
         run: npm run test:smoke
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: verity-mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: verity-mobile/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck mobile app
+        run: npm run typecheck
+      - name: Run mobile tests
+        run: npm test -- --runInBand

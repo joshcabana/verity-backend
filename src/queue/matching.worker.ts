@@ -33,6 +33,10 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
+    if (!this.isWorkerEnabled()) {
+      this.logger.log('Matching worker disabled by ENABLE_MATCHING_WORKER');
+      return;
+    }
     this.timer = setInterval(() => {
       void this.tick();
     }, TICK_INTERVAL_MS);
@@ -134,5 +138,14 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     await this.queueService.cleanupQueueKey(queueKey);
+  }
+
+  private isWorkerEnabled() {
+    const raw = process.env.ENABLE_MATCHING_WORKER;
+    if (raw === undefined) {
+      return true;
+    }
+    const value = raw.trim().toLowerCase();
+    return value === '1' || value === 'true' || value === 'yes' || value === 'on';
   }
 }

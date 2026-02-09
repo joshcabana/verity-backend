@@ -44,7 +44,10 @@ export class MatchesController {
     @Query('limit') limit?: string,
   ) {
     const userId = getRequestUserId(req);
-    const parsedLimit = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimitRaw = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimit = Number.isFinite(parsedLimitRaw)
+      ? parsedLimitRaw
+      : undefined;
     return this.chatService.listMessages(matchId, userId, parsedLimit);
   }
 

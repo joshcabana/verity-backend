@@ -38,7 +38,10 @@ export class ModerationController {
     @Query('status') status?: string,
     @Query('limit') limit?: string,
   ) {
-    const parsedLimit = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimitRaw = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimit = Number.isFinite(parsedLimitRaw)
+      ? parsedLimitRaw
+      : undefined;
     return this.moderationService.listReports(status, parsedLimit);
   }
 
@@ -77,7 +80,10 @@ export class ModerationController {
   @UseGuards(AuthGuard('jwt'))
   async listBlocks(@Req() req: Request, @Query('limit') limit?: string) {
     const blockerId = getRequestUserId(req);
-    const parsedLimit = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimitRaw = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimit = Number.isFinite(parsedLimitRaw)
+      ? parsedLimitRaw
+      : undefined;
     return this.moderationService.listBlocks(blockerId, parsedLimit);
   }
 }

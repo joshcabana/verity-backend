@@ -3,11 +3,24 @@ import { create } from 'zustand';
 import { apiJson } from '../services/api';
 import { useWebSocket } from './useWebSocket';
 
+const DEFAULT_QUEUE_REGION =
+  process.env.EXPO_PUBLIC_QUEUE_REGION ??
+  process.env.QUEUE_REGION ??
+  'au';
+
+const resolveQueueRegion = (region?: string) => {
+  const candidate = (region ?? DEFAULT_QUEUE_REGION).trim().toLowerCase();
+  return candidate.length > 0 ? candidate : 'au';
+};
+
 type MatchPayload = {
   sessionId?: string;
+  partnerId?: string;
+  partnerAnonymousId?: string;
+  queueKey?: string;
+  matchedAt?: string;
   channelToken?: string;
   agoraChannel?: string;
-  partnerAnonymousId?: string;
 };
 
 type QueueStatus = 'idle' | 'joining' | 'waiting' | 'matched';
@@ -19,7 +32,7 @@ type QueueState = {
   tokenSpent: boolean;
   setEstimated: (seconds: number | null) => void;
   setMatch: (payload: MatchPayload) => void;
-  joinQueue: () => Promise<void>;
+  joinQueue: (region?: string) => Promise<void>;
   leaveQueue: () => Promise<boolean>;
   reset: () => void;
   markTokenSpent: (spent: boolean) => void;
@@ -34,13 +47,23 @@ const useQueueStore = create<QueueState>((set, get) => ({
   setMatch: (payload) => set({ match: payload, status: 'matched', estimatedSeconds: null }),
   markTokenSpent: (spent) => set({ tokenSpent: spent }),
   reset: () => set({ status: 'idle', estimatedSeconds: null, match: null, tokenSpent: false }),
-  joinQueue: async () => {
+  joinQueue: async (region?: string) => {
     const { status } = get();
     if (status === 'joining' || status === 'waiting') {
       return;
     }
     set({ status: 'joining' });
-    const response = await apiJson<{ ok: boolean }>('/queue/join', { method: 'POST' });
+    const response = await apiJson<{
+      status: 'queued' | 'already_queued';
+      queueKey: string;
+      position: number | null;
+    }>('/queue/join', {
+      method: 'POST',
+      body: JSON.stringify({
+        region: resolveQueueRegion(region),
+        preferences: {},
+      }),
+    });
     if (!response.ok) {
       set({ status: 'idle' });
       throw new Error('Queue join failed');
@@ -60,29 +83,35 @@ const useQueueStore = create<QueueState>((set, get) => ({
 
 export function useQueue() {
   const queue = useQueueStore();
-  const { socket } = useWebSocket();
+  const { queueSocket } = useWebSocket();
 
   useEffect(() => {
-    if (!socket) {
+    if (!queueSocket) {
       return;
     }
 
-    const handleEstimate = (payload: { seconds?: number }) => {
-      queue.setEstimated(typeof payload?.seconds === 'number' ? payload.seconds : null);
-    };
-
     const handleMatch = (payload: MatchPayload) => {
-      queue.setMatch(payload);
+      queue.setMatch({
+        ...payload,
+        partnerAnonymousId: payload.partnerAnonymousId ?? payload.partnerId,
+      });
     };
 
-    socket.on('queue:estimate', handleEstimate);
-    socket.on('match:found', handleMatch);
+    const handleEstimate = (payload?: { estimatedSeconds?: number; etaSeconds?: number }) => {
+      const seconds = payload?.estimatedSeconds ?? payload?.etaSeconds ?? null;
+      queue.setEstimated(typeof seconds === 'number' ? seconds : null);
+    };
+
+    queueSocket.on('match', handleMatch);
+    queueSocket.on('match:found', handleMatch);
+    queueSocket.on('queue:estimate', handleEstimate);
 
     return () => {
-      socket.off('queue:estimate', handleEstimate);
-      socket.off('match:found', handleMatch);
+      queueSocket.off('match', handleMatch);
+      queueSocket.off('match:found', handleMatch);
+      queueSocket.off('queue:estimate', handleEstimate);
     };
-  }, [socket, queue.setEstimated, queue.setMatch]);
+  }, [queueSocket, queue.setEstimated, queue.setMatch]);
 
   return queue;
 }

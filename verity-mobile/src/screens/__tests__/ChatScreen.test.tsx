@@ -74,7 +74,7 @@ describe('ChatScreen', () => {
     }));
 
     server.use(
-      rest.get(`${API_URL}/matches/:matchId/messages`, (_req, res, ctx) =>
+      rest.get(`${API_URL}/matches/:matchId/messages`, (_req: any, res: any, ctx: any) =>
         res(
           ctx.status(200),
           ctx.json([
@@ -88,7 +88,7 @@ describe('ChatScreen', () => {
           ]),
         ),
       ),
-      rest.post(`${API_URL}/matches/:matchId/messages`, (_req, res, ctx) =>
+      rest.post(`${API_URL}/matches/:matchId/messages`, (_req: any, res: any, ctx: any) =>
         res(
           ctx.status(200),
           ctx.json({
@@ -124,7 +124,7 @@ describe('ChatScreen', () => {
 
   it('adds incoming messages from the WebSocket event store', async () => {
     server.use(
-      rest.get(`${API_URL}/matches/:matchId/messages`, (_req, res, ctx) =>
+      rest.get(`${API_URL}/matches/:matchId/messages`, (_req: any, res: any, ctx: any) =>
         res(ctx.status(200), ctx.json([])),
       ),
     );

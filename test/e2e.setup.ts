@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
+import { io } from 'socket.io-client';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { REDIS_CLIENT, type RedisClient } from '../src/common/redis.provider';
@@ -9,19 +10,6 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { MatchingWorker } from '../src/queue/matching.worker';
 import { SessionService } from '../src/session/session.service';
 import { VideoService } from '../src/video/video.service';
-
-const path = require('path') as typeof import('path');
-const socketIoRoot = path.dirname(require.resolve('socket.io/package.json'));
-const io = require(path.join(socketIoRoot, 'client-dist', 'socket.io.js')) as (
-  url: string,
-  opts?: Record<string, unknown>,
-) => {
-  on: (event: string, handler: (...args: any[]) => void) => void;
-  once: (event: string, handler: (...args: any[]) => void) => void;
-  emit: (event: string, payload?: unknown) => void;
-  disconnect: () => void;
-  connected: boolean;
-};
 
 export type TestAppContext = {
   app: INestApplication<App>;
@@ -84,6 +72,10 @@ class TestPaymentsService extends PaymentsService {
 
 export function setTestEnv() {
   process.env.NODE_ENV = 'test';
+  process.env.DATABASE_URL =
+    process.env.DATABASE_URL ??
+    'postgresql://postgres:postgres@localhost:5432/verity';
+  process.env.REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
   process.env.JWT_ACCESS_SECRET =
     process.env.JWT_ACCESS_SECRET ?? 'test_access_secret';
   process.env.JWT_REFRESH_SECRET =
@@ -127,14 +119,19 @@ export async function createTestApp(options?: {
   const prisma = app.get(PrismaService);
   const redis = app.get<RedisClient>(REDIS_CLIENT);
   const worker = app.get(MatchingWorker);
+  const httpServer = app.getHttpServer();
+  const address = httpServer.address() as { port?: number } | null;
+  if (!address?.port) {
+    throw new Error('Failed to determine test app port');
+  }
 
   return {
     app,
     prisma,
     redis,
     worker,
-    baseUrl: await app.getUrl(),
-    httpServer: app.getHttpServer(),
+    baseUrl: `http://127.0.0.1:${address.port}`,
+    httpServer,
   };
 }
 
@@ -236,29 +233,52 @@ export async function connectSocket(
   namespace: string,
   token: string,
 ) {
-  const socket = io(`${baseUrl}${namespace}`, {
-    transports: ['websocket'],
-    auth: { token },
-    forceNew: true,
-    reconnection: false,
-  });
+  const connectTimeoutMs = 10_000;
+  const maxAttempts = 2;
+  let lastError: unknown;
 
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`Socket connect timeout: ${namespace}`)),
-      5000,
-    );
-    socket.once('connect', () => {
-      clearTimeout(timer);
-      resolve();
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const socket = io(`${baseUrl}${namespace}`, {
+      transports: ['websocket'],
+      auth: { token },
+      forceNew: true,
+      reconnection: false,
     });
-    socket.once('connect_error', (err: unknown) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-  });
 
-  return socket;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error(`Socket connect timeout: ${namespace}`)),
+          connectTimeoutMs,
+        );
+        socket.once('connect', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        socket.once('connect_error', (err: unknown) => {
+          clearTimeout(timer);
+          reject(
+            err instanceof Error
+              ? err
+              : new Error(`Socket connect error: ${String(err)}`),
+          );
+        });
+      });
+
+      return socket;
+    } catch (error) {
+      lastError = error;
+      socket.disconnect();
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Socket connect failed: ${namespace}`);
 }
 
 export function waitForEvent<T = any>(
