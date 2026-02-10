@@ -56,6 +56,8 @@ test-results/
 # temp directory
 .temp
 .tmp
+/tmp/
+/output/
 
 # Runtime data
 pids
