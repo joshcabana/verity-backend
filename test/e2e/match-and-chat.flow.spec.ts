@@ -116,10 +116,22 @@ describe('Match + chat flow (e2e)', () => {
     expect(choiceB.body.status).toBe('resolved');
     expect(choiceB.body.outcome).toBe('mutual');
     expect(choiceB.body.matchId).toEqual(expect.any(String));
+    expect(choiceB.body.partnerRevealVersion).toBe(1);
+    expect(choiceB.body.partnerReveal).toEqual(
+      expect.objectContaining({
+        id: userA.id,
+      }),
+    );
 
     const mutualPayload = await mutualPromise;
     expect(mutualPayload.matchId).toBe(choiceB.body.matchId);
     expect(mutualPayload.sessionId).toBe(session.id);
+    expect(mutualPayload.partnerRevealVersion).toBe(1);
+    expect(mutualPayload.partnerReveal).toEqual(
+      expect.objectContaining({
+        id: userB.id,
+      }),
+    );
 
     const match = await context.prisma.match.findUnique({
       where: {
@@ -148,6 +160,32 @@ describe('Match + chat flow (e2e)', () => {
         }),
       ]),
     );
+
+    await request(context.app.getHttpServer())
+      .get(`/matches/${choiceB.body.matchId}/reveal`)
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.revealAcknowledged).toBe(false);
+        expect(res.body.partnerRevealVersion).toBe(1);
+      });
+
+    await request(context.app.getHttpServer())
+      .post(`/matches/${choiceB.body.matchId}/messages`)
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ text: 'Hello before ack' })
+      .expect(403)
+      .expect((res) => {
+        expect(res.body.code).toBe('REVEAL_ACK_REQUIRED');
+      });
+
+    await request(context.app.getHttpServer())
+      .post(`/matches/${choiceB.body.matchId}/reveal-ack`)
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.revealAcknowledged).toBe(true);
+      });
 
     const chatSocketA = await connectSocket(context.baseUrl, '/chat', tokenA);
     const chatSocketB = await connectSocket(context.baseUrl, '/chat', tokenB);
@@ -198,8 +236,14 @@ describe('Match + chat flow (e2e)', () => {
 
     const [low, high] =
       userA.id < userB.id ? [userA.id, userB.id] : [userB.id, userA.id];
+    const now = new Date();
     const match = await context.prisma.match.create({
-      data: { userAId: low, userBId: high },
+      data: {
+        userAId: low,
+        userBId: high,
+        userARevealAcknowledgedAt: now,
+        userBRevealAcknowledgedAt: now,
+      },
     });
 
     await request(context.app.getHttpServer())

@@ -26,6 +26,25 @@ class FakePrismaService {
     findUnique: async ({ where }: { where: { id: string } }) => {
       return this.matches.get(where.id) ?? null;
     },
+    update: async ({
+      where,
+      data,
+    }: {
+      where: { id: string };
+      data: Partial<Match>;
+    }) => {
+      const current = this.matches.get(where.id);
+      if (!current) {
+        return null;
+      }
+      const updated = {
+        ...current,
+        ...data,
+        updatedAt: new Date(),
+      } as Match;
+      this.matches.set(where.id, updated);
+      return updated;
+    },
     findMany: async ({ where, include, orderBy }: any) => {
       const results = Array.from(this.matches.values()).filter(
         (match) =>
@@ -134,6 +153,8 @@ describe('Chat & identity reveal (e2e)', () => {
       updatedAt: new Date(),
       userAId: userA.id,
       userBId: userB.id,
+      userARevealAcknowledgedAt: new Date(),
+      userBRevealAcknowledgedAt: new Date(),
     };
     prisma.matches.set(match.id, match);
 
@@ -169,6 +190,8 @@ describe('Chat & identity reveal (e2e)', () => {
       updatedAt: new Date(),
       userAId: 'user-a',
       userBId: 'user-b',
+      userARevealAcknowledgedAt: new Date(),
+      userBRevealAcknowledgedAt: new Date(),
     };
     prisma.matches.set(match.id, match);
 

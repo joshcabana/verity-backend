@@ -20,9 +20,26 @@ jest.mock('../../src/queries/useChatQuery', () => ({
     ],
     isFetching: false,
   }),
+  useMatchRevealQuery: () => ({
+    data: {
+      matchId: 'match-1',
+      partnerRevealVersion: 1,
+      partnerReveal: {
+        id: 'user-2',
+        displayName: 'Avery',
+        primaryPhotoUrl: 'https://example.com/photo.jpg',
+        age: 26,
+        bio: 'Coffee and coastlines.',
+      },
+      revealAcknowledged: true,
+      revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+    },
+    isLoading: false,
+    isError: false,
+  }),
   useSendMessageMutation: () => ({
     mutateAsync: mockMutateAsync,
-    isLoading: false,
+    isPending: false,
   }),
 }));
 

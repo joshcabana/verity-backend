@@ -36,6 +36,20 @@ export class MatchesController {
     return this.matchesService.listMatches(userId);
   }
 
+  @Get(':id/reveal')
+  @UseGuards(AuthGuard('jwt'))
+  async getReveal(@Req() req: Request, @Param('id') matchId: string) {
+    const userId = getRequestUserId(req);
+    return this.matchesService.getReveal(matchId, userId);
+  }
+
+  @Post(':id/reveal-ack')
+  @UseGuards(AuthGuard('jwt'))
+  async acknowledgeReveal(@Req() req: Request, @Param('id') matchId: string) {
+    const userId = getRequestUserId(req);
+    return this.matchesService.acknowledgeReveal(matchId, userId);
+  }
+
   @Get(':id/messages')
   @UseGuards(AuthGuard('jwt'))
   async listMessages(

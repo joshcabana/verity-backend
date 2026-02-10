@@ -1,18 +1,21 @@
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import PhotoCarousel from '../../components/PhotoCarousel';
 import ThemedButton from '../../components/ThemedButton';
-import ThemedCard from '../../components/ThemedCard';
 import type { RootStackParamList } from '../../navigation/AppNavigator';
-import { MatchItem, useMatchesQuery } from '../../queries/useMatchesQuery';
+import {
+  useAcknowledgeRevealMutation,
+  useMatchRevealQuery,
+} from '../../queries/useChatQuery';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
+import type { PartnerReveal } from '../../types/reveal';
 
 type MatchProfileParams = {
   matchId?: string;
-  match?: MatchItem;
+  partnerReveal?: PartnerReveal;
 };
 
 type MatchProfileNavigation = NativeStackNavigationProp<RootStackParamList>;
@@ -23,12 +26,14 @@ export default function MatchProfileView() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = route.params as MatchProfileParams | undefined;
-  const { data } = useMatchesQuery();
+  const matchId = params?.matchId;
+  const revealQuery = useMatchRevealQuery(matchId, {
+    enabled: Boolean(matchId),
+  });
+  const acknowledgeRevealMutation = useAcknowledgeRevealMutation(matchId);
+  const partnerReveal = revealQuery.data?.partnerReveal ?? params?.partnerReveal ?? null;
 
-  const match =
-    params?.match ?? data?.find((item) => item.id === params?.matchId) ?? null;
-
-  if (!match) {
+  if (!matchId) {
     return (
       <View style={styles.center}>
         <Text style={styles.title}>Match not found</Text>
@@ -37,36 +42,60 @@ export default function MatchProfileView() {
     );
   }
 
-  const partner = match.partner;
+  if (revealQuery.isLoading && !partnerReveal) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.primary} />
+        <Text style={styles.subtitle}>Loading profile reveal...</Text>
+      </View>
+    );
+  }
+
+  if (revealQuery.isError || !partnerReveal) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.title}>Profile unavailable</Text>
+        <Text style={styles.subtitle}>
+          We could not load this reveal right now.
+        </Text>
+      </View>
+    );
+  }
+
+  const handleStartChat = async () => {
+    try {
+      if (!revealQuery.data?.revealAcknowledged) {
+        await acknowledgeRevealMutation.mutateAsync();
+      }
+      navigation.navigate('Chat', { matchId });
+    } catch {
+      Alert.alert('Unable to continue', 'Please try again in a moment.');
+    }
+  };
+  const photos = partnerReveal.primaryPhotoUrl
+    ? [partnerReveal.primaryPhotoUrl]
+    : [];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <PhotoCarousel photos={partner.photos ?? []} />
+      <PhotoCarousel photos={photos} />
 
       <View style={styles.headerRow}>
-        <Text style={styles.name}>{partner.displayName ?? 'Anonymous'}</Text>
-        {partner.age ? <Text style={styles.age}>{partner.age}</Text> : null}
+        <Text style={styles.name}>{partnerReveal.displayName ?? 'Anonymous'}</Text>
+        {partnerReveal.age ? <Text style={styles.age}>{partnerReveal.age}</Text> : null}
       </View>
 
-      {partner.bio ? <Text style={styles.bio}>{partner.bio}</Text> : null}
+      {partnerReveal.bio ? <Text style={styles.bio}>{partnerReveal.bio}</Text> : null}
 
-      {partner.interests?.length ? (
-        <ThemedCard style={styles.card}>
-          <Text style={styles.sectionTitle}>Interests</Text>
-          <View style={styles.tags}>
-            {partner.interests.map((interest) => (
-              <View key={interest} style={styles.tag}>
-                <Text style={styles.tagText}>{interest}</Text>
-              </View>
-            ))}
-          </View>
-        </ThemedCard>
-      ) : null}
+      <Text style={styles.subtitle}>
+        Acknowledge this profile reveal before messaging.
+      </Text>
 
       <ThemedButton
-        label="Open chat"
+        label={acknowledgeRevealMutation.isPending ? 'Starting chat...' : 'Start chat'}
         variant="primary"
-        onPress={() => navigation.navigate('Chat', { matchId: match.id })}
+        onPress={handleStartChat}
+        disabled={acknowledgeRevealMutation.isPending}
       />
     </ScrollView>
   );
@@ -123,31 +152,5 @@ const createStyles = (colors: {
       color: colors.text,
       lineHeight: lineHeights.base,
       marginBottom: spacing.lg,
-    },
-    card: {
-      marginBottom: spacing.lg,
-    },
-    sectionTitle: {
-      fontSize: typography.sm,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: spacing.sm,
-    },
-    tags: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
-    tag: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: 999,
-      backgroundColor: colors.border,
-      marginRight: spacing.sm,
-      marginBottom: spacing.sm,
-    },
-    tagText: {
-      fontSize: typography.xs,
-      color: colors.text,
-      fontWeight: '600',
     },
   });

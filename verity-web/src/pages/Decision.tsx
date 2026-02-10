@@ -9,9 +9,24 @@ type DecisionResponse = {
   status: 'pending' | 'resolved';
   outcome?: 'mutual' | 'non_mutual';
   matchId?: string;
+  partnerRevealVersion?: number;
+  partnerReveal?: PartnerReveal;
 };
 
-type MatchPayload = { sessionId: string; matchId: string };
+type PartnerReveal = {
+  id: string;
+  displayName: string | null;
+  primaryPhotoUrl: string | null;
+  age: number | null;
+  bio: string | null;
+};
+
+type MatchPayload = {
+  sessionId: string;
+  matchId: string;
+  partnerRevealVersion?: number;
+  partnerReveal?: PartnerReveal;
+};
 
 type NonMutualPayload = { sessionId: string; outcome: 'pass' };
 
@@ -37,7 +52,16 @@ export const Decision: React.FC = () => {
         outcome: 'mutual',
       });
       setMessage('It’s a match! Redirecting to chat.');
-      setTimeout(() => navigate(`/chat/${payload.matchId}`), 1200);
+      setTimeout(
+        () =>
+          navigate(`/chat/${payload.matchId}`, {
+            state: {
+              partnerRevealVersion: payload.partnerRevealVersion,
+              partnerReveal: payload.partnerReveal,
+            },
+          }),
+        1200,
+      );
     };
 
     const handleNonMutual = (payload: NonMutualPayload) => {
@@ -90,7 +114,12 @@ export const Decision: React.FC = () => {
           sessionId,
           outcome: 'mutual',
         });
-        navigate(`/chat/${response.data.matchId}`);
+        navigate(`/chat/${response.data.matchId}`, {
+          state: {
+            partnerRevealVersion: response.data.partnerRevealVersion,
+            partnerReveal: response.data.partnerReveal,
+          },
+        });
       } else {
         trackEvent('session_choice_resolved', {
           sessionId,

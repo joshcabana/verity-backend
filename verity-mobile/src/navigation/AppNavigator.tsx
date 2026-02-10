@@ -25,6 +25,7 @@ import { PendingRoute, useAuth } from '../hooks/useAuth';
 import OnboardingStack, { type OnboardingStackParamList } from './OnboardingStack';
 import { useTheme } from '../theme/ThemeProvider';
 import { spacing } from '../theme/tokens';
+import type { PartnerReveal } from '../types/reveal';
 
 export type RootStackParamList = {
   Onboarding: NavigatorScreenParams<OnboardingStackParamList> | undefined;
@@ -46,6 +47,7 @@ export type RootStackParamList = {
   };
   MatchProfile: {
     matchId?: string;
+    partnerReveal?: PartnerReveal;
   };
   Chat: {
     matchId?: string;
