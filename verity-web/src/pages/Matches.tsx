@@ -3,20 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 
-type Partner = {
+type PartnerReveal = {
   id: string;
-  displayName?: string | null;
-  photos?: unknown;
-  bio?: string | null;
-  age?: number | null;
-  gender?: string | null;
-  interests?: string[];
+  displayName: string | null;
+  primaryPhotoUrl: string | null;
+  age: number | null;
+  bio: string | null;
 };
 
 type Match = {
-  id: string;
-  createdAt: string;
-  partner: Partner;
+  matchId: string;
+  partnerRevealVersion: number;
+  revealAcknowledged: boolean;
+  revealAcknowledgedAt: string | null;
+  partnerReveal: PartnerReveal | null;
 };
 
 export const Matches: React.FC = () => {
@@ -78,24 +78,29 @@ export const Matches: React.FC = () => {
         ) : (
           <div className="grid" style={{ gap: '12px', marginTop: '12px' }}>
             {matches.map((match) => (
-              <div key={match.id} className="card soft">
+              <div key={match.matchId} className="card soft">
                 <div className="inline" style={{ justifyContent: 'space-between' }}>
                   <h3 style={{ margin: 0 }}>
-                    {match.partner.displayName ?? 'Anonymous match'}
+                    {match.partnerReveal?.displayName ?? 'New match'}
                   </h3>
                   <span className="pill">
-                    {new Date(match.createdAt).toLocaleDateString()}
+                    {match.revealAcknowledged ? 'Reveal complete' : 'Reveal required'}
                   </span>
                 </div>
-                {match.partner.bio && (
+                {match.partnerReveal?.bio && match.revealAcknowledged && (
                   <p className="subtle" style={{ marginTop: '8px' }}>
-                    {match.partner.bio}
+                    {match.partnerReveal.bio}
+                  </p>
+                )}
+                {!match.revealAcknowledged && (
+                  <p className="subtle" style={{ marginTop: '8px' }}>
+                    Open this match to view the profile reveal.
                   </p>
                 )}
                 <button
                   className="button secondary"
                   style={{ marginTop: '12px' }}
-                  onClick={() => navigate(`/chat/${match.id}`)}
+                  onClick={() => navigate(`/chat/${match.matchId}`)}
                 >
                   Open chat
                 </button>

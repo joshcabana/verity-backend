@@ -6,14 +6,13 @@ import {
   type PartnerReveal,
 } from './reveal.types';
 
-const PUBLIC_PROFILE_FIELDS = {
+const MATCH_LIST_FIELDS = {
   id: true,
-  displayName: true,
-  photos: true,
-  bio: true,
-  age: true,
-  gender: true,
-  interests: true,
+  createdAt: true,
+  userAId: true,
+  userBId: true,
+  userARevealAcknowledgedAt: true,
+  userBRevealAcknowledgedAt: true,
 };
 
 const REVEAL_PROFILE_FIELDS = {
@@ -32,20 +31,25 @@ export type MatchRevealPayload = {
   revealAcknowledgedAt: string | null;
 };
 
+export type MatchListItemPayload = {
+  matchId: string;
+  partnerRevealVersion: typeof PARTNER_REVEAL_VERSION;
+  revealAcknowledged: boolean;
+  revealAcknowledgedAt: string | null;
+  partnerReveal: PartnerReveal | null;
+};
+
 @Injectable()
 export class MatchesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listMatches(userId: string) {
+  async listMatches(userId: string): Promise<MatchListItemPayload[]> {
     const [matches, activeBlocks] = await Promise.all([
       this.prisma.match.findMany({
         where: {
           OR: [{ userAId: userId }, { userBId: userId }],
         },
-        include: {
-          userA: { select: PUBLIC_PROFILE_FIELDS },
-          userB: { select: PUBLIC_PROFILE_FIELDS },
-        },
+        select: MATCH_LIST_FIELDS,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.block.findMany({
@@ -69,14 +73,54 @@ export class MatchesService {
       }
     }
 
-    return matches.map((match) => {
-      const partner = match.userAId === userId ? match.userB : match.userA;
+    const visibleMatches = matches
+      .map((match) => {
+        const isUserA = match.userAId === userId;
+        const partnerUserId = isUserA ? match.userBId : match.userAId;
+        const acknowledgedAt = isUserA
+          ? match.userARevealAcknowledgedAt
+          : match.userBRevealAcknowledgedAt;
+        return {
+          matchId: match.id,
+          partnerUserId,
+          revealAcknowledged: Boolean(acknowledgedAt),
+          revealAcknowledgedAt: acknowledgedAt ? acknowledgedAt.toISOString() : null,
+        };
+      })
+      .filter((match) => !blockedUserIds.has(match.partnerUserId));
+
+    const acknowledgedPartnerIds = [
+      ...new Set(
+        visibleMatches
+          .filter((match) => match.revealAcknowledged)
+          .map((match) => match.partnerUserId),
+      ),
+    ];
+
+    let partnerRevealById = new Map<string, PartnerReveal>();
+    if (acknowledgedPartnerIds.length > 0) {
+      const partnerProfiles = await this.prisma.user.findMany({
+        where: {
+          id: { in: acknowledgedPartnerIds },
+        },
+        select: REVEAL_PROFILE_FIELDS,
+      });
+      partnerRevealById = new Map(
+        partnerProfiles.map((profile) => [profile.id, buildPartnerReveal(profile)]),
+      );
+    }
+
+    return visibleMatches.map((match) => {
       return {
-        id: match.id,
-        createdAt: match.createdAt,
-        partner,
+        matchId: match.matchId,
+        partnerRevealVersion: PARTNER_REVEAL_VERSION,
+        revealAcknowledged: match.revealAcknowledged,
+        revealAcknowledgedAt: match.revealAcknowledgedAt,
+        partnerReveal: match.revealAcknowledged
+          ? (partnerRevealById.get(match.partnerUserId) ?? null)
+          : null,
       };
-    }).filter((match) => !blockedUserIds.has(match.partner.id));
+    });
   }
 
   async getReveal(matchId: string, userId: string): Promise<MatchRevealPayload> {

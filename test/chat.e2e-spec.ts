@@ -22,6 +22,14 @@ class FakePrismaService {
   matches = new Map<string, Match>();
   messages: Message[] = [];
 
+  user = {
+    findMany: async ({ where }: { where: { id: { in: string[] } } }) => {
+      return where.id.in
+        .map((id) => this.users.get(id))
+        .filter((user): user is User => Boolean(user));
+    },
+  };
+
   match = {
     findUnique: async ({ where }: { where: { id: string } }) => {
       return this.matches.get(where.id) ?? null;
@@ -45,24 +53,18 @@ class FakePrismaService {
       this.matches.set(where.id, updated);
       return updated;
     },
-    findMany: async ({ where, include, orderBy }: any) => {
+    findMany: async ({ where, orderBy }: any) => {
       const results = Array.from(this.matches.values()).filter(
         (match) =>
           match.userAId === where.OR[0].userAId ||
           match.userBId === where.OR[1].userBId,
       );
 
-      const withUsers = results.map((match) => ({
-        ...match,
-        userA: this.users.get(match.userAId),
-        userB: this.users.get(match.userBId),
-      }));
-
       if (orderBy?.createdAt === 'desc') {
-        withUsers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       }
 
-      return withUsers;
+      return results;
     },
   };
 
@@ -160,8 +162,15 @@ describe('Chat & identity reveal (e2e)', () => {
 
     const list = await matchesService.listMatches(userA.id);
     expect(list).toHaveLength(1);
-    expect(list[0].partner.id).toBe(userB.id);
-    expect(list[0].partner.displayName).toBe('B');
+    expect(list[0].matchId).toBe(match.id);
+    expect(list[0].partnerRevealVersion).toBe(1);
+    expect(list[0].revealAcknowledged).toBe(true);
+    expect(list[0].partnerReveal).toEqual(
+      expect.objectContaining({
+        id: userB.id,
+        displayName: 'B',
+      }),
+    );
 
     const message = await chatService.sendMessage(
       match.id,

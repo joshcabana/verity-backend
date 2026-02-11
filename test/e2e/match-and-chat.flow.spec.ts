@@ -152,11 +152,11 @@ describe('Match + chat flow (e2e)', () => {
     expect(list.body).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: choiceB.body.matchId,
-          partner: expect.objectContaining({
-            id: userB.id,
-            displayName: 'Beta',
-          }),
+          matchId: choiceB.body.matchId,
+          partnerRevealVersion: 1,
+          revealAcknowledged: false,
+          revealAcknowledgedAt: null,
+          partnerReveal: null,
         }),
       ]),
     );
@@ -185,6 +185,29 @@ describe('Match + chat flow (e2e)', () => {
       .expect(201)
       .expect((res) => {
         expect(res.body.revealAcknowledged).toBe(true);
+      });
+
+    await request(context.app.getHttpServer())
+      .get('/matches')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(200)
+      .expect((res) => {
+        const match = res.body.find(
+          (item: { matchId: string }) => item.matchId === choiceB.body.matchId,
+        );
+        expect(match).toEqual(
+          expect.objectContaining({
+            matchId: choiceB.body.matchId,
+            partnerRevealVersion: 1,
+            revealAcknowledged: true,
+          }),
+        );
+        expect(match.partnerReveal).toEqual(
+          expect.objectContaining({
+            id: userB.id,
+            displayName: 'Beta',
+          }),
+        );
       });
 
     const chatSocketA = await connectSocket(context.baseUrl, '/chat', tokenA);

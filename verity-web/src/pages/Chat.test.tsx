@@ -112,10 +112,16 @@ describe('Chat', () => {
       http.get(`${API_URL}/matches`, () =>
         HttpResponse.json([
           {
-            id: 'match-1',
-            partner: {
+            matchId: 'match-1',
+            partnerRevealVersion: 1,
+            revealAcknowledged: true,
+            revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+            partnerReveal: {
               id: 'user-2',
               displayName: 'Alex',
+              primaryPhotoUrl: 'https://example.com/alex.jpg',
+              age: 28,
+              bio: 'Coffee and coastlines.',
             },
           },
         ]),

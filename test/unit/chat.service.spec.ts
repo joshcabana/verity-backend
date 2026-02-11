@@ -199,8 +199,6 @@ describe('MatchesService (unit)', () => {
         userBId: 'user-b',
         userARevealAcknowledgedAt: null,
         userBRevealAcknowledgedAt: null,
-        userA: { id: 'user-a', displayName: 'A' },
-        userB: { id: 'user-b', displayName: 'B' },
       },
       {
         id: 'match-2',
@@ -208,17 +206,42 @@ describe('MatchesService (unit)', () => {
         userAId: 'user-c',
         userBId: 'user-a',
         userARevealAcknowledgedAt: null,
-        userBRevealAcknowledgedAt: null,
-        userA: { id: 'user-c', displayName: 'C' },
-        userB: { id: 'user-a', displayName: 'A' },
+        userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      },
+    ]);
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: 'user-c',
+        displayName: 'C',
+        photos: ['https://cdn.example/c.jpg'],
+        age: 29,
+        bio: 'C bio',
       },
     ]);
 
     const result = await service.listMatches('user-a');
 
     expect(result).toHaveLength(2);
-    expect(result[0].partner.id).toBe('user-b');
-    expect(result[1].partner.id).toBe('user-c');
+    expect(result[0]).toEqual({
+      matchId: 'match-1',
+      partnerRevealVersion: 1,
+      revealAcknowledged: false,
+      revealAcknowledgedAt: null,
+      partnerReveal: null,
+    });
+    expect(result[1]).toEqual({
+      matchId: 'match-2',
+      partnerRevealVersion: 1,
+      revealAcknowledged: true,
+      revealAcknowledgedAt: '2024-01-01T00:00:00.000Z',
+      partnerReveal: {
+        id: 'user-c',
+        displayName: 'C',
+        primaryPhotoUrl: 'https://cdn.example/c.jpg',
+        age: 29,
+        bio: 'C bio',
+      },
+    });
   });
 
   it('filters blocked partners from matches', async () => {
@@ -231,8 +254,6 @@ describe('MatchesService (unit)', () => {
         userBId: 'user-b',
         userARevealAcknowledgedAt: null,
         userBRevealAcknowledgedAt: null,
-        userA: { id: 'user-a', displayName: 'A' },
-        userB: { id: 'user-b', displayName: 'B' },
       },
     ]);
     prisma.block.findMany.mockResolvedValue([
