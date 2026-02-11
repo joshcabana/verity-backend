@@ -102,6 +102,8 @@ model Match {
   updatedAt DateTime @updatedAt
   userAId   String
   userBId   String
+  userARevealAcknowledgedAt DateTime?
+  userBRevealAcknowledgedAt DateTime?
 
   userA User @relation("UserAMatches", fields: [userAId], references: [id])
   userB User @relation("UserBMatches", fields: [userBId], references: [id])

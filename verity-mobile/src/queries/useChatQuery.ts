@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import type { MatchRevealPayload } from '../types/reveal';
 
 export type ChatMessage = {
   id: string;
@@ -10,28 +11,89 @@ export type ChatMessage = {
   createdAt: string;
 };
 
-export function useChatQuery(matchId?: string, limit = 50) {
+type ApiErrorData = {
+  code?: string;
+  message?: string | { code?: string; message?: string };
+};
+
+const REVEAL_ACK_REQUIRED_CODE = 'REVEAL_ACK_REQUIRED';
+
+function parseApiErrorCode(data: unknown): string | null {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+  const payload = data as ApiErrorData;
+  if (typeof payload.code === 'string') {
+    return payload.code;
+  }
+  if (payload.message && typeof payload.message === 'object') {
+    if (typeof payload.message.code === 'string') {
+      return payload.message.code;
+    }
+  }
+  return null;
+}
+
+export function useChatQuery(
+  matchId?: string,
+  limit = 50,
+  options?: { enabled?: boolean },
+) {
   const { logout } = useAuth();
 
   return useQuery({
     queryKey: ['chat', matchId, limit],
-    enabled: Boolean(matchId),
+    enabled: Boolean(matchId) && (options?.enabled ?? true),
     queryFn: async () => {
       if (!matchId) {
         return [] as ChatMessage[];
       }
-      const response = await apiJson<ChatMessage[]>(
+      const response = await apiJson<ChatMessage[] | ApiErrorData>(
         `/matches/${matchId}/messages?limit=${limit}`,
       );
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         await logout();
         return [];
+      }
+      if (response.status === 403) {
+        const code = parseApiErrorCode(response.data);
+        if (code === REVEAL_ACK_REQUIRED_CODE) {
+          throw new Error(REVEAL_ACK_REQUIRED_CODE);
+        }
+        throw new Error('FORBIDDEN');
       }
       if (!response.ok || !response.data) {
         return [];
       }
+      return Array.isArray(response.data) ? response.data : [];
+    },
+  });
+}
+
+export function useMatchRevealQuery(
+  matchId?: string,
+  options?: { enabled?: boolean },
+) {
+  const { logout } = useAuth();
+
+  return useQuery({
+    queryKey: ['match-reveal', matchId],
+    enabled: Boolean(matchId) && (options?.enabled ?? true),
+    queryFn: async () => {
+      if (!matchId) {
+        throw new Error('Missing match ID');
+      }
+      const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal`);
+      if (response.status === 401) {
+        await logout();
+        throw new Error('UNAUTHORIZED');
+      }
+      if (!response.ok || !response.data) {
+        throw new Error('REVEAL_LOAD_FAILED');
+      }
       return response.data;
     },
+    retry: false,
   });
 }
 
@@ -49,9 +111,16 @@ export function useSendMessageMutation(matchId?: string) {
         body: JSON.stringify({ text }),
       });
 
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         await logout();
         throw new Error('Unauthorized');
+      }
+      if (response.status === 403) {
+        const code = parseApiErrorCode(response.data);
+        if (code === REVEAL_ACK_REQUIRED_CODE) {
+          throw new Error(REVEAL_ACK_REQUIRED_CODE);
+        }
+        throw new Error('FORBIDDEN');
       }
 
       if (!response.ok || !response.data) {
@@ -115,6 +184,31 @@ export function useSendMessageMutation(matchId?: string) {
         }
         queryClient.setQueryData<ChatMessage[]>(key, [...filtered, message]);
       });
+    },
+  });
+}
+
+export function useAcknowledgeRevealMutation(matchId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!matchId) {
+        throw new Error('Missing match ID');
+      }
+      const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal-ack`, {
+        method: 'POST',
+      });
+      if (!response.ok || !response.data) {
+        throw new Error('REVEAL_ACK_FAILED');
+      }
+      return response.data;
+    },
+    onSuccess: (payload) => {
+      if (!matchId) {
+        return;
+      }
+      queryClient.setQueryData<MatchRevealPayload>(['match-reveal', matchId], payload);
     },
   });
 }

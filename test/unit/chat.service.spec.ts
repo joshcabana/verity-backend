@@ -52,6 +52,8 @@ describe('ChatService (unit)', () => {
       id: 'match-1',
       userAId: 'user-a',
       userBId: 'user-b',
+      userARevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
     });
 
     const newest = { id: 'm2', createdAt: new Date('2024-01-02T00:00:00Z') };
@@ -73,6 +75,8 @@ describe('ChatService (unit)', () => {
       id: 'match-1',
       userAId: 'user-a',
       userBId: 'user-b',
+      userARevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
     });
 
     await expect(service.sendMessage('match-1', 'user-a', '  ')).rejects.toThrow(
@@ -91,6 +95,8 @@ describe('ChatService (unit)', () => {
       id: 'match-1',
       userAId: 'user-a',
       userBId: 'user-b',
+      userARevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
     });
 
     await expect(
@@ -103,6 +109,8 @@ describe('ChatService (unit)', () => {
       id: 'match-1',
       userAId: 'user-a',
       userBId: 'user-b',
+      userARevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
     });
     prisma.message.create.mockResolvedValue({
       id: 'msg-1',
@@ -134,6 +142,8 @@ describe('ChatService (unit)', () => {
       id: 'match-1',
       userAId: 'user-a',
       userBId: 'user-b',
+      userARevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
     });
     prisma.block.findFirst.mockResolvedValue({ id: 'block-1' });
 
@@ -144,6 +154,29 @@ describe('ChatService (unit)', () => {
       service.sendMessage('match-1', 'user-a', 'Hello'),
     ).rejects.toThrow(ForbiddenException);
     expect(notificationsService.notifyUsers).not.toHaveBeenCalled();
+  });
+
+  it('requires reveal acknowledgment before chat access', async () => {
+    prisma.match.findUnique.mockResolvedValue({
+      id: 'match-1',
+      userAId: 'user-a',
+      userBId: 'user-b',
+      userARevealAcknowledgedAt: null,
+      userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+    });
+
+    await expect(service.listMessages('match-1', 'user-a')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'REVEAL_ACK_REQUIRED',
+      }),
+    });
+    await expect(
+      service.sendMessage('match-1', 'user-a', 'Hello'),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'REVEAL_ACK_REQUIRED',
+      }),
+    });
   });
 });
 
@@ -164,6 +197,8 @@ describe('MatchesService (unit)', () => {
         createdAt,
         userAId: 'user-a',
         userBId: 'user-b',
+        userARevealAcknowledgedAt: null,
+        userBRevealAcknowledgedAt: null,
         userA: { id: 'user-a', displayName: 'A' },
         userB: { id: 'user-b', displayName: 'B' },
       },
@@ -172,6 +207,8 @@ describe('MatchesService (unit)', () => {
         createdAt,
         userAId: 'user-c',
         userBId: 'user-a',
+        userARevealAcknowledgedAt: null,
+        userBRevealAcknowledgedAt: null,
         userA: { id: 'user-c', displayName: 'C' },
         userB: { id: 'user-a', displayName: 'A' },
       },
@@ -192,6 +229,8 @@ describe('MatchesService (unit)', () => {
         createdAt,
         userAId: 'user-a',
         userBId: 'user-b',
+        userARevealAcknowledgedAt: null,
+        userBRevealAcknowledgedAt: null,
         userA: { id: 'user-a', displayName: 'A' },
         userB: { id: 'user-b', displayName: 'B' },
       },
@@ -206,5 +245,87 @@ describe('MatchesService (unit)', () => {
     const result = await service.listMatches('user-a');
 
     expect(result).toHaveLength(0);
+  });
+
+  it('returns partner reveal and acknowledgment status', async () => {
+    const now = new Date('2024-01-01T00:00:00Z');
+    prisma.match.findUnique.mockResolvedValue({
+      id: 'match-1',
+      userAId: 'user-a',
+      userBId: 'user-b',
+      userARevealAcknowledgedAt: now,
+      userBRevealAcknowledgedAt: null,
+      userA: {
+        id: 'user-a',
+        displayName: 'A',
+        photos: [],
+        age: 30,
+        bio: 'A bio',
+      },
+      userB: {
+        id: 'user-b',
+        displayName: 'B',
+        photos: ['https://cdn.example/b.jpg'],
+        age: 31,
+        bio: 'B bio',
+      },
+    });
+
+    const result = await service.getReveal('match-1', 'user-a');
+
+    expect(result.partnerRevealVersion).toBe(1);
+    expect(result.partnerReveal).toEqual({
+      id: 'user-b',
+      displayName: 'B',
+      primaryPhotoUrl: 'https://cdn.example/b.jpg',
+      age: 31,
+      bio: 'B bio',
+    });
+    expect(result.revealAcknowledged).toBe(true);
+    expect(result.revealAcknowledgedAt).toBe(now.toISOString());
+  });
+
+  it('acknowledges reveal for the requesting participant', async () => {
+    prisma.match.findUnique
+      .mockResolvedValueOnce({
+        id: 'match-1',
+        userAId: 'user-a',
+        userBId: 'user-b',
+        userARevealAcknowledgedAt: null,
+        userBRevealAcknowledgedAt: null,
+      })
+      .mockResolvedValueOnce({
+        id: 'match-1',
+        userAId: 'user-a',
+        userBId: 'user-b',
+        userARevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+        userBRevealAcknowledgedAt: null,
+        userA: {
+          id: 'user-a',
+          displayName: 'A',
+          photos: [],
+          age: 30,
+          bio: 'A bio',
+        },
+        userB: {
+          id: 'user-b',
+          displayName: 'B',
+          photos: [],
+          age: 31,
+          bio: 'B bio',
+        },
+      });
+
+    prisma.match.update.mockResolvedValue({
+      id: 'match-1',
+    });
+
+    const result = await service.acknowledgeReveal('match-1', 'user-a');
+
+    expect(prisma.match.update).toHaveBeenCalledWith({
+      where: { id: 'match-1' },
+      data: { userARevealAcknowledgedAt: expect.any(Date) },
+    });
+    expect(result.revealAcknowledged).toBe(true);
   });
 });

@@ -11,6 +11,7 @@ import type { RootStackParamList } from '../../navigation/AppNavigator';
 import { MatchItem, useMatchesQuery } from '../../queries/useMatchesQuery';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
+import type { PartnerReveal } from '../../types/reveal';
 
 type MatchesNavigation = NativeStackNavigationProp<RootStackParamList>;
 
@@ -26,11 +27,18 @@ export default function MatchesListScreen() {
     if (!videoSocket) {
       return;
     }
-    const handleMutual = (payload?: { matchId?: string; id?: string }) => {
+    const handleMutual = (payload?: {
+      matchId?: string;
+      id?: string;
+      partnerReveal?: PartnerReveal;
+    }) => {
       void queryClient.invalidateQueries({ queryKey: ['matches'] });
       const matchId = payload?.matchId ?? payload?.id;
       if (matchId) {
-        navigation.navigate('Chat', { matchId });
+        navigation.navigate('MatchProfile', {
+          matchId,
+          partnerReveal: payload?.partnerReveal,
+        });
       }
     };
     videoSocket.on('match:mutual', handleMutual);
@@ -51,7 +59,7 @@ export default function MatchesListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => navigation.navigate('Chat', { matchId: item.id })}
+            onPress={() => navigation.navigate('MatchProfile', { matchId: item.id })}
           >
             <MatchCard match={item} />
           </TouchableOpacity>

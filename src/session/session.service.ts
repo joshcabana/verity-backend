@@ -17,6 +17,11 @@ import type { RedisClient } from '../common/redis.provider';
 import { NotificationsService } from '../notifications/notifications.service';
 import { VideoGateway } from '../video/video.gateway';
 import { VideoService } from '../video/video.service';
+import {
+  buildPartnerReveal,
+  PARTNER_REVEAL_VERSION,
+  type PartnerReveal,
+} from '../matches/reveal.types';
 
 const SESSION_DURATION_MS = 45_000;
 const SESSION_STATE_TTL_MS = 60 * 60 * 1000;
@@ -30,9 +35,23 @@ const RECOVERY_MAX_DURATION_MS = 5_000;
 
 type SessionChoice = 'MATCH' | 'PASS';
 
+type PendingChoiceResult = { status: 'pending'; deadline: string };
+type MutualResolvedChoiceResult = {
+  status: 'resolved';
+  outcome: 'mutual';
+  matchId: string;
+  partnerRevealVersion?: typeof PARTNER_REVEAL_VERSION;
+  partnerReveal?: PartnerReveal;
+};
+type NonMutualResolvedChoiceResult = {
+  status: 'resolved';
+  outcome: 'non_mutual';
+};
+
 type ChoiceResult =
-  | { status: 'pending'; deadline: string }
-  | { status: 'resolved'; outcome: 'mutual' | 'non_mutual'; matchId?: string };
+  | PendingChoiceResult
+  | MutualResolvedChoiceResult
+  | NonMutualResolvedChoiceResult;
 
 type SessionStateRecord = {
   sessionId: string;
@@ -42,7 +61,6 @@ type SessionStateRecord = {
 };
 
 type ResolvedChoiceResult = Extract<ChoiceResult, { status: 'resolved' }>;
-type PendingChoiceResult = Extract<ChoiceResult, { status: 'pending' }>;
 
 type ParsedStoredDecision =
   | { kind: 'none' }
@@ -472,7 +490,7 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Session has not ended');
     }
 
-    const storedDecision = await this.getDecision(sessionId);
+    const storedDecision = await this.getDecision(sessionId, session, userId);
     if (storedDecision) {
       return storedDecision;
     }
@@ -482,7 +500,8 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
 
     const existingChoice = await this.redis.hget(choiceKey, userId);
     if (existingChoice) {
-      return this.evaluateChoices(session, deadline);
+      const evaluated = await this.evaluateChoices(session, deadline);
+      return this.enrichChoiceResultForUser(evaluated, session, userId);
     }
 
     await this.redis.hset(choiceKey, userId, choice);
@@ -500,7 +519,8 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    return this.evaluateChoices(session, deadline);
+    const evaluated = await this.evaluateChoices(session, deadline);
+    return this.enrichChoiceResultForUser(evaluated, session, userId);
   }
 
   private async evaluateChoices(
@@ -574,9 +594,13 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       matchId = match.id;
     }
 
+    if (outcome === 'mutual' && !matchId) {
+      throw new Error(`Mutual decision missing matchId for session ${session.id}`);
+    }
+
     const payload: ChoiceResult =
       outcome === 'mutual'
-        ? { status: 'resolved', outcome, matchId }
+        ? { status: 'resolved', outcome, matchId: matchId as string }
         : { status: 'resolved', outcome };
 
     const stored =
@@ -630,7 +654,7 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (outcome === 'mutual') {
-      this.emitMatchMutual(session, matchId ?? '');
+      await this.emitMatchMutual(session, matchId as string);
       void this.notificationsService.notifyUsers(
         [session.userAId, session.userBId],
         'match_mutual',
@@ -652,9 +676,31 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     return payload;
   }
 
-  private emitMatchMutual(session: Session, matchId: string) {
-    const payload = { sessionId: session.id, matchId };
-    this.emitToUsers(session, 'match:mutual', payload);
+  private async emitMatchMutual(session: Session, matchId: string) {
+    const payloadBase = {
+      sessionId: session.id,
+      matchId,
+    };
+
+    const [revealForUserA, revealForUserB] = await Promise.all([
+      this.buildPartnerRevealForUser(session, session.userAId),
+      this.buildPartnerRevealForUser(session, session.userBId),
+    ]);
+
+    const payloadForUserA: Record<string, unknown> = { ...payloadBase };
+    if (revealForUserA) {
+      payloadForUserA.partnerRevealVersion = PARTNER_REVEAL_VERSION;
+      payloadForUserA.partnerReveal = revealForUserA;
+    }
+
+    const payloadForUserB: Record<string, unknown> = { ...payloadBase };
+    if (revealForUserB) {
+      payloadForUserB.partnerRevealVersion = PARTNER_REVEAL_VERSION;
+      payloadForUserB.partnerReveal = revealForUserB;
+    }
+
+    this.emitToUser(session.userAId, 'match:mutual', payloadForUserA);
+    this.emitToUser(session.userBId, 'match:mutual', payloadForUserB);
   }
 
   private emitMatchNonMutual(session: Session) {
@@ -670,12 +716,15 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     if (!this.videoGateway.server) {
       return;
     }
-    this.videoGateway.server
-      .to(this.userRoom(session.userAId))
-      .emit(event, payload);
-    this.videoGateway.server
-      .to(this.userRoom(session.userBId))
-      .emit(event, payload);
+    this.emitToUser(session.userAId, event, payload);
+    this.emitToUser(session.userBId, event, payload);
+  }
+
+  private emitToUser(userId: string, event: string, payload: Record<string, unknown>) {
+    if (!this.videoGateway.server) {
+      return;
+    }
+    this.videoGateway.server.to(this.userRoom(userId)).emit(event, payload);
   }
 
   private userRoom(userId: string) {
@@ -686,12 +735,72 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     return userAId < userBId ? [userAId, userBId] : [userBId, userAId];
   }
 
-  private async getDecision(sessionId: string): Promise<ChoiceResult | null> {
+  private async getDecision(
+    sessionId: string,
+    session: Session,
+    userId: string,
+  ): Promise<ChoiceResult | null> {
     const parsed = await this.readStoredDecision(sessionId);
     if (parsed.kind === 'none' || parsed.kind === 'invalid') {
       return null;
     }
-    return parsed.value;
+    return this.enrichChoiceResultForUser(parsed.value, session, userId);
+  }
+
+  private async enrichChoiceResultForUser(
+    result: ChoiceResult,
+    session: Session,
+    userId: string,
+  ): Promise<ChoiceResult> {
+    if (
+      result.status !== 'resolved' ||
+      result.outcome !== 'mutual' ||
+      typeof result.matchId !== 'string'
+    ) {
+      return result;
+    }
+
+    const partnerReveal = await this.buildPartnerRevealForUser(session, userId);
+    if (!partnerReveal) {
+      return result;
+    }
+
+    return {
+      ...result,
+      partnerRevealVersion: PARTNER_REVEAL_VERSION,
+      partnerReveal,
+    };
+  }
+
+  private async buildPartnerRevealForUser(
+    session: Session,
+    userId: string,
+  ): Promise<PartnerReveal | null> {
+    const partnerId =
+      session.userAId === userId
+        ? session.userBId
+        : session.userBId === userId
+          ? session.userAId
+          : null;
+
+    if (!partnerId) {
+      return null;
+    }
+
+    const partner = await this.prisma.user.findUnique({
+      where: { id: partnerId },
+      select: {
+        id: true,
+        displayName: true,
+        photos: true,
+        age: true,
+        bio: true,
+      },
+    });
+    if (!partner) {
+      return null;
+    }
+    return buildPartnerReveal(partner);
   }
 
   private async ensureChoiceDeadline(sessionId: string): Promise<Date> {
@@ -855,15 +964,28 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const parsed = JSON.parse(raw) as Partial<ChoiceResult>;
+      const parsed = JSON.parse(raw) as
+        | Partial<PendingChoiceResult>
+        | Partial<MutualResolvedChoiceResult>
+        | Partial<NonMutualResolvedChoiceResult>;
       if (
         parsed.status === 'resolved' &&
-        (parsed.outcome === 'mutual' || parsed.outcome === 'non_mutual')
+        parsed.outcome === 'mutual' &&
+        typeof parsed.matchId === 'string'
       ) {
-        const resolved: ResolvedChoiceResult =
-          typeof parsed.matchId === 'string'
-            ? { status: 'resolved', outcome: parsed.outcome, matchId: parsed.matchId }
-            : { status: 'resolved', outcome: parsed.outcome };
+        const resolved: ResolvedChoiceResult = {
+          status: 'resolved',
+          outcome: 'mutual',
+          matchId: parsed.matchId,
+        };
+        return { kind: 'resolved', value: resolved };
+      }
+
+      if (parsed.status === 'resolved' && parsed.outcome === 'non_mutual') {
+        const resolved: ResolvedChoiceResult = {
+          status: 'resolved',
+          outcome: 'non_mutual',
+        };
         return { kind: 'resolved', value: resolved };
       }
 

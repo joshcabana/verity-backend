@@ -3,13 +3,21 @@ import { Alert } from 'react-native';
 import { apiJson } from '../services/api';
 import { useAuth } from './useAuth';
 import { useWebSocket } from './useWebSocket';
+import type { PartnerReveal } from '../types/reveal';
 
 type DecisionChoice = 'MATCH' | 'PASS';
+
+export type DecisionResult = {
+  outcome: 'mutual' | 'rejected';
+  matchId?: string;
+  partnerRevealVersion?: number;
+  partnerReveal?: PartnerReveal;
+};
 
 type UseDecisionState = {
   choice: DecisionChoice | null;
   status: 'idle' | 'submitting' | 'waiting' | 'resolved';
-  result: { outcome: 'mutual' | 'rejected'; matchId?: string } | null;
+  result: DecisionResult | null;
   submitChoice: (next: DecisionChoice) => Promise<void>;
   startAutoPass: () => void;
 };
@@ -19,7 +27,7 @@ export function useDecision(sessionId?: string): UseDecisionState {
   const { videoSocket } = useWebSocket();
   const [choice, setChoice] = useState<DecisionChoice | null>(null);
   const [status, setStatus] = useState<UseDecisionState['status']>('idle');
-  const [result, setResult] = useState<{ outcome: 'mutual' | 'rejected'; matchId?: string } | null>(
+  const [result, setResult] = useState<DecisionResult | null>(
     null,
   );
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,13 +66,23 @@ export function useDecision(sessionId?: string): UseDecisionState {
 
       const data = response.data as
         | { status?: 'pending' }
-        | { status?: 'resolved'; outcome?: 'mutual' | 'non_mutual'; matchId?: string }
+        | {
+            status?: 'resolved';
+            outcome?: 'mutual' | 'non_mutual';
+            matchId?: string;
+            partnerRevealVersion?: number;
+            partnerReveal?: PartnerReveal;
+          }
         | null;
 
       if (data?.status === 'resolved') {
         setResult({
           outcome: data.outcome === 'mutual' ? 'mutual' : 'rejected',
           matchId: data.outcome === 'mutual' ? data.matchId : undefined,
+          partnerRevealVersion:
+            data.outcome === 'mutual' ? data.partnerRevealVersion : undefined,
+          partnerReveal:
+            data.outcome === 'mutual' ? data.partnerReveal : undefined,
         });
         setStatus('resolved');
         return;
@@ -91,11 +109,21 @@ export function useDecision(sessionId?: string): UseDecisionState {
       return;
     }
 
-    const handleMutual = (payload?: { sessionId?: string; matchId?: string }) => {
+    const handleMutual = (payload?: {
+      sessionId?: string;
+      matchId?: string;
+      partnerRevealVersion?: number;
+      partnerReveal?: PartnerReveal;
+    }) => {
       if (sessionId && payload?.sessionId && payload.sessionId !== sessionId) {
         return;
       }
-      setResult({ outcome: 'mutual', matchId: payload?.matchId });
+      setResult({
+        outcome: 'mutual',
+        matchId: payload?.matchId,
+        partnerRevealVersion: payload?.partnerRevealVersion,
+        partnerReveal: payload?.partnerReveal,
+      });
       setStatus('resolved');
     };
 
