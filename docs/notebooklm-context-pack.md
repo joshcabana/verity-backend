@@ -10,7 +10,8 @@ Use a hybrid source set for best results:
 
 1. **Primary code truth**: the GitHub repo at the baseline commit/branch.
 2. **High-signal narrative context**: this file (`docs/notebooklm-context-pack.md`).
-3. **Operational and product docs**: selected files listed in the upload manifest below.
+3. **Executive narrative context**: `docs/notebooklm-executive-brief.md` for stakeholder-level Q&A.
+4. **Operational and product docs**: selected files listed in the upload manifest below.
 
 Why this is best:
 - GitHub gives canonical tracked code.
@@ -226,6 +227,7 @@ Status implications for NotebookLM reasoning:
 Upload these files first (high signal):
 
 - `/Users/joshcabana/verity/docs/notebooklm-context-pack.md`
+- `/Users/joshcabana/verity/docs/notebooklm-executive-brief.md`
 - `/Users/joshcabana/verity/README.md`
 - `/Users/joshcabana/verity/package.json`
 - `/Users/joshcabana/verity/prisma/schema.prisma`
@@ -279,4 +281,3 @@ Optional (when doing deeper feature reasoning):
 Use this starter prompt after uploading sources:
 
 "You are assisting with the Verity monorepo. Treat source code as canonical truth and docs as supporting context. Before giving implementation advice, cite the exact file paths that support your answer. For API/event behavior, prioritize controllers/gateways/services in `src/`. For deployment behavior, prioritize `infra/azure/*` and GitHub workflows. Flag contract mismatches between mobile (`verity-mobile`) and backend (`src`) explicitly, and propose minimal, testable fixes." 
-
