@@ -24,8 +24,8 @@ const MATCHED_TTL_MS = 60 * 60 * 1000;
 const DEFAULT_QUEUE_CITY = 'canberra';
 
 export type QueueJoinInput = {
-  city?: string;
-  region?: string;
+  city?: unknown;
+  region?: unknown;
   preferences?: Record<string, unknown>;
 };
 
@@ -333,8 +333,19 @@ export class QueueService {
   }
 
   private resolveQueueCity(input: QueueJoinInput): string {
-    const city = this.normalizeQueueCity(input.city);
-    if (city) {
+    const hasCity = input.city !== undefined;
+    if (hasCity) {
+      if (typeof input.city !== 'string') {
+        throw new BadRequestException(
+          'City must be a non-empty string when provided',
+        );
+      }
+      const city = this.normalizeQueueCity(input.city);
+      if (!city) {
+        throw new BadRequestException(
+          'City must be a non-empty string when provided',
+        );
+      }
       return city;
     }
     const legacyRegion = this.normalizeQueueCity(input.region);
@@ -347,7 +358,7 @@ export class QueueService {
     return DEFAULT_QUEUE_CITY;
   }
 
-  private normalizeQueueCity(value: string | undefined): string | null {
+  private normalizeQueueCity(value: unknown): string | null {
     if (typeof value !== 'string') {
       return null;
     }

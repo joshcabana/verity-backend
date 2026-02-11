@@ -147,6 +147,36 @@ describe('QueueService (unit)', () => {
     expect(result.queueKey.startsWith('sydney:')).toBe(true);
   });
 
+  it('rejects blank city when explicitly provided', async () => {
+    await expect(
+      service.joinQueue('user-1', {
+        city: '   ',
+        region: 'na',
+        preferences: { mode: 'standard' },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects null city when explicitly provided', async () => {
+    await expect(
+      service.joinQueue('user-1', {
+        city: null,
+        region: 'na',
+        preferences: { mode: 'standard' },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects non-string city when explicitly provided', async () => {
+    await expect(
+      service.joinQueue('user-1', {
+        city: 123,
+        region: 'na',
+        preferences: { mode: 'standard' },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('refunds token when redis multi fails', async () => {
     prisma.user.updateMany.mockResolvedValue({ count: 1 });
     prisma.user.update.mockResolvedValue({ id: 'user-1' });

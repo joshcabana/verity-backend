@@ -212,4 +212,32 @@ describe('Queue (e2e)', () => {
     const unmatchedQueueState = await redis.get(`queue:user:${userB.user.id}`);
     expect(unmatchedQueueState).toBeTruthy();
   });
+
+  it('rejects explicit blank and non-string city values', async () => {
+    const user = await createAuthedUser();
+
+    await request(app.getHttpServer())
+      .post('/queue/join')
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({ city: '   ', preferences: { mode: 'standard' } })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/queue/join')
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({ city: '   ', region: 'na', preferences: { mode: 'standard' } })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/queue/join')
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({ city: null, region: 'na', preferences: { mode: 'standard' } })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/queue/join')
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({ city: 123, region: 'na', preferences: { mode: 'standard' } })
+      .expect(400);
+  });
 });
