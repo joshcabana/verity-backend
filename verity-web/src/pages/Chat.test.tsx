@@ -68,6 +68,36 @@ describe('Chat', () => {
     socketHandlers.clear();
 
     server.use(
+      http.get(`${API_URL}/matches/:matchId/reveal`, ({ params }) =>
+        HttpResponse.json({
+          matchId: String(params.matchId),
+          partnerRevealVersion: 1,
+          partnerReveal: {
+            id: 'user-2',
+            displayName: 'Alex',
+            primaryPhotoUrl: 'https://example.com/alex.jpg',
+            age: 28,
+            bio: 'Coffee and coastlines.',
+          },
+          revealAcknowledged: true,
+          revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+        }),
+      ),
+      http.post(`${API_URL}/matches/:matchId/reveal-ack`, ({ params }) =>
+        HttpResponse.json({
+          matchId: String(params.matchId),
+          partnerRevealVersion: 1,
+          partnerReveal: {
+            id: 'user-2',
+            displayName: 'Alex',
+            primaryPhotoUrl: 'https://example.com/alex.jpg',
+            age: 28,
+            bio: 'Coffee and coastlines.',
+          },
+          revealAcknowledged: true,
+          revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+        }),
+      ),
       http.get(`${API_URL}/matches/:matchId/messages`, () =>
         HttpResponse.json([
           {
@@ -191,6 +221,54 @@ describe('Chat', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Real-time hello')).toBeInTheDocument();
+    });
+  });
+
+  it('keeps chat locked until reveal is acknowledged', async () => {
+    let messagesRequested = false;
+
+    server.use(
+      http.get(`${API_URL}/matches/:matchId/reveal`, ({ params }) =>
+        HttpResponse.json({
+          matchId: String(params.matchId),
+          partnerRevealVersion: 1,
+          partnerReveal: {
+            id: 'user-2',
+            displayName: 'Alex',
+            primaryPhotoUrl: 'https://example.com/alex.jpg',
+            age: 28,
+            bio: 'Coffee and coastlines.',
+          },
+          revealAcknowledged: false,
+          revealAcknowledgedAt: null,
+        }),
+      ),
+      http.get(`${API_URL}/matches/:matchId/messages`, () => {
+        messagesRequested = true;
+        return HttpResponse.json([
+          {
+            id: 'msg-1',
+            matchId: 'match-1',
+            senderId: 'user-2',
+            text: 'Hello there',
+            createdAt: '2025-01-01T00:00:00.000Z',
+          },
+        ]);
+      }),
+    );
+
+    renderWithProviders(<Chat />, {
+      route: '/chat/match-1',
+      path: '/chat/:matchId',
+    });
+
+    await screen.findByText(/review profile to unlock chat/i);
+    expect(messagesRequested).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: /continue to chat/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Hello there')).toBeInTheDocument();
     });
   });
 });

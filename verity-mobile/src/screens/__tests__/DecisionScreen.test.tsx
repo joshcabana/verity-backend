@@ -113,7 +113,7 @@ describe('DecisionScreen', () => {
     await waitFor(() =>
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'Chat', params: { matchId: 'match-1' } }],
+        routes: [{ name: 'MatchProfile', params: { matchId: 'match-1', partnerReveal: undefined } }],
       }),
     );
   });

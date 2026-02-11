@@ -38,8 +38,11 @@ export default function DecisionScreen() {
           index: 0,
           routes: [
             {
-              name: 'Chat' as never,
-              params: { matchId: result.matchId } as never,
+              name: 'MatchProfile' as never,
+              params: {
+                matchId: result.matchId,
+                partnerReveal: result.partnerReveal,
+              } as never,
             },
           ],
         });

@@ -1,4 +1,4 @@
-import { Session } from '@prisma/client';
+import { Session, User } from '@prisma/client';
 import { SessionService } from '../src/session/session.service';
 
 class FakeRedis {
@@ -52,10 +52,17 @@ class FakeRedis {
 class FakePrismaService {
   sessions = new Map<string, Session>();
   matches: Array<{ id: string; userAId: string; userBId: string }> = [];
+  users = new Map<string, User>();
 
   session = {
     findUnique: async ({ where }: { where: { id: string } }) => {
       return this.sessions.get(where.id) ?? null;
+    },
+  };
+
+  user = {
+    findUnique: async ({ where }: { where: { id: string } }) => {
+      return this.users.get(where.id) ?? null;
     },
   };
 
@@ -175,6 +182,46 @@ describe('Match decision (e2e)', () => {
     };
 
     prisma.sessions.set(session.id, session);
+    prisma.users.set('user-a', {
+      id: 'user-a',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      role: 'USER',
+      displayName: 'Alpha',
+      photos: ['https://cdn.example/alpha.jpg'],
+      bio: 'Alpha bio',
+      age: 29,
+      gender: null,
+      interests: [],
+      dateOfBirth: null,
+      ageVerifiedAt: null,
+      consents: null,
+      privacyNoticeVersion: null,
+      tosVersion: null,
+      phone: null,
+      email: null,
+      tokenBalance: 0,
+    });
+    prisma.users.set('user-b', {
+      id: 'user-b',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      role: 'USER',
+      displayName: 'Beta',
+      photos: ['https://cdn.example/beta.jpg'],
+      bio: 'Beta bio',
+      age: 31,
+      gender: null,
+      interests: [],
+      dateOfBirth: null,
+      ageVerifiedAt: null,
+      consents: null,
+      privacyNoticeVersion: null,
+      tosVersion: null,
+      phone: null,
+      email: null,
+      tokenBalance: 0,
+    });
     await service.endSession(session, 'timeout');
 
     await service.submitChoice(session.id, session.userAId, 'MATCH');
@@ -187,11 +234,19 @@ describe('Match decision (e2e)', () => {
     expect(result.status).toBe('resolved');
     expect(result.outcome).toBe('mutual');
     expect(prisma.matches).toHaveLength(1);
+    expect((result as any).partnerRevealVersion).toBe(1);
+    expect((result as any).partnerReveal).toEqual(
+      expect.objectContaining({
+        id: 'user-a',
+      }),
+    );
 
     const mutualEvents = gateway.events.filter(
       (event) => event.event === 'match:mutual',
     );
     expect(mutualEvents).toHaveLength(2);
+    expect(mutualEvents[0].payload.partnerRevealVersion).toBe(1);
+    expect(mutualEvents[0].payload.partnerReveal).toBeTruthy();
   });
 
   it('emits a soft notification when choices are not mutual', async () => {

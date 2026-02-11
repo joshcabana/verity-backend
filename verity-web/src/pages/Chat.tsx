@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useLocation, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 import { trackEvent } from '../analytics/events';
 import { useAuth } from '../hooks/useAuth';
@@ -21,19 +21,92 @@ type MatchSummary = {
   partner: { id: string; displayName?: string | null };
 };
 
+type PartnerReveal = {
+  id: string;
+  displayName: string | null;
+  primaryPhotoUrl: string | null;
+  age: number | null;
+  bio: string | null;
+};
+
+type MatchRevealPayload = {
+  matchId: string;
+  partnerRevealVersion: number;
+  partnerReveal: PartnerReveal;
+  revealAcknowledged: boolean;
+  revealAcknowledgedAt: string | null;
+};
+
+type ChatLocationState = {
+  partnerRevealVersion?: number;
+  partnerReveal?: PartnerReveal;
+};
+
+type ApiErrorData = {
+  code?: string;
+  message?: string | { code?: string; message?: string };
+};
+
+const REVEAL_ACK_REQUIRED_CODE = 'REVEAL_ACK_REQUIRED';
+
+function parseApiErrorCode(data: unknown): string | null {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+  const payload = data as ApiErrorData;
+  if (typeof payload.code === 'string') {
+    return payload.code;
+  }
+  if (payload.message && typeof payload.message === 'object') {
+    if (typeof payload.message.code === 'string') {
+      return payload.message.code;
+    }
+  }
+  return null;
+}
+
 export const Chat: React.FC = () => {
   const { matchId } = useParams();
+  const location = useLocation();
+  const queryClient = useQueryClient();
   const { token, userId } = useAuth();
   const { flags } = useFlags();
   const socket = useSocket('/chat', token);
   const [draft, setDraft] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const [blockError, setBlockError] = useState<string | null>(null);
+  const [revealError, setRevealError] = useState<string | null>(null);
   const [blocking, setBlocking] = useState(false);
+  const [acknowledgingReveal, setAcknowledgingReveal] = useState(false);
   const [locallyBlocked, setLocallyBlocked] = useState(false);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
+  const [hydratedPartnerReveal, setHydratedPartnerReveal] = useState<PartnerReveal | null>(() => {
+    const state = location.state as ChatLocationState | null;
+    return state?.partnerReveal ?? null;
+  });
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+  const revealQuery = useQuery({
+    queryKey: ['match-reveal', matchId],
+    queryFn: async () => {
+      if (!matchId) {
+        throw new Error('Missing match');
+      }
+      const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal`);
+      if (!response.ok || !response.data) {
+        throw new Error('Failed to load reveal');
+      }
+      return response.data;
+    },
+    enabled: Boolean(matchId),
+    retry: false,
+  });
+
+  const revealAcknowledged = Boolean(revealQuery.data?.revealAcknowledged);
+  const partnerReveal =
+    revealQuery.data?.partnerReveal ??
+    hydratedPartnerReveal;
 
   const messagesQuery = useQuery({
     queryKey: ['messages', matchId],
@@ -44,13 +117,17 @@ export const Chat: React.FC = () => {
       const response = await apiJson<Message[]>(`/matches/${matchId}/messages`);
       if (!response.ok || !response.data) {
         if (response.status === 403) {
+          const code = parseApiErrorCode(response.data);
+          if (code === REVEAL_ACK_REQUIRED_CODE) {
+            throw new Error(REVEAL_ACK_REQUIRED_CODE);
+          }
           throw new Error('BLOCKED');
         }
         throw new Error('Failed to load messages');
       }
       return response.data;
     },
-    enabled: Boolean(matchId),
+    enabled: Boolean(matchId && revealAcknowledged),
   });
 
   const matchQuery = useQuery({
@@ -66,12 +143,28 @@ export const Chat: React.FC = () => {
   });
 
   useEffect(() => {
+    const state = location.state as ChatLocationState | null;
+    if (state?.partnerReveal) {
+      setHydratedPartnerReveal(state.partnerReveal);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (revealQuery.data?.partnerReveal) {
+      setHydratedPartnerReveal(revealQuery.data.partnerReveal);
+    }
+  }, [revealQuery.data]);
+
+  useEffect(() => {
     if (!socket) {
       return;
     }
 
     const handleNew = (payload: Message) => {
       if (payload.matchId !== matchId) {
+        return;
+      }
+      if (!revealAcknowledged) {
         return;
       }
       setLiveMessages((prev) => {
@@ -87,7 +180,7 @@ export const Chat: React.FC = () => {
     return () => {
       socket.off('message:new', handleNew);
     };
-  }, [socket, matchId]);
+  }, [socket, matchId, revealAcknowledged]);
 
   const messages = useMemo(() => {
     const base = messagesQuery.data ?? [];
@@ -99,7 +192,7 @@ export const Chat: React.FC = () => {
   }, [messages.length]);
 
   const sendMessage = async () => {
-    if (!matchId || !draft.trim()) {
+    if (!matchId || !draft.trim() || !revealAcknowledged) {
       return;
     }
     const isFirstMessage = messages.length === 0;
@@ -139,6 +232,15 @@ export const Chat: React.FC = () => {
         return;
       }
       if (response.status === 403) {
+        const code = parseApiErrorCode(response.data);
+        if (code === REVEAL_ACK_REQUIRED_CODE) {
+          setLiveMessages((prev) =>
+            prev.filter((message) => message.id !== optimisticId),
+          );
+          setSendError('Acknowledge the profile reveal before sending messages.');
+          void revealQuery.refetch();
+          return;
+        }
         setLiveMessages((prev) =>
           prev.filter((message) => message.id !== optimisticId),
         );
@@ -164,20 +266,56 @@ export const Chat: React.FC = () => {
     }
   };
 
-  if (messagesQuery.isLoading) {
+  const acknowledgeReveal = async () => {
+    if (!matchId || acknowledgingReveal) {
+      return;
+    }
+    setAcknowledgingReveal(true);
+    setRevealError(null);
+    const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal-ack`, {
+      method: 'POST',
+    });
+    setAcknowledgingReveal(false);
+    if (!response.ok || !response.data) {
+      setRevealError('Unable to unlock chat right now. Try again.');
+      return;
+    }
+    queryClient.setQueryData(['match-reveal', matchId], response.data);
+    setSendError(null);
+  };
+
+  if (revealQuery.isLoading) {
+    return <section className="card">Loading profile reveal…</section>;
+  }
+
+  if (revealQuery.isError || !revealQuery.data) {
+    return <section className="card">Unable to load match reveal.</section>;
+  }
+
+  if (revealAcknowledged && messagesQuery.isLoading) {
     return <section className="card">Loading messages…</section>;
   }
 
   const messageError = messagesQuery.error as Error | null;
   const blockedByServer = messageError?.message === 'BLOCKED';
+  const revealRequiredByServer =
+    messageError?.message === REVEAL_ACK_REQUIRED_CODE;
   const blocked = blockedByServer || locallyBlocked;
 
-  if (messagesQuery.isError && !blockedByServer) {
+  if (revealRequiredByServer) {
+    return <section className="card">Profile reveal acknowledgement required.</section>;
+  }
+
+  if (messagesQuery.isError && !blockedByServer && revealAcknowledged) {
     return <section className="card">Unable to load messages.</section>;
   }
 
-  const partnerName = matchQuery.data?.partner.displayName ?? 'Your match';
-  const partnerId = matchQuery.data?.partner.id ?? null;
+  const partnerName =
+    partnerReveal?.displayName ??
+    matchQuery.data?.partner.displayName ??
+    'Your match';
+  const partnerId = partnerReveal?.id ?? matchQuery.data?.partner.id ?? null;
+  const chatLocked = !revealAcknowledged;
   const matchWarning = matchQuery.isError
     ? offline
       ? 'You appear to be offline. Match details are unavailable.'
@@ -239,19 +377,53 @@ export const Chat: React.FC = () => {
             <p className="subtle">{matchWarning}</p>
           </div>
         )}
-        <div className="chat-list">
-          {messages.map((message) => (
-            <div
-              key={`${message.id}-${message.createdAt}`}
-              className={`chat-bubble ${
-                message.senderId === userId ? 'self' : 'other'
-              }`}
-            >
-              {message.text}
+        {chatLocked && (
+          <div className="callout" style={{ marginTop: '12px' }}>
+            <strong>Review profile to unlock chat</strong>
+            <p className="subtle" style={{ marginTop: '8px' }}>
+              Chat unlocks after you acknowledge the mutual profile reveal.
+            </p>
+            <div style={{ marginTop: '12px' }}>
+              <p className="subtle">
+                <strong>{partnerName}</strong>
+                {partnerReveal?.age ? `, ${partnerReveal.age}` : ''}
+              </p>
+              {partnerReveal?.bio && (
+                <p className="subtle" style={{ marginTop: '8px' }}>
+                  {partnerReveal.bio}
+                </p>
+              )}
             </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
+            <button
+              className="button"
+              style={{ marginTop: '12px' }}
+              onClick={acknowledgeReveal}
+              disabled={acknowledgingReveal}
+            >
+              {acknowledgingReveal ? 'Continuing…' : 'Continue to chat'}
+            </button>
+            {revealError && (
+              <p className="subtle" style={{ color: '#dc2626', marginTop: '8px' }}>
+                {revealError}
+              </p>
+            )}
+          </div>
+        )}
+        {revealAcknowledged && (
+          <div className="chat-list">
+            {messages.map((message) => (
+              <div
+                key={`${message.id}-${message.createdAt}`}
+                className={`chat-bubble ${
+                  message.senderId === userId ? 'self' : 'other'
+                }`}
+              >
+                {message.text}
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+        )}
         {blocked && (
           <div className="callout" style={{ marginTop: '16px' }}>
             <strong>Conversation blocked</strong>
@@ -271,7 +443,7 @@ export const Chat: React.FC = () => {
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Say something kind"
-            disabled={blocked}
+            disabled={blocked || chatLocked}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
@@ -279,7 +451,11 @@ export const Chat: React.FC = () => {
               }
             }}
           />
-          <button className="button" onClick={sendMessage} disabled={!draft.trim() || blocked}>
+          <button
+            className="button"
+            onClick={sendMessage}
+            disabled={!draft.trim() || blocked || chatLocked || acknowledgingReveal}
+          >
             Send
           </button>
         </div>

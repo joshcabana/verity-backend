@@ -15,9 +15,11 @@ let lastMessage: {
 } | null = null;
 
 let routeParams: Record<string, unknown> | undefined = { matchId: 'match-1' };
+const mockReplace = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: routeParams }),
+  useNavigation: () => ({ replace: mockReplace }),
 }));
 
 jest.mock('../../hooks/useWebSocket', () => ({
@@ -65,6 +67,7 @@ function renderChat() {
 describe('ChatScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockReplace.mockReset();
     lastMessage = null;
     routeParams = { matchId: 'match-1' };
     useAuth.setState((state) => ({
@@ -74,6 +77,24 @@ describe('ChatScreen', () => {
     }));
 
     server.use(
+      rest.get(`${API_URL}/matches/:matchId/reveal`, (_req: any, res: any, ctx: any) =>
+        res(
+          ctx.status(200),
+          ctx.json({
+            matchId: 'match-1',
+            partnerRevealVersion: 1,
+            partnerReveal: {
+              id: 'user-2',
+              displayName: 'Alex',
+              primaryPhotoUrl: 'https://example.com/alex.jpg',
+              age: 28,
+              bio: 'Coffee and coastlines.',
+            },
+            revealAcknowledged: true,
+            revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+          }),
+        ),
+      ),
       rest.get(`${API_URL}/matches/:matchId/messages`, (_req: any, res: any, ctx: any) =>
         res(
           ctx.status(200),

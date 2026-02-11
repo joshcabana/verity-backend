@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ChatGateway } from './chat.gateway';
 
 const DEFAULT_MESSAGE_LIMIT = 50;
+const REVEAL_ACK_REQUIRED_CODE = 'REVEAL_ACK_REQUIRED';
 
 @Injectable()
 export class ChatService {
@@ -32,6 +33,7 @@ export class ChatService {
       throw new NotFoundException('Match not found');
     }
     await this.assertNotBlocked(match.userAId, match.userBId);
+    this.assertRevealAcknowledged(match, userId);
 
     const boundedLimit = Number.isFinite(limit) ? limit : DEFAULT_MESSAGE_LIMIT;
     const safeLimit = Math.max(1, Math.min(boundedLimit, 100));
@@ -59,6 +61,7 @@ export class ChatService {
       throw new NotFoundException('Match not found');
     }
     await this.assertNotBlocked(match.userAId, match.userBId);
+    this.assertRevealAcknowledged(match, userId);
 
     if (match.userAId !== userId && match.userBId !== userId) {
       throw new ForbiddenException('Not a match participant');
@@ -136,6 +139,28 @@ export class ChatService {
     if (block) {
       throw new ForbiddenException('Conversation unavailable');
     }
+  }
+
+  private assertRevealAcknowledged(
+    match: {
+      userAId: string;
+      userBId: string;
+      userARevealAcknowledgedAt?: Date | null;
+      userBRevealAcknowledgedAt?: Date | null;
+    },
+    userId: string,
+  ) {
+    const acknowledgedAt =
+      match.userAId === userId
+        ? match.userARevealAcknowledgedAt
+        : match.userBRevealAcknowledgedAt;
+    if (acknowledgedAt) {
+      return;
+    }
+    throw new ForbiddenException({
+      code: REVEAL_ACK_REQUIRED_CODE,
+      message: 'Profile reveal acknowledgement required before chat',
+    });
   }
 
   private async getExistingMessageCount(matchId: string): Promise<number> {
