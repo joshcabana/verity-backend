@@ -30,6 +30,20 @@ describe('AnalyticsService (unit)', () => {
     expect(payload.source).toBe('web');
   });
 
+  it('accepts queue timeout events', () => {
+    service.trackClientEvent('user-1', {
+      name: 'queue_timeout_shown',
+      properties: {
+        queueKey: 'canberra:abc123',
+        elapsedSeconds: 45,
+      },
+    });
+
+    expect(infoSpy).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(infoSpy.mock.calls[0][0] as string);
+    expect(payload.name).toBe('queue_timeout_shown');
+  });
+
   it('rejects unsupported event names', () => {
     expect(() =>
       service.trackClientEvent('user-1', {
