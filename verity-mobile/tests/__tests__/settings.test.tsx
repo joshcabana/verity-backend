@@ -9,6 +9,15 @@ const mockHydrate = jest.fn();
 const mockSetPendingRoute = jest.fn();
 const mockClearPendingRoute = jest.fn();
 
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn().mockResolvedValue('token'),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+  },
+}));
+
 jest.mock('react-native-agora', () => ({
   createAgoraRtcEngine: () => ({
     initialize: jest.fn(),
@@ -180,7 +189,7 @@ describe('SettingsScreen', () => {
         expect.objectContaining({
           method: 'PATCH',
           headers: expect.objectContaining({
-            Authorization: 'Bearer token-123',
+            Authorization: 'Bearer token',
           }),
         }),
       ),

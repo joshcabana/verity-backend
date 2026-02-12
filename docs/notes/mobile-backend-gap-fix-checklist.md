@@ -112,9 +112,9 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 ## Test Plan Checklist (minimum required)
 
 ### Update existing tests
-- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/queue.flow.test.tsx` *(update for `refunded` response parsing)*
-- [ ] `/Users/joshcabana/verity/verity-mobile/src/screens/__tests__/VideoCallScreen.test.tsx`
-- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/settings.test.tsx` *(update for apiJson usage)*
+- [x] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/queue.flow.test.tsx` *(verified via new unit test)*
+- [x] `/Users/joshcabana/verity/verity-mobile/src/screens/__tests__/VideoCallScreen.test.tsx` *(existing tests pass)*
+- [x] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/settings.test.tsx` *(updated for apiJson usage)*
 
 ### Add/expand recommended tests
 - [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/onboarding.flow.test.tsx`

@@ -38,7 +38,7 @@ type QueueState = {
   markTokenSpent: (spent: boolean) => void;
 };
 
-const useQueueStore = create<QueueState>((set, get) => ({
+export const useQueueStore = create<QueueState>((set, get) => ({
   status: 'idle',
   estimatedSeconds: null,
   match: null,

@@ -22,7 +22,7 @@ Last updated: 2026-02-12
 4. Updated `docs/notes/mobile-backend-gap-fix-checklist.md` to reflect all completed items.
 
 ## Remaining work
-- [ ] Update mobile unit tests for `leaveQueue()` refund parsing and settings `apiJson` usage.
+- [x] Update mobile unit tests for `leaveQueue()` refund parsing and settings `apiJson` usage.
 - [ ] Manual smoke test: onboarding → queue → session → decision → chat.
 - [ ] Remove temporary fallback socket listeners after one stable release cycle.
 - [ ] Azure authentication for staging deploy.
