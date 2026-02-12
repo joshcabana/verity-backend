@@ -1,6 +1,7 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Session } from '@prisma/client';
+import { createHash } from 'crypto';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -97,18 +98,29 @@ export class QueueGateway
   }
 
   emitMatch(userAId: string, userBId: string, session: Session) {
+    const partnerAnonIdForA = this.buildPartnerAnonymousId(session.id, userBId);
+    const partnerAnonIdForB = this.buildPartnerAnonymousId(session.id, userAId);
+
     this.server.to(this.userRoom(userAId)).emit('match', {
       sessionId: session.id,
-      partnerId: userBId,
+      partnerAnonymousId: partnerAnonIdForA,
       queueKey: session.queueKey,
       matchedAt: session.createdAt,
     });
     this.server.to(this.userRoom(userBId)).emit('match', {
       sessionId: session.id,
-      partnerId: userAId,
+      partnerAnonymousId: partnerAnonIdForB,
       queueKey: session.queueKey,
       matchedAt: session.createdAt,
     });
+  }
+
+  private buildPartnerAnonymousId(sessionId: string, userId: string): string {
+    const digest = createHash('sha256')
+      .update(`${sessionId}:${userId}`)
+      .digest('hex')
+      .slice(0, 12);
+    return `anon_${digest}`;
   }
 
   private async broadcastQueueStatus() {

@@ -570,6 +570,18 @@ describe('QueueGateway (unit)', () => {
   });
 
   it('emits match payload to both users', () => {
+    const emitA = jest.fn();
+    const emitB = jest.fn();
+    (gateway.server as any).to = jest.fn((room: string) => {
+      if (room === 'user:user-a') {
+        return { emit: emitA };
+      }
+      if (room === 'user:user-b') {
+        return { emit: emitB };
+      }
+      return { emit: jest.fn() };
+    });
+
     gateway.emitMatch('user-a', 'user-b', {
       id: 'session-1',
       queueKey: 'na:test',
@@ -578,5 +590,23 @@ describe('QueueGateway (unit)', () => {
 
     expect((gateway.server as any).to).toHaveBeenCalledWith('user:user-a');
     expect((gateway.server as any).to).toHaveBeenCalledWith('user:user-b');
+    const payloadA = emitA.mock.calls[0]?.[1];
+    const payloadB = emitB.mock.calls[0]?.[1];
+    expect(payloadA).toEqual(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        queueKey: 'na:test',
+        partnerAnonymousId: expect.stringMatching(/^anon_[a-f0-9]{12}$/),
+      }),
+    );
+    expect(payloadB).toEqual(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        queueKey: 'na:test',
+        partnerAnonymousId: expect.stringMatching(/^anon_[a-f0-9]{12}$/),
+      }),
+    );
+    expect(payloadA).not.toHaveProperty('partnerId');
+    expect(payloadB).not.toHaveProperty('partnerId');
   });
 });

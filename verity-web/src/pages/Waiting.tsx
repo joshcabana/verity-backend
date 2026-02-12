@@ -7,7 +7,7 @@ import { useSocket } from '../hooks/useSocket';
 
 type MatchPayload = {
   sessionId: string;
-  partnerId: string;
+  partnerAnonymousId?: string;
   queueKey: string;
   matchedAt: string;
 };
