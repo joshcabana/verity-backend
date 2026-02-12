@@ -12,7 +12,18 @@ class FakeChatGateway {
 }
 
 class FakeNotificationsService {
-  async notifyUsers() {
+  events: Array<{
+    userIds: string[];
+    event: string;
+    data: Record<string, unknown>;
+  }> = [];
+
+  async notifyUsers(
+    userIds: string[],
+    event: string,
+    data: Record<string, unknown>,
+  ) {
+    this.events.push({ userIds, event, data });
     return;
   }
 }
@@ -113,10 +124,11 @@ describe('Chat & identity reveal (e2e)', () => {
   it('lists matches with partner profile and delivers chat messages', async () => {
     const prisma = new FakePrismaService();
     const gateway = new FakeChatGateway();
+    const notifications = new FakeNotificationsService();
     const chatService = new ChatService(
       prisma as unknown as any,
       gateway as any,
-      new FakeNotificationsService() as any,
+      notifications as any,
     );
     const matchesService = new MatchesService(prisma as unknown as any);
 
@@ -182,9 +194,126 @@ describe('Chat & identity reveal (e2e)', () => {
     );
     expect(message.text).toBe('Hello there');
     expect(gateway.events).toHaveLength(2);
+    expect(notifications.events).toHaveLength(1);
+    expect(notifications.events[0]).toMatchObject({
+      userIds: [userB.id],
+      event: 'chat_message_new',
+      data: expect.objectContaining({
+        matchId: match.id,
+        senderId: userA.id,
+        title: 'New message',
+        body: 'From A',
+        deepLinkTarget: 'chat',
+      }),
+    });
+    expect(notifications.events[0].data).not.toHaveProperty('preview');
+    expect(notifications.events[0].data).not.toHaveProperty('text');
 
     const history = await chatService.listMessages(match.id, userA.id, 50);
     expect(history).toHaveLength(1);
+  });
+
+  it('sends reveal-required notification and withholds chat until recipient acknowledges', async () => {
+    const prisma = new FakePrismaService();
+    const gateway = new FakeChatGateway();
+    const notifications = new FakeNotificationsService();
+    const chatService = new ChatService(
+      prisma as unknown as any,
+      gateway as any,
+      notifications as any,
+    );
+
+    const userA: User = {
+      id: 'user-a',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      displayName: 'A',
+      photos: null,
+      bio: 'Hello',
+      age: 25,
+      gender: 'F',
+      interests: [],
+      phone: null,
+      email: null,
+      tokenBalance: 0,
+    };
+    const userB: User = {
+      id: 'user-b',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      displayName: 'B',
+      photos: null,
+      bio: 'Hi',
+      age: 26,
+      gender: 'M',
+      interests: [],
+      phone: null,
+      email: null,
+      tokenBalance: 0,
+    };
+
+    prisma.users.set(userA.id, userA);
+    prisma.users.set(userB.id, userB);
+
+    const match: Match = {
+      id: 'match-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userAId: userA.id,
+      userBId: userB.id,
+      userARevealAcknowledgedAt: new Date(),
+      userBRevealAcknowledgedAt: null,
+    };
+    prisma.matches.set(match.id, match);
+
+    await chatService.sendMessage(match.id, userA.id, 'Hello before ack');
+
+    expect(gateway.events).toHaveLength(1);
+    expect(gateway.events[0].userId).toBe(userA.id);
+    expect(notifications.events).toHaveLength(1);
+    expect(notifications.events[0]).toMatchObject({
+      userIds: [userB.id],
+      event: 'chat_reveal_required',
+      data: expect.objectContaining({
+        matchId: match.id,
+        senderId: userA.id,
+        title: 'New match',
+        body: 'A message is waiting — reveal to view',
+        deepLinkTarget: 'reveal',
+      }),
+    });
+    expect(notifications.events[0].data).not.toHaveProperty('preview');
+    expect(notifications.events[0].data).not.toHaveProperty('text');
+
+    await expect(
+      chatService.listMessages(match.id, userB.id, 50),
+    ).rejects.toThrow(ForbiddenException);
+
+    await prisma.match.update({
+      where: { id: match.id },
+      data: {
+        userBRevealAcknowledgedAt: new Date(),
+      },
+    });
+
+    await chatService.sendMessage(match.id, userA.id, 'Hello after ack');
+
+    expect(gateway.events).toHaveLength(3);
+    expect(notifications.events).toHaveLength(2);
+    expect(notifications.events[1]).toMatchObject({
+      userIds: [userB.id],
+      event: 'chat_message_new',
+      data: expect.objectContaining({
+        matchId: match.id,
+        senderId: userA.id,
+        title: 'New message',
+        body: 'From A',
+        deepLinkTarget: 'chat',
+      }),
+    });
+
+    const history = await chatService.listMessages(match.id, userB.id, 50);
+    expect(history).toHaveLength(2);
   });
 
   it('prevents non-participants from sending messages', async () => {

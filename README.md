@@ -345,7 +345,10 @@ Backend endpoints:
 
 Dispatch behavior:
 - If `PUSH_DISPATCH_WEBHOOK_URL` is empty, events are logged as dry-run only.
-- If set, Verity POSTs delivery payloads for `queue_match_found`, `match_mutual`, and `chat_message_new`.
+- If set, Verity POSTs delivery payloads for `queue_match_found`, `match_mutual`, `chat_message_new`, and `chat_reveal_required`.
+- Chat push payloads always include `matchId` and `deepLinkTarget`:
+  - `chat_reveal_required` uses `deepLinkTarget: "reveal"` for unacknowledged recipients.
+  - `chat_message_new` uses `deepLinkTarget: "chat"` for acknowledged recipients (no message preview body).
 
 ## Frontend Monitoring Ingestion (Optional)
 
