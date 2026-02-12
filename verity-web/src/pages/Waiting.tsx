@@ -16,6 +16,7 @@ export const Waiting: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
   const socket = useSocket('/queue', token);
+  const lastNavigatedSessionRef = React.useRef<string | null>(null);
 
   const [stats, setStats] = React.useState<{ usersSearching: number } | null>(
     null,
@@ -33,6 +34,10 @@ export const Waiting: React.FC = () => {
     }
 
     const handleMatch = (payload: MatchPayload) => {
+      if (lastNavigatedSessionRef.current === payload.sessionId) {
+        return;
+      }
+      lastNavigatedSessionRef.current = payload.sessionId;
       trackEvent('queue_match_found', {
         sessionId: payload.sessionId,
         queueKey: payload.queueKey,
@@ -45,12 +50,10 @@ export const Waiting: React.FC = () => {
     };
 
     socket.on('match', handleMatch);
-    socket.on('match:found', handleMatch);
     socket.on('queue:status', handleStatus);
 
     return () => {
       socket.off('match', handleMatch);
-      socket.off('match:found', handleMatch);
       socket.off('queue:status', handleStatus);
     };
   }, [socket, navigate]);
@@ -65,9 +68,11 @@ export const Waiting: React.FC = () => {
     const response = await apiJson<{ refunded?: boolean }>('/queue/leave', {
       method: 'DELETE',
     });
+
     if (response.ok && response.data?.refunded) {
-      alert('Your token has been refunded.');
+      trackEvent('queue_leave_refunded', { refunded: true });
     }
+
     navigate('/home');
   };
 
