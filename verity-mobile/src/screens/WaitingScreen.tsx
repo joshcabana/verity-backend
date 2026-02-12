@@ -13,7 +13,21 @@ export default function WaitingScreen() {
   const { user, setUser } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { status, estimatedSeconds, leaveQueue, match } = useQueue();
+  const { status, estimatedSeconds, leaveQueue, match, usersSearching } =
+    useQueue();
+  const [seconds, setSeconds] = React.useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTimer = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const statusRef = useRef(status);
 
   useEffect(() => {
@@ -63,11 +77,18 @@ export default function WaitingScreen() {
       <Text style={styles.title}>
         {status === 'joining' ? 'Joining queue...' : 'Finding match...'}
       </Text>
+      <Text style={[styles.title, { marginTop: 0, fontSize: 32 }]}>
+        {formatTimer(seconds)}
+      </Text>
       <Text style={styles.subtitle}>
-        {estimatedSeconds ? `Estimated wait: ${estimatedSeconds}s` : 'Hang tight — matching fast.'}
+        {usersSearching !== null
+          ? `${usersSearching} users currently searching`
+          : estimatedSeconds
+            ? `Estimated wait: ${estimatedSeconds}s`
+            : 'Hang tight — matching fast.'}
       </Text>
       <View style={styles.buttonRow}>
-        <ThemedButton label="Cancel" variant="outline" onPress={handleCancel} />
+        <ThemedButton label="Cancel" variant="outline" onPress={() => void handleCancel()} />
       </View>
     </ThemedScreen>
   );

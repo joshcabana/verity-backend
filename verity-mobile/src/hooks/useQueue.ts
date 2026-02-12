@@ -30,8 +30,10 @@ type QueueState = {
   estimatedSeconds: number | null;
   match: MatchPayload | null;
   tokenSpent: boolean;
+  usersSearching: number | null;
   setEstimated: (seconds: number | null) => void;
   setMatch: (payload: MatchPayload) => void;
+  setUsersSearching: (count: number | null) => void;
   joinQueue: (region?: string) => Promise<void>;
   leaveQueue: () => Promise<boolean>;
   reset: () => void;
@@ -43,10 +45,20 @@ export const useQueueStore = create<QueueState>((set, get) => ({
   estimatedSeconds: null,
   match: null,
   tokenSpent: false,
+  usersSearching: null,
   setEstimated: (seconds) => set({ estimatedSeconds: seconds }),
-  setMatch: (payload) => set({ match: payload, status: 'matched', estimatedSeconds: null }),
+  setMatch: (payload) =>
+    set({ match: payload, status: 'matched', estimatedSeconds: null }),
+  setUsersSearching: (count) => set({ usersSearching: count }),
   markTokenSpent: (spent) => set({ tokenSpent: spent }),
-  reset: () => set({ status: 'idle', estimatedSeconds: null, match: null, tokenSpent: false }),
+  reset: () =>
+    set({
+      status: 'idle',
+      estimatedSeconds: null,
+      match: null,
+      tokenSpent: false,
+      usersSearching: null,
+    }),
   joinQueue: async (region?: string) => {
     const { status } = get();
     if (status === 'joining' || status === 'waiting') {
@@ -79,7 +91,13 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       '/queue/leave',
       { method: 'DELETE' },
     );
-    set({ status: 'idle', estimatedSeconds: null, match: null, tokenSpent: false });
+    set({
+      status: 'idle',
+      estimatedSeconds: null,
+      match: null,
+      tokenSpent: false,
+      usersSearching: null,
+    });
     // Trust back-end refund decision when available (GAP-008).
     // Fallback to local heuristic only if field is missing.
     if (response.ok && typeof response.data?.refunded === 'boolean') {
@@ -105,7 +123,10 @@ export function useQueue() {
       });
     };
 
-    const handleEstimate = (payload?: { estimatedSeconds?: number; etaSeconds?: number }) => {
+    const handleEstimate = (payload?: {
+      estimatedSeconds?: number;
+      etaSeconds?: number;
+    }) => {
       const seconds = payload?.estimatedSeconds ?? payload?.etaSeconds ?? null;
       queue.setEstimated(typeof seconds === 'number' ? seconds : null);
     };
@@ -113,13 +134,17 @@ export function useQueue() {
     queueSocket.on('match', handleMatch);
     queueSocket.on('match:found', handleMatch);
     queueSocket.on('queue:estimate', handleEstimate);
+    queueSocket.on('queue:status', (payload: { usersSearching: number }) => {
+      queue.setUsersSearching(payload.usersSearching);
+    });
 
     return () => {
       queueSocket.off('match', handleMatch);
       queueSocket.off('match:found', handleMatch);
       queueSocket.off('queue:estimate', handleEstimate);
+      queueSocket.off('queue:status');
     };
-  }, [queueSocket, queue.setEstimated, queue.setMatch]);
+  }, [queueSocket, queue.setEstimated, queue.setMatch, queue.setUsersSearching]);
 
   return queue;
 }

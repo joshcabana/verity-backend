@@ -179,11 +179,45 @@ export class QueueService {
           where: { id: userId },
           data: { tokenBalance: { increment: 1 } },
         });
+        this.analyticsService.trackServerEvent({
+          userId,
+          name: 'queue_cancel',
+          properties: { status: 'refunded' },
+        });
         return { status: 'left', refunded: true };
       }
 
+      this.analyticsService.trackServerEvent({
+        userId,
+        name: 'queue_cancel',
+        properties: {
+          status: matched ? 'matched_concurrently' : 'not_refunded',
+        },
+      });
       return { status: matched ? 'already_matched' : 'left', refunded: false };
     });
+  }
+
+  async getGlobalSearchStats(): Promise<{
+    usersSearching: number;
+    activeMatches: number;
+  }> {
+    const queueKeys = await this.redis.smembers(QUEUE_KEYS_SET);
+    let usersSearching = 0;
+
+    for (const queueKey of queueKeys) {
+      const count = await this.redis.zcard(this.queueZsetKey(queueKey));
+      usersSearching += count;
+    }
+
+    // Active matches are harder to count precisely without a dedicated set,
+    // but we can estimate or use a simple counter for now if needed.
+    // For this pass, we'll return usersSearching and a placeholder for matches
+    // unless we add a specific ZSET for active sessions.
+    return {
+      usersSearching,
+      activeMatches: 0, // Placeholder or implement session counter
+    };
   }
 
   async popPair(queueKey: string): Promise<QueuePair | null> {
@@ -277,6 +311,17 @@ export class QueueService {
       .set(this.userMatchedKey(userAId), sessionId, 'PX', MATCHED_TTL_MS)
       .set(this.userMatchedKey(userBId), sessionId, 'PX', MATCHED_TTL_MS)
       .exec();
+
+    this.analyticsService.trackServerEvent({
+      userId: userAId,
+      name: 'queue_match_found',
+      properties: { sessionId, partnerId: userBId },
+    });
+    this.analyticsService.trackServerEvent({
+      userId: userBId,
+      name: 'queue_match_found',
+      properties: { sessionId, partnerId: userAId },
+    });
   }
 
   async cleanupExpiredSessions() {

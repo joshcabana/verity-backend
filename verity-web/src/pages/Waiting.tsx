@@ -17,6 +17,16 @@ export const Waiting: React.FC = () => {
   const { token } = useAuth();
   const socket = useSocket('/queue', token);
 
+  const [stats, setStats] = React.useState<{ usersSearching: number } | null>(
+    null,
+  );
+  const [seconds, setSeconds] = React.useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!socket) {
       return;
@@ -30,14 +40,26 @@ export const Waiting: React.FC = () => {
       navigate(`/session/${payload.sessionId}`, { state: payload });
     };
 
+    const handleStatus = (payload: { usersSearching: number }) => {
+      setStats(payload);
+    };
+
     socket.on('match', handleMatch);
     socket.on('match:found', handleMatch);
+    socket.on('queue:status', handleStatus);
 
     return () => {
       socket.off('match', handleMatch);
       socket.off('match:found', handleMatch);
+      socket.off('queue:status', handleStatus);
     };
   }, [socket, navigate]);
+
+  const formatTimer = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleCancel = async () => {
     const response = await apiJson<{ refunded?: boolean }>('/queue/leave', {
@@ -57,10 +79,20 @@ export const Waiting: React.FC = () => {
       </div>
       <div className="inline mt-md">
         <div className="spinner" />
-        <p className="subtle">
-          Stay on this screen. We will drop you into a session as soon as a
-          compatible partner is available.
-        </p>
+        <div className="column">
+          <p className="subtle">
+            Stay on this screen. We will drop you into a session as soon as a
+            compatible partner is available.
+          </p>
+          <div className="inline mt-sm">
+            <span className="text-bold">{formatTimer(seconds)}</span>
+            {stats && (
+              <span className="subtle ml-sm">
+                • {stats.usersSearching} users currently searching
+              </span>
+            )}
+          </div>
+        </div>
       </div>
       <div className="callout safety mt-md">
         <strong>Keep it safe</strong>
