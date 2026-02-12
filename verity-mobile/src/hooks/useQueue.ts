@@ -29,6 +29,7 @@ type QueueState = {
   match: MatchPayload | null;
   tokenSpent: boolean;
   usersSearching: number | null;
+  queueKey: string | null;
   setEstimated: (seconds: number | null) => void;
   setMatch: (payload: MatchPayload) => void;
   setUsersSearching: (count: number | null) => void;
@@ -44,6 +45,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
   match: null,
   tokenSpent: false,
   usersSearching: null,
+  queueKey: null,
   setEstimated: (seconds) => set({ estimatedSeconds: seconds }),
   setMatch: (payload) =>
     set({
@@ -51,6 +53,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       status: 'matched',
       estimatedSeconds: null,
       usersSearching: null,
+      queueKey: payload.queueKey ?? null,
     }),
   setUsersSearching: (count) => set({ usersSearching: count }),
   markTokenSpent: (spent) => set({ tokenSpent: spent }),
@@ -61,6 +64,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       match: null,
       tokenSpent: false,
       usersSearching: null,
+      queueKey: null,
     }),
   joinQueue: async (region?: string) => {
     const { status } = get();
@@ -86,7 +90,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       throw new Error('Queue join failed');
     }
 
-    set({ status: 'waiting' });
+    set({ status: 'waiting', queueKey: response.data?.queueKey ?? null });
   },
   leaveQueue: async () => {
     const { status, tokenSpent } = get();
@@ -94,10 +98,13 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       return false;
     }
 
-    const response = await apiJson<{ status?: string; refunded?: boolean }>(
-      '/queue/leave',
-      { method: 'DELETE' },
-    );
+    const response = await apiJson<{
+      status?: string;
+      refunded?: boolean;
+      queueKey?: string;
+    }>('/queue/leave', {
+      method: 'DELETE',
+    });
 
     set({
       status: 'idle',
@@ -105,6 +112,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       match: null,
       tokenSpent: false,
       usersSearching: null,
+      queueKey: null,
     });
 
     if (response.ok && typeof response.data?.refunded === 'boolean') {
