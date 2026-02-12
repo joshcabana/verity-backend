@@ -98,32 +98,34 @@ export class ChatService {
       match,
       recipientId,
     );
-    const sender = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { displayName: true },
-    });
-    const senderDisplayName = sender?.displayName?.trim() || 'Someone';
-
-    const notificationEvent: PushEventType = recipientRevealAcknowledged
-      ? 'chat_message_new'
-      : 'chat_reveal_required';
-    const notificationData = recipientRevealAcknowledged
-      ? {
-          matchId: message.matchId,
-          messageId: message.id,
-          senderId: message.senderId,
-          title: 'New message',
-          body: `From ${senderDisplayName}`,
-          deepLinkTarget: 'chat',
-        }
-      : {
-          matchId: message.matchId,
-          messageId: message.id,
-          senderId: message.senderId,
-          title: 'New match',
-          body: 'A message is waiting — reveal to view',
-          deepLinkTarget: 'reveal',
-        };
+    let notificationEvent: PushEventType;
+    let notificationData: Record<string, string>;
+    if (recipientRevealAcknowledged) {
+      const sender = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true },
+      });
+      const senderDisplayName = sender?.displayName?.trim() || 'Someone';
+      notificationEvent = 'chat_message_new';
+      notificationData = {
+        matchId: message.matchId,
+        messageId: message.id,
+        senderId: message.senderId,
+        title: 'New message',
+        body: `From ${senderDisplayName}`,
+        deepLinkTarget: 'chat',
+      };
+    } else {
+      notificationEvent = 'chat_reveal_required';
+      notificationData = {
+        matchId: message.matchId,
+        messageId: message.id,
+        senderId: message.senderId,
+        title: 'New match',
+        body: 'A message is waiting — reveal to view',
+        deepLinkTarget: 'reveal',
+      };
+    }
 
     void this.notificationsService.notifyUsers(
       [recipientId],
