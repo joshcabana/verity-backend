@@ -41,6 +41,12 @@ type QueuePair = {
   scoreB: number;
 };
 
+export type QueueLeaveResult = {
+  status: 'left' | 'not_queued' | 'already_matched';
+  refunded: boolean;
+  queueKey?: string;
+};
+
 @Injectable()
 export class QueueService {
   constructor(
@@ -155,18 +161,29 @@ export class QueueService {
     }
   }
 
-  async leaveQueue(userId: string): Promise<{
-    status: 'left' | 'not_queued' | 'already_matched';
-    refunded: boolean;
-  }> {
+  async leaveQueue(userId: string): Promise<QueueLeaveResult> {
     const queueUserKey = this.userQueueKey(userId);
     return this.withUserLock(userId, async () => {
       const stateRaw = await this.redis.get(queueUserKey);
       if (!stateRaw) {
-        return { status: 'not_queued', refunded: false };
+        const result: QueueLeaveResult = {
+          status: 'not_queued',
+          refunded: false,
+        };
+        this.trackQueueLeft(userId, result);
+        return result;
       }
 
-      const state = JSON.parse(stateRaw) as QueueEntryState;
+      const state = this.parseQueueEntryState(stateRaw);
+      if (!state) {
+        await this.redis.del(queueUserKey);
+        const result: QueueLeaveResult = {
+          status: 'not_queued',
+          refunded: false,
+        };
+        this.trackQueueLeft(userId, result);
+        return result;
+      }
       const zsetKey = this.queueZsetKey(state.queueKey);
       const matched = await this.redis.get(this.userMatchedKey(userId));
 
@@ -184,7 +201,13 @@ export class QueueService {
           name: 'queue_cancel',
           properties: { status: 'refunded' },
         });
-        return { status: 'left', refunded: true };
+        const result: QueueLeaveResult = {
+          status: 'left',
+          refunded: true,
+          queueKey: state.queueKey,
+        };
+        this.trackQueueLeft(userId, result);
+        return result;
       }
 
       this.analyticsService.trackServerEvent({
@@ -194,8 +217,28 @@ export class QueueService {
           status: matched ? 'matched_concurrently' : 'not_refunded',
         },
       });
-      return { status: matched ? 'already_matched' : 'left', refunded: false };
+      const result: QueueLeaveResult = {
+        status: matched ? 'already_matched' : 'left',
+        refunded: false,
+        queueKey: state.queueKey,
+      };
+      this.trackQueueLeft(userId, result);
+      return result;
     });
+  }
+
+  async getQueuedUserIds(queueKey: string): Promise<string[]> {
+    if (!queueKey) {
+      return [];
+    }
+    return this.redis.zrange(this.queueZsetKey(queueKey), 0, -1);
+  }
+
+  async getQueueSize(queueKey: string): Promise<number> {
+    if (!queueKey) {
+      return 0;
+    }
+    return this.redis.zcard(this.queueZsetKey(queueKey));
   }
 
   async getGlobalSearchStats(): Promise<{
@@ -519,6 +562,18 @@ export class QueueService {
     } catch {
       return null;
     }
+  }
+
+  private trackQueueLeft(userId: string, result: QueueLeaveResult) {
+    this.analyticsService.trackServerEvent({
+      userId,
+      name: 'queue_left',
+      properties: {
+        queueKey: result.queueKey ?? null,
+        status: result.status,
+        refunded: result.refunded,
+      },
+    });
   }
 }
 

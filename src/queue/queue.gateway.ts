@@ -5,12 +5,10 @@ import { createHash } from 'crypto';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
   corsOriginResolver,
   getAccessTokenSecret,
@@ -22,39 +20,15 @@ import { QueueService } from './queue.service';
   namespace: '/queue',
   cors: { origin: corsOriginResolver, credentials: true },
 })
-export class QueueGateway
-  implements
-    OnGatewayConnection,
-    OnGatewayDisconnect,
-    OnGatewayInit,
-    OnModuleInit,
-    OnModuleDestroy
-{
+export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
   private readonly jwt: JwtService;
   private readonly logger = new Logger(QueueGateway.name);
-  private statusInterval?: ReturnType<typeof setInterval>;
 
   constructor(private readonly queueService: QueueService) {
     this.jwt = new JwtService({ secret: this.accessSecret });
-  }
-
-  afterInit() {
-    this.logger.log('QueueGateway initialized');
-  }
-
-  onModuleInit() {
-    this.statusInterval = setInterval(() => {
-      void this.broadcastQueueStatus();
-    }, 10000);
-  }
-
-  onModuleDestroy() {
-    if (this.statusInterval) {
-      clearInterval(this.statusInterval);
-    }
   }
 
   handleConnection(client: Socket) {
@@ -84,13 +58,16 @@ export class QueueGateway
     const userId = data.userId;
     if (userId) {
       const remainingConnections =
-        this.server?.sockets?.adapter?.rooms?.get(this.userRoom(userId))
-          ?.size ?? 0;
+        this.server?.sockets?.adapter?.rooms?.get(this.userRoom(userId))?.size ??
+        0;
       if (remainingConnections > 0) {
         return;
       }
       try {
-        await this.queueService.leaveQueue(userId);
+        const result = await this.queueService.leaveQueue(userId);
+        if (result.queueKey) {
+          await this.emitQueueStatus(result.queueKey);
+        }
       } catch (error) {
         this.logger.warn(`Failed to leave queue on disconnect: ${error}`);
       }
@@ -123,12 +100,27 @@ export class QueueGateway
     return `anon_${digest}`;
   }
 
-  private async broadcastQueueStatus() {
+  async emitQueueStatus(queueKey: string) {
+    if (!queueKey) {
+      return;
+    }
+
     try {
-      const stats = await this.queueService.getGlobalSearchStats();
-      this.server.emit('queue:status', stats);
+      const userIds = await this.queueService.getQueuedUserIds(queueKey);
+      if (userIds.length === 0) {
+        return;
+      }
+
+      const usersSearching = await this.queueService.getQueueSize(queueKey);
+      for (const userId of userIds) {
+        this.server
+          .to(this.userRoom(userId))
+          .emit('queue:status', { usersSearching });
+      }
     } catch (error) {
-      this.logger.warn(`Failed to broadcast queue status: ${error}`);
+      this.logger.warn(
+        `Failed to emit queue status for ${queueKey}: ${String(error)}`,
+      );
     }
   }
 

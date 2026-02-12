@@ -244,6 +244,33 @@ class InMemoryRedis {
     return this.zsets.get(key)?.size ?? 0;
   }
 
+  async zrange(key: string, start: number, end: number) {
+    if (this.isExpired(key)) {
+      return [];
+    }
+    const zset = this.zsets.get(key);
+    if (!zset || zset.size === 0) {
+      return [];
+    }
+
+    const sorted = Array.from(zset.entries())
+      .sort((a, b) => {
+        if (a[1] === b[1]) {
+          return a[0].localeCompare(b[0]);
+        }
+        return a[1] - b[1];
+      })
+      .map(([member]) => member);
+
+    const normalizedStart = start < 0 ? Math.max(sorted.length + start, 0) : start;
+    const normalizedEnd = end < 0 ? sorted.length + end : end;
+    if (normalizedStart > normalizedEnd || normalizedStart >= sorted.length) {
+      return [];
+    }
+
+    return sorted.slice(normalizedStart, normalizedEnd + 1);
+  }
+
   async zpopmin(key: string, count: number) {
     if (this.isExpired(key)) {
       return [];

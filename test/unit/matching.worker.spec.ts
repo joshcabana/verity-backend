@@ -18,7 +18,7 @@ describe('MatchingWorker (unit)', () => {
     cleanupQueueKey: jest.Mock;
     cleanupExpiredSessions: jest.Mock;
   };
-  let gateway: { emitMatch: jest.Mock };
+  let gateway: { emitMatch: jest.Mock; emitQueueStatus: jest.Mock };
   let notificationsService: { notifyUsers: jest.Mock };
   let analyticsService: { trackServerEvent: jest.Mock };
   let redis: { smembers: jest.Mock };
@@ -34,7 +34,7 @@ describe('MatchingWorker (unit)', () => {
       cleanupQueueKey: jest.fn(),
       cleanupExpiredSessions: jest.fn(),
     };
-    gateway = { emitMatch: jest.fn() };
+    gateway = { emitMatch: jest.fn(), emitQueueStatus: jest.fn() };
     notificationsService = { notifyUsers: jest.fn() };
     analyticsService = { trackServerEvent: jest.fn() };
     redis = { smembers: jest.fn() };
@@ -105,5 +105,6 @@ describe('MatchingWorker (unit)', () => {
         queueKey: 'au:hash',
       }),
     );
+    expect(gateway.emitQueueStatus).toHaveBeenCalledWith('au:hash');
   });
 });

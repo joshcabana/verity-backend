@@ -7,12 +7,42 @@ import { renderWithProviders } from '../test/testUtils';
 
 const navigateMock = vi.fn();
 const apiJsonMock = vi.fn();
+const trackEventMock = vi.fn();
+const socketHandlers = new Map<string, Array<(payload: any) => void>>();
+
+const socketMock = {
+  on: vi.fn((event: string, handler: (payload: any) => void) => {
+    const handlers = socketHandlers.get(event) ?? [];
+    handlers.push(handler);
+    socketHandlers.set(event, handlers);
+  }),
+  off: vi.fn((event: string, handler?: (payload: any) => void) => {
+    if (!socketHandlers.has(event)) {
+      return;
+    }
+    if (!handler) {
+      socketHandlers.delete(event);
+      return;
+    }
+    const next = (socketHandlers.get(event) ?? []).filter((fn) => fn !== handler);
+    if (next.length > 0) {
+      socketHandlers.set(event, next);
+      return;
+    }
+    socketHandlers.delete(event);
+  }),
+};
+
+const emitSocket = (event: string, payload: unknown) => {
+  for (const handler of socketHandlers.get(event) ?? []) {
+    handler(payload);
+  }
+};
 
 vi.mock('react-router-dom', async () => {
-  const actual =
-    await vi.importActual<typeof import('react-router-dom')>(
-      'react-router-dom',
-    );
+  const actual = await vi.importActual<typeof import('react-router-dom')>(
+    'react-router-dom',
+  );
   return {
     ...actual,
     useNavigate: () => navigateMock,
@@ -23,6 +53,10 @@ vi.mock('../api/client', () => ({
   apiJson: (...args: unknown[]) => apiJsonMock(...args),
 }));
 
+vi.mock('../analytics/events', () => ({
+  trackEvent: (...args: unknown[]) => trackEventMock(...args),
+}));
+
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({
     token: 'test-token',
@@ -30,13 +64,17 @@ vi.mock('../hooks/useAuth', () => ({
 }));
 
 vi.mock('../hooks/useSocket', () => ({
-  useSocket: () => null,
+  useSocket: () => socketMock,
 }));
 
 describe('Home and Waiting queue flow', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     apiJsonMock.mockReset();
+    trackEventMock.mockReset();
+    socketHandlers.clear();
+    socketMock.on.mockClear();
+    socketMock.off.mockClear();
   });
 
   it('joins queue after balance load', async () => {
@@ -53,8 +91,7 @@ describe('Home and Waiting queue flow', () => {
     renderWithProviders(<Home />, { route: '/home', path: '/home' });
 
     await screen.findByText('2 tokens');
-    const goLiveButtons = screen.getAllByRole('button', { name: /go live now/i });
-    fireEvent.click(goLiveButtons[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /go live now/i })[0]);
 
     await waitFor(() => {
       expect(apiJsonMock).toHaveBeenCalledWith('/queue/join', {
@@ -66,7 +103,11 @@ describe('Home and Waiting queue flow', () => {
   });
 
   it('leaves queue from waiting screen', async () => {
-    apiJsonMock.mockResolvedValue({ ok: true, status: 200, data: {} });
+    apiJsonMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { refunded: true },
+    });
 
     renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
 
@@ -76,7 +117,58 @@ describe('Home and Waiting queue flow', () => {
       expect(apiJsonMock).toHaveBeenCalledWith('/queue/leave', {
         method: 'DELETE',
       });
+      expect(trackEventMock).toHaveBeenCalledWith('queue_leave_refunded', {
+        refunded: true,
+      });
       expect(navigateMock).toHaveBeenCalledWith('/home');
     });
+  });
+
+  it('shows live queue status from queue:status events', async () => {
+    renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
+
+    expect(
+      screen.queryByText(/users currently searching/i),
+    ).not.toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(socketMock.on).toHaveBeenCalledWith('queue:status', expect.any(Function)),
+    );
+
+    emitSocket('queue:status', { usersSearching: 11 });
+
+    await waitFor(() =>
+      expect(screen.getByText(/11 users currently searching/i)).toBeTruthy(),
+    );
+  });
+
+  it('navigates once for duplicate match events on the same session', async () => {
+    renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
+
+    await waitFor(() =>
+      expect(socketMock.on).toHaveBeenCalledWith('match', expect.any(Function)),
+    );
+
+    const payload = {
+      sessionId: 'session-1',
+      partnerId: 'partner-1',
+      queueKey: 'queue-1',
+      matchedAt: new Date().toISOString(),
+    };
+
+    emitSocket('match', payload);
+    emitSocket('match', payload);
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/session/session-1', {
+        state: payload,
+      }),
+    );
+    expect(
+      navigateMock.mock.calls.filter(
+        (call) => call[0] === '/session/session-1',
+      ).length,
+    ).toBe(1);
+    expect(trackEventMock).toHaveBeenCalledTimes(1);
   });
 });
