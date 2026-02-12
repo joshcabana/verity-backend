@@ -147,6 +147,14 @@ header {
   flex-wrap: wrap;
 }
 
+.inline.spread {
+  justify-content: space-between;
+}
+
+.mt-md {
+  margin-top: 16px;
+}
+
 .section-title {
   font-size: 20px;
   margin: 0 0 12px;

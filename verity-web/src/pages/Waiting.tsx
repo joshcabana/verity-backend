@@ -51,24 +51,28 @@ export const Waiting: React.FC = () => {
 
   return (
     <section className="card">
-      <div className="inline" style={{ justifyContent: 'space-between' }}>
+      <div className="inline spread">
         <h2 className="section-title">Finding your match</h2>
         <span className="pill warning">In queue</span>
       </div>
-      <div className="inline" style={{ marginTop: '16px' }}>
+      <div className="inline mt-md">
         <div className="spinner" />
         <p className="subtle">
           Stay on this screen. We will drop you into a session as soon as a
           compatible partner is available.
         </p>
       </div>
-      <div className="callout safety" style={{ marginTop: '16px' }}>
+      <div className="callout safety mt-md">
         <strong>Keep it safe</strong>
         <p className="subtle">
-          Sessions are 45 seconds and never recorded. You can leave the queue at any time.
+          Sessions are 45 seconds and never recorded. You can leave
+          the queue at any time.
         </p>
       </div>
-      <button className="button secondary" onClick={handleCancel} style={{ marginTop: '16px' }}>
+      <button
+        className="button secondary mt-md"
+        onClick={() => void handleCancel()}
+      >
         Leave queue
       </button>
     </section>

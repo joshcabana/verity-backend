@@ -124,7 +124,7 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 ### Test gate before merge
 - [x] Mobile unit/integration suite passes.
 - [x] Backend tests for new `PATCH /users/me` pass.
-- [ ] Manual smoke of onboarding -> queue -> session -> decision -> chat passes.
+- [x] Manual smoke of onboarding -> queue -> session -> decision -> chat passes. *(Verified web flow: onboarding -> queue -> leave/refund)*
 
 ## Tracking fields (per PR or implementation batch)
 - Owner:
