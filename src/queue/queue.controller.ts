@@ -7,8 +7,13 @@ import { QueueGateway } from './queue.gateway';
 import { QueueService } from './queue.service';
 
 class JoinQueueDto {
+  @IsOptional()
   @IsString()
-  region!: string;
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
 
   @IsOptional()
   @IsObject()
@@ -27,10 +32,11 @@ export class QueueController {
   async joinQueue(@Req() req: Request, @Body() dto: JoinQueueDto) {
     const userId = getRequestUserId(req);
     const result = await this.queueService.joinQueue(userId, {
+      city: dto.city,
       region: dto.region,
       preferences: dto.preferences,
     });
-    void this.queueGateway.emitQueueStatus(result.queueKey);
+    void this.queueGateway.emitQueueStatus?.(result.queueKey);
     return result;
   }
 
@@ -40,7 +46,7 @@ export class QueueController {
     const userId = getRequestUserId(req);
     const result = await this.queueService.leaveQueue(userId);
     if (result.queueKey) {
-      void this.queueGateway.emitQueueStatus(result.queueKey);
+      void this.queueGateway.emitQueueStatus?.(result.queueKey);
     }
     return result;
   }

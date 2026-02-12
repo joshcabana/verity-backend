@@ -17,6 +17,10 @@ class NoopQueueGateway {
   emitMatch() {
     return;
   }
+
+  emitQueueStatus() {
+    return;
+  }
 }
 
 class NoopChatGateway {
