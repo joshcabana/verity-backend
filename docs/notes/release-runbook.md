@@ -18,15 +18,18 @@
 
 ## Migration Policy
 
-Migrations run **deterministically and automatically** during deploy:
+Migrations are an explicit deploy gate and must run before container rollout:
 
-1. The deploy script calls `prisma migrate deploy` as part of the container start command.
-2. This applies all pending migrations in order, then exits.
-3. If any migration fails, the container **does not start** — the previous revision stays active.
+1. In GitHub Actions (`.github/workflows/deploy-azure.yml`), set `runMigrations=true`.
+2. In manual staging deploys (`scripts/deploy-staging.sh`), run `npx prisma migrate deploy` first.
+3. If migration fails, stop the rollout and fix migration state before updating Container Apps.
 
 ### Hotfix Override
 
-Set `SKIP_MIGRATION=true` in the container environment to deploy a code-only hotfix without running migrations. Use this only when the hotfix is unrelated to schema changes.
+For code-only hotfixes with no schema changes, skip the migration step intentionally:
+
+- GitHub Actions: run with `runMigrations=false`.
+- Manual staging deploys: omit the `npx prisma migrate deploy` command.
 
 ---
 
@@ -35,6 +38,7 @@ Set `SKIP_MIGRATION=true` in the container environment to deploy a code-only hot
 ```bash
 # 1. Set required env vars
 export AZURE_RG="verity-staging-rg"
+export DATABASE_URL="postgresql://..."
 export POSTGRES_ADMIN_PASSWORD="..."
 export JWT_SECRET="..." JWT_ACCESS_SECRET="..." JWT_REFRESH_SECRET="..."
 export STRIPE_SECRET_KEY="..." STRIPE_WEBHOOK_SECRET="..."
@@ -42,7 +46,10 @@ export STRIPE_PRICE_STARTER="..." STRIPE_PRICE_PLUS="..." STRIPE_PRICE_PRO="..."
 export AGORA_APP_ID="..." AGORA_APP_CERTIFICATE="..."
 export HIVE_API_KEY="..." HIVE_WEBHOOK_SECRET="..."
 
-# 2. Run deploy
+# 2. Run DB migrations
+npx prisma migrate deploy
+
+# 3. Run deploy
 ./scripts/deploy-staging.sh
 ```
 
