@@ -241,15 +241,15 @@ export default function SettingsScreen() {
           />
         </View>
         <ThemedButton
-          label="Privacy Controls"
+          label="Blocked Users"
           variant="secondary"
-          onPress={() => Alert.alert('Privacy', 'More controls coming soon.')}
+          onPress={() => navigation.navigate('BlockList' as never)}
           style={styles.buttonSpacing}
         />
         <ThemedButton
-          label="Report / Block"
+          label="Report a User"
           variant="secondary"
-          onPress={() => Alert.alert('Report/Block', 'Report & block flow coming soon.')}
+          onPress={() => navigation.navigate('Report' as never)}
         />
       </ThemedCard>
 

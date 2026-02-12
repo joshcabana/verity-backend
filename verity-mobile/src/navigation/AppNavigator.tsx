@@ -15,6 +15,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainTabNavigator, { MainTabParamList } from './MainTabNavigator';
 import ProfileEditScreen from '../screens/settings/ProfileEditScreen';
 import DeleteAccountScreen from '../screens/settings/DeleteAccountScreen';
+import ReportScreen from '../screens/settings/ReportScreen';
+import BlockListScreen from '../screens/settings/BlockListScreen';
 import WaitingScreen from '../screens/WaitingScreen';
 import VideoCallScreen from '../screens/VideoCallScreen';
 import DecisionScreen from '../screens/DecisionScreen';
@@ -25,6 +27,7 @@ import { PendingRoute, useAuth } from '../hooks/useAuth';
 import OnboardingStack, { type OnboardingStackParamList } from './OnboardingStack';
 import { useTheme } from '../theme/ThemeProvider';
 import { spacing } from '../theme/tokens';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import type { PartnerReveal } from '../types/reveal';
 
 export type RootStackParamList = {
@@ -56,6 +59,8 @@ export type RootStackParamList = {
     status?: string;
     session_id?: string;
   };
+  Report: undefined;
+  BlockList: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -100,6 +105,8 @@ const ProtectedDecision = () => <AuthGate component={DecisionScreen} />;
 const ProtectedMatchProfile = () => <AuthGate component={MatchProfileView} />;
 const ProtectedChat = () => <AuthGate component={ChatScreen} />;
 const ProtectedTokenShop = () => <AuthGate component={TokenShopScreen} />;
+const ProtectedReport = () => <AuthGate component={ReportScreen} />;
+const ProtectedBlockList = () => <AuthGate component={BlockListScreen} />;
 
 export const buildLinkingConfig = (
   appScheme: string = process.env.EXPO_PUBLIC_APP_SCHEME ?? 'verity',
@@ -127,6 +134,8 @@ export const buildLinkingConfig = (
       MatchProfile: 'matches/:matchId',
       Chat: 'matches/:matchId/chat',
       TokenShop: 'tokens/:status?',
+      Report: 'settings/report',
+      BlockList: 'settings/blocks',
     },
   },
 });
@@ -142,6 +151,9 @@ export default function AppNavigator({ initialState, linkingOverride }: AppNavig
   const splashStyles = useMemo(() => createSplashStyles(colors), [colors]);
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const prevTokenRef = useRef<string | null>(null);
+
+  // Register push token & handle notification taps after auth
+  usePushNotifications();
 
   useEffect(() => {
     void hydrate();
@@ -226,6 +238,8 @@ export default function AppNavigator({ initialState, linkingOverride }: AppNavig
         <Stack.Screen name="MatchProfile" component={ProtectedMatchProfile} />
         <Stack.Screen name="Chat" component={ProtectedChat} />
         <Stack.Screen name="TokenShop" component={ProtectedTokenShop} />
+        <Stack.Screen name="Report" component={ProtectedReport} />
+        <Stack.Screen name="BlockList" component={ProtectedBlockList} />
       </Stack.Navigator>
     </NavigationContainer>
   );
