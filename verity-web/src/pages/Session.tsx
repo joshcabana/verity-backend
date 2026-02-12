@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { IAgoraRTCClient, ILocalTrack } from 'agora-rtc-sdk-ng';
 import { trackEvent } from '../analytics/events';
 import { useFlags } from '../hooks/useFlags';
@@ -29,7 +29,6 @@ type SessionEndPayload = {
 export const Session: React.FC = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const { flags } = useFlags();
   const { token } = useAuth();
   const socket = useSocket('/video', token);
@@ -42,9 +41,6 @@ export const Session: React.FC = () => {
   const localTracksRef = useRef<ILocalTrack[]>([]);
   const localVideoRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoRef = useRef<HTMLDivElement | null>(null);
-
-  const matchPayload = location.state as { partnerId?: string } | null;
-  const partnerId = matchPayload?.partnerId ?? null;
 
   useEffect(() => {
     if (!socket) {
@@ -187,14 +183,17 @@ export const Session: React.FC = () => {
       <div className="card">
         <div className="inline" style={{ justifyContent: 'space-between' }}>
           <h2 className="section-title">Video session</h2>
-          <span className={`pill ${status === 'ended' ? 'warning' : 'success'}`}>
-            {status === 'waiting' ? 'Connecting' : status === 'ended' ? 'Ended' : 'Live'}
+          <span
+            className={`pill ${status === 'ended' ? 'warning' : 'success'}`}
+          >
+            {status === 'waiting'
+              ? 'Connecting'
+              : status === 'ended'
+                ? 'Ended'
+                : 'Live'}
           </span>
         </div>
         <p className="subtle">{callStatus}</p>
-        {matchPayload?.partnerId && (
-          <p className="subtle">Partner ID: {matchPayload.partnerId}</p>
-        )}
         {error && <p className="subtle">{error}</p>}
         <div className="video-grid" style={{ marginTop: '20px' }}>
           <div className="video-tile" ref={localVideoRef}>
@@ -207,7 +206,8 @@ export const Session: React.FC = () => {
         <div className="callout safety" style={{ marginTop: '20px' }}>
           <strong>Safety reminder</strong>
           <p className="subtle">
-            This session is not recorded. You can report any unsafe behavior at any time.
+            This session is not recorded. You can report any unsafe behavior at
+            any time.
           </p>
         </div>
         {status === 'ended' && sessionId && (
@@ -222,7 +222,7 @@ export const Session: React.FC = () => {
         {flags.reportDialogEnabled && (
           <div style={{ marginTop: '16px' }}>
             <ReportDialog
-              reportedUserId={partnerId}
+              reportedUserId={null}
               contextLabel="Reports are reviewed by our safety team."
             />
           </div>

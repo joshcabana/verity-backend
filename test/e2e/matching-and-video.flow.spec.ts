@@ -88,14 +88,14 @@ describe('Matching + video flow (e2e)', () => {
 
     expect(matchPayloadA.sessionId).toEqual(expect.any(String));
     expect(matchPayloadB.sessionId).toEqual(matchPayloadA.sessionId);
-    expect(matchPayloadA.partnerId).toBe(userB.id);
-    expect(matchPayloadB.partnerId).toBe(userA.id);
+    expect(matchPayloadA.partnerId).toBeUndefined();
+    expect(matchPayloadB.partnerId).toBeUndefined();
+    expect(matchPayloadA.partnerAnonymousId).toEqual(expect.any(String));
+    expect(matchPayloadB.partnerAnonymousId).toEqual(expect.any(String));
+    expect(matchPayloadA.partnerAnonymousId).not.toBe(userB.id);
+    expect(matchPayloadB.partnerAnonymousId).not.toBe(userA.id);
 
-    const session = await waitForSession(
-      context.prisma,
-      userA.id,
-      userB.id,
-    );
+    const session = await waitForSession(context.prisma, userA.id, userB.id);
 
     const startPayloadA = await sessionStartA;
     const startPayloadB = await sessionStartB;
