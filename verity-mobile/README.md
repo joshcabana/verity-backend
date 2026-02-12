@@ -7,7 +7,7 @@
 - Logout clears AsyncStorage and returns the user to onboarding.
 - Dark mode toggle is wired to the ThemeProvider and persisted in AsyncStorage.
 - Delete account flow requires typing `DELETE` on a dedicated confirmation screen.
-- Privacy controls and report/block are included as stubs.
+- Blocked Users screen lists and manages blocks via `GET/DELETE /moderation/blocks`; Report screen submits reports via `POST /moderation/reports`.
 
 ## Theming Helpers
 
@@ -33,8 +33,8 @@
 
 - Home screen shows current token balance and a "Go Live" action.
 - Joining the queue calls `POST /queue/join` and navigates to the waiting screen.
-- Waiting screen listens for `match:found` and routes to the video call placeholder.
-- Cancelling calls `DELETE /queue/leave` and refunds the local token balance.
+- Waiting screen listens for `match` and routes to the video call screen.
+- Cancelling calls `DELETE /queue/leave`; the response's `refunded` field determines whether the token balance is restored.
 
 ## Double Opt-In Decision UI
 
@@ -52,7 +52,7 @@
 
 ## Matches List & Profile Reveal
 
-- Matches tab pulls profiles from `GET /matches` and shows full partner data.
+- Matches tab pulls profiles from `GET /matches`. Partner data is gated behind reveal-acknowledgement — full details are shown only after a user taps to reveal.
 - Mutual match events (`match:mutual`) refresh the list and open the new match.
 - Match profile view includes photos, bio, and interests with quick chat access.
 
@@ -74,4 +74,4 @@
 - Unit/component tests live in `src/**/__tests__`; flow tests remain in `tests/__tests__`.
 - Run tests from `verity-mobile` with `npm test`.
 - For coverage, run `npm test -- --coverage` and target ≥80% component coverage.
-- API calls are mocked with MSW (`msw` dev dependency) via `setupTests.js`. Add per-test handlers with `server.use(rest.get(...))`.
+- API calls are mocked with `jest.mock` and manual mock factories. No MSW dependency is used.
