@@ -41,7 +41,10 @@ test('home has no serious/critical accessibility violations', async ({ page }) =
   await seedAuth(page);
   await mockApi(page);
   await page.goto('/home');
-  await expect(page.getByRole('heading', { name: /queue status/i })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: /meet first\.\s*reveal later\./i }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /go live now/i }).first()).toBeVisible();
   await expectNoSeriousViolations(page);
 });
 
