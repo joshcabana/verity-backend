@@ -112,17 +112,19 @@ Swap to Sydney by using `infra/azure/params.sydney-fallback.json`.
 az acr build --registry <acrName> --image verity-api:latest --file Dockerfile .
 ```
 
-### 4) Run Migrations
-
-```bash
-DATABASE_URL=... npx prisma migrate deploy
-```
-
-### 5) Update Container Apps
+### 4) Update Container Apps
 
 ```bash
 az containerapp update --name <apiName> --resource-group verity-au --image <acrName>.azurecr.io/verity-api:latest
 az containerapp update --name <workerName> --resource-group verity-au --image <acrName>.azurecr.io/verity-api:latest
+```
+
+### 5) Run Migrations
+
+Run from a trusted machine or CI where Prisma is available:
+
+```bash
+DATABASE_URL=... npx prisma migrate deploy
 ```
 
 ### 6) Verify
@@ -210,8 +212,8 @@ Non-secret values (safe as plain env vars):
 2. Fill in `infra/azure/params.canberra.json` (or `params.sydney-fallback.json`) with unique names.
 3. Run Bicep deployment with secrets override.
 4. Build and push container image to ACR.
-5. Run `npx prisma migrate deploy`.
-6. Update Container Apps to use the new image.
+5. Update Container Apps to use the new image.
+6. Run `npx prisma migrate deploy`.
 7. Verify `/health` endpoint.
 
 Staging helpers:

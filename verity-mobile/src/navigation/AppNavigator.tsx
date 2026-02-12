@@ -153,7 +153,7 @@ export default function AppNavigator({ initialState, linkingOverride }: AppNavig
   const prevTokenRef = useRef<string | null>(null);
 
   // Register push token & handle notification taps after auth
-  usePushNotifications(navigationRef);
+  usePushNotifications();
 
   useEffect(() => {
     void hydrate();

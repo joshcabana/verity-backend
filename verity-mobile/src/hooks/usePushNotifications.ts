@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import type { NavigationContainerRefWithCurrent } from '@react-navigation/native';
+import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { apiJson } from '../services/api';
 import { useAuth } from './useAuth';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
 Notifications.setNotificationHandler({
-  // eslint-disable-next-line @typescript-eslint/require-await
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -19,17 +18,13 @@ Notifications.setNotificationHandler({
  * Registers the device for push notifications and handles
  * deep-link routing when the user taps a notification.
  *
- * Accepts a navigation ref so it can be mounted above the
- * NavigationContainer in AppNavigator.
- *
  * Backend sends `deepLinkTarget` in the push data payload:
  *   - `'chat'`   → navigate to the Chat screen for the matchId
  *   - `'reveal'` → navigate to the MatchProfile screen for the matchId
  */
-export function usePushNotifications(
-  navigationRef: NavigationContainerRefWithCurrent<RootStackParamList>,
-) {
+export function usePushNotifications() {
   const { token } = useAuth();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const registeredRef = useRef(false);
 
   // Register push token with the backend
@@ -81,16 +76,12 @@ export function usePushNotifications(
           return;
         }
 
-        if (!navigationRef.isReady()) {
-          return;
-        }
-
         switch (data.deepLinkTarget) {
           case 'chat':
-            navigationRef.navigate('Chat', { matchId: data.matchId });
+            navigation.navigate('Chat', { matchId: data.matchId });
             break;
           case 'reveal':
-            navigationRef.navigate('MatchProfile', { matchId: data.matchId });
+            navigation.navigate('MatchProfile', { matchId: data.matchId });
             break;
           default:
             break;
@@ -99,5 +90,5 @@ export function usePushNotifications(
     );
 
     return () => subscription.remove();
-  }, [navigationRef]);
+  }, [navigation]);
 }
