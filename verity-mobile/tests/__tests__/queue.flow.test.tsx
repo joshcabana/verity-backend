@@ -14,6 +14,7 @@ jest.mock('../../src/hooks/useQueue', () => ({
   useQueue: () => ({
     status: 'idle',
     estimatedSeconds: 12,
+    usersSearching: null,
     match: null,
     joinQueue: mockJoinQueue,
     leaveQueue: mockLeaveQueue,
@@ -66,7 +67,7 @@ describe('Queue flow', () => {
   });
 
   it('joins the queue and navigates to waiting', async () => {
-    const { getAllByText, getByText } = render(<TestNavigator />);
+    const { getByText, getAllByText } = render(<TestNavigator />);
 
     fireEvent.press(getAllByText('Go Live Now')[0]);
 

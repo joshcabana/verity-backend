@@ -6,6 +6,7 @@ import {
   resetDatabase,
   resetRedis,
   waitForEvent,
+  waitForEventWhere,
   waitForSession,
   type TestAppContext,
 } from '../e2e.setup';
@@ -67,6 +68,20 @@ describe('Matching + video flow (e2e)', () => {
     const matchB = waitForEvent(queueSocketB, 'match');
     const sessionStartA = waitForEvent(videoSocketA, 'session:start');
     const sessionStartB = waitForEvent(videoSocketB, 'session:start');
+    const queueStatusA = waitForEventWhere(
+      queueSocketA,
+      'queue:status',
+      (payload: { usersSearching?: number }) =>
+        typeof payload.usersSearching === 'number' &&
+        payload.usersSearching >= 1,
+    );
+    const queueStatusB = waitForEventWhere(
+      queueSocketB,
+      'queue:status',
+      (payload: { usersSearching?: number }) =>
+        typeof payload.usersSearching === 'number' &&
+        payload.usersSearching >= 1,
+    );
 
     const [joinA] = await Promise.all([
       request(context.app.getHttpServer())
@@ -80,6 +95,9 @@ describe('Matching + video flow (e2e)', () => {
         .send({ region: 'na', preferences: { mode: 'standard' } })
         .expect(201),
     ]);
+
+    expect((await queueStatusA).usersSearching).toBeGreaterThanOrEqual(1);
+    expect((await queueStatusB).usersSearching).toBeGreaterThanOrEqual(1);
 
     await (context.worker as any).processQueueKey?.(joinA.body.queueKey);
 

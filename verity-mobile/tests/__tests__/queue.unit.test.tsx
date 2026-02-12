@@ -17,7 +17,7 @@ describe('useQueue (Unit)', () => {
         estimatedSeconds: null,
         match: null,
         tokenSpent: false,
-
+        usersSearching: null,
       });
     });
   });
@@ -30,8 +30,8 @@ describe('useQueue (Unit)', () => {
       expect(apiJson).not.toHaveBeenCalled();
     });
 
-    it('trusts backend refunded: true', async () => {
-      useQueueStore.setState({ status: 'waiting', tokenSpent: false }); // local says false
+    it('returns false when backend refunded=true but token was not spent locally', async () => {
+      useQueueStore.setState({ status: 'waiting', tokenSpent: false });
       (apiJson as jest.Mock).mockResolvedValue({
         ok: true,
         data: { status: 'left', refunded: true },
@@ -40,12 +40,25 @@ describe('useQueue (Unit)', () => {
       const result = await useQueueStore.getState().leaveQueue();
 
       expect(apiJson).toHaveBeenCalledWith('/queue/leave', { method: 'DELETE' });
+      expect(result).toBe(false);
+      expect(useQueueStore.getState().status).toBe('idle');
+    });
+
+    it('returns true when backend refunded=true and token was spent while waiting', async () => {
+      useQueueStore.setState({ status: 'waiting', tokenSpent: true });
+      (apiJson as jest.Mock).mockResolvedValue({
+        ok: true,
+        data: { status: 'left', refunded: true },
+      });
+
+      const result = await useQueueStore.getState().leaveQueue();
+
       expect(result).toBe(true);
       expect(useQueueStore.getState().status).toBe('idle');
     });
 
-    it('trusts backend refunded: false', async () => {
-      useQueueStore.setState({ status: 'waiting', tokenSpent: true }); // local says true
+    it('returns false when backend refunded=false', async () => {
+      useQueueStore.setState({ status: 'waiting', tokenSpent: true });
       (apiJson as jest.Mock).mockResolvedValue({
         ok: true,
         data: { status: 'left', refunded: false },
