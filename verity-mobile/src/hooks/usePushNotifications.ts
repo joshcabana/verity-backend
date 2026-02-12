@@ -10,6 +10,8 @@ Notifications.setNotificationHandler({
   // eslint-disable-next-line @typescript-eslint/require-await
   handleNotification: async () => ({
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
