@@ -23,6 +23,9 @@ Last updated: 2026-02-12
 
 ## Remaining work
 - [x] Update mobile unit tests for `leaveQueue()` refund parsing and settings `apiJson` usage.
+- [x] Verified system with expanded unit and flow tests (Onboarding, Decision, Matches).
+- [x] Created `tests/__tests__/decision.unit.test.tsx` for immediate resolution handling.
+- [x] Updated `onboarding.flow.test.tsx` for profile payload verification.
 - [ ] Manual smoke test: onboarding → queue → session → decision → chat.
 - [ ] Remove temporary fallback socket listeners after one stable release cycle.
 - [ ] Azure authentication for staging deploy.

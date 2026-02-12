@@ -82,7 +82,12 @@ describe('Onboarding flow', () => {
     expect(mockApiJson).toHaveBeenNthCalledWith(1, '/auth/signup-anonymous', expect.anything());
     expect(mockApiJson).toHaveBeenNthCalledWith(2, '/users/me', expect.objectContaining({
       method: 'PATCH',
-      body: JSON.stringify({ displayName: 'Alex', age: '29' }),
+      body: JSON.stringify({
+        displayName: 'Alex',
+        age: 29,
+        interests: [],
+        photos: [],
+      }),
     }));
     await waitFor(() => expect(mockSetToken).toHaveBeenCalledWith('token-123'));
     await waitFor(() =>

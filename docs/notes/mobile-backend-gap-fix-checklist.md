@@ -117,12 +117,12 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 - [x] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/settings.test.tsx` *(updated for apiJson usage)*
 
 ### Add/expand recommended tests
-- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/onboarding.flow.test.tsx`
-- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/decision.flow.test.tsx`
-- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/matches.test.tsx`
+- [x] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/onboarding.flow.test.tsx`
+- [x] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/decision.unit.test.tsx`
+- [x] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/matches.test.tsx`
 
 ### Test gate before merge
-- [ ] Mobile unit/integration suite passes.
+- [x] Mobile unit/integration suite passes.
 - [x] Backend tests for new `PATCH /users/me` pass.
 - [ ] Manual smoke of onboarding -> queue -> session -> decision -> chat passes.
 

@@ -1,20 +1,20 @@
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { useDecision } from '../src/hooks/useDecision';
-import { apiJson } from '../src/services/api';
+import { useDecision } from '../../src/hooks/useDecision';
+import { apiJson } from '../../src/services/api';
 import { Alert } from 'react-native';
 
-jest.mock('../src/services/api', () => ({
+jest.mock('../../src/services/api', () => ({
   apiJson: jest.fn(),
 }));
 
-jest.mock('../src/hooks/useAuth', () => ({
+jest.mock('../../src/hooks/useAuth', () => ({
   useAuth: () => ({
     logout: jest.fn(),
   }),
 }));
 
-jest.mock('../src/hooks/useWebSocket', () => ({
+jest.mock('../../src/hooks/useWebSocket', () => ({
   useWebSocket: () => ({
     videoSocket: {
       on: jest.fn(),
