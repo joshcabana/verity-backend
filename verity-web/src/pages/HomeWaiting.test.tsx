@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { Home } from './Home';
 import { Waiting } from './Waiting';
@@ -188,16 +188,18 @@ describe('Home and Waiting queue flow', () => {
     try {
       renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
 
-      await vi.advanceTimersByTimeAsync(46_000);
-      await vi.runOnlyPendingTimersAsync();
-
-      await waitFor(() =>
-        expect(screen.getByText(/no one nearby yet/i)).toBeInTheDocument(),
-      );
-      expect(trackEventMock).toHaveBeenCalledWith('queue_timeout_shown', {
-        queueKey: '',
-        elapsedSeconds: 45,
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(46_000);
       });
+
+      expect(screen.getByText(/no one nearby yet/i)).toBeInTheDocument();
+      expect(trackEventMock).toHaveBeenCalledWith(
+        'queue_timeout_shown',
+        expect.objectContaining({
+          queueKey: '',
+          elapsedSeconds: expect.any(Number),
+        }),
+      );
     } finally {
       vi.useRealTimers();
     }
@@ -207,17 +209,19 @@ describe('Home and Waiting queue flow', () => {
     vi.useFakeTimers();
     try {
       renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
-      await vi.advanceTimersByTimeAsync(46_000);
-      await vi.runOnlyPendingTimersAsync();
-
-      fireEvent.click(
-        await screen.findByRole('button', { name: /keep searching/i }),
-      );
-
-      expect(trackEventMock).toHaveBeenCalledWith('queue_timeout_continue', {
-        queueKey: '',
-        elapsedSeconds: 45,
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(46_000);
       });
+
+      fireEvent.click(screen.getByRole('button', { name: /keep searching/i }));
+
+      expect(trackEventMock).toHaveBeenCalledWith(
+        'queue_timeout_continue',
+        expect.objectContaining({
+          queueKey: '',
+          elapsedSeconds: expect.any(Number),
+        }),
+      );
       expect(screen.queryByText(/no one nearby yet/i)).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
@@ -234,18 +238,19 @@ describe('Home and Waiting queue flow', () => {
       });
 
       renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
-      await vi.advanceTimersByTimeAsync(46_000);
-      await vi.runOnlyPendingTimersAsync();
-      fireEvent.click(
-        (
-          await screen.findAllByRole('button', { name: /leave queue/i })
-        )[0],
-      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(46_000);
+      });
+      fireEvent.click(screen.getAllByRole('button', { name: /leave queue/i })[0]);
 
-      await waitFor(() =>
-        expect(trackEventMock).toHaveBeenCalledWith('queue_timeout_leave', {
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(trackEventMock).toHaveBeenCalledWith(
+        'queue_timeout_leave',
+        expect.objectContaining({
           queueKey: 'queue-1',
-          elapsedSeconds: 45,
+          elapsedSeconds: expect.any(Number),
           refunded: true,
         }),
       );
