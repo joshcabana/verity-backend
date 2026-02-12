@@ -53,7 +53,8 @@ describe('Home and Waiting queue flow', () => {
     renderWithProviders(<Home />, { route: '/home', path: '/home' });
 
     await screen.findByText('2 tokens');
-    fireEvent.click(screen.getByRole('button', { name: /join queue/i }));
+    const goLiveButtons = screen.getAllByRole('button', { name: /go live now/i });
+    fireEvent.click(goLiveButtons[0]);
 
     await waitFor(() => {
       expect(apiJsonMock).toHaveBeenCalledWith('/queue/join', {

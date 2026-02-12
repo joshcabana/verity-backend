@@ -26,7 +26,7 @@ describe('GoLiveButton', () => {
     const onPress = jest.fn();
     const { getByRole } = render(<GoLiveButton onPress={onPress} />);
 
-    fireEvent.press(getByRole('button', { name: 'Go Live (1 token)' }));
+    fireEvent.press(getByRole('button', { name: 'Go Live Now' }));
 
     expect(onPress).toHaveBeenCalled();
   });
@@ -37,7 +37,7 @@ describe('GoLiveButton', () => {
       <GoLiveButton onPress={onPress} disabled />,
     );
 
-    const disabledButton = getByRole('button', { name: 'Go Live (1 token)' });
+    const disabledButton = getByRole('button', { name: 'Go Live Now' });
     expect(disabledButton.props.disabled).toBe(true);
 
     rerender(<GoLiveButton onPress={onPress} loading />);

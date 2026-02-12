@@ -10,23 +10,38 @@ const PACKS = [
   { id: 'pro', label: 'Pro', tokens: 30 },
 ] as const;
 
-const CITY_OPTIONS = [
-  { value: 'canberra', label: 'Canberra' },
-  { value: 'sydney', label: 'Sydney' },
-  { value: 'melbourne', label: 'Melbourne' },
-  { value: 'brisbane', label: 'Brisbane' },
-  { value: 'perth', label: 'Perth' },
-  { value: 'adelaide', label: 'Adelaide' },
-] as const;
+const DEFAULT_CITY = 'canberra';
 
 type BalanceResponse = { tokenBalance: number };
 
 type PurchaseResponse = { url?: string };
 
+const TRUST_ITEMS = [
+  'Unrecorded Calls',
+  'Mutual Reveal Only',
+  'Report in One Tap',
+  'Avg wait in Canberra: < 30s',
+] as const;
+
+const HOW_IT_WORKS = [
+  {
+    title: '1 — Go Live',
+    body: 'Join instantly. No browsing profiles.',
+  },
+  {
+    title: '2 — 45-Second Call',
+    body: 'Talk face-to-face in a timed live intro.',
+  },
+  {
+    title: '3 — Match or Pass',
+    body: 'Only mutual matches reveal identity and unlock chat.',
+  },
+] as const;
+
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [city, setCity] = useState('canberra');
   const [joining, setJoining] = useState(false);
+  const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
 
   const balanceQuery = useQuery({
     queryKey: ['token-balance'],
@@ -47,14 +62,14 @@ export const Home: React.FC = () => {
       return;
     }
     trackEvent('queue_join_requested', {
-      city,
+      city: DEFAULT_CITY,
     });
     setJoining(true);
     const response = await apiJson<{ queueKey?: string; position?: number }>(
       '/queue/join',
       {
         method: 'POST',
-        body: { city, preferences: {} },
+        body: { city: DEFAULT_CITY, preferences: {} },
       },
     );
     setJoining(false);
@@ -63,7 +78,7 @@ export const Home: React.FC = () => {
       return;
     }
     trackEvent('queue_joined', {
-      city,
+      city: DEFAULT_CITY,
       queueKey: response.data?.queueKey ?? '',
       position: response.data?.position ?? -1,
     });
@@ -71,11 +86,13 @@ export const Home: React.FC = () => {
   };
 
   const handlePurchase = async (packId: string) => {
+    setBuyingPackId(packId);
     trackEvent('token_purchase_started', { packId });
     const response = await apiJson<PurchaseResponse>('/tokens/purchase', {
       method: 'POST',
       body: { packId },
     });
+    setBuyingPackId(null);
     if (response.ok && response.data?.url) {
       window.location.href = response.data.url;
       return;
@@ -93,88 +110,162 @@ export const Home: React.FC = () => {
     return `${tokenBalance} tokens`;
   }, [balanceQuery.isLoading, balanceQuery.isError, tokenBalance]);
 
+  const scrollToHow = () => {
+    document.getElementById('home-how-it-works')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
+
   return (
-    <section className="grid two">
-      <div className="card">
-        <div className="inline" style={{ justifyContent: 'space-between' }}>
-          <h2 className="section-title">Queue status</h2>
-          <span className="pill success">Ready</span>
-        </div>
-        <div className="stat">
-          <span className="subtle">Token balance</span>
-          <strong>{balanceLabel}</strong>
-        </div>
-        <label className="subtle">
-          City
-          <select
-            className="input"
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-          >
-            {CITY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="inline" style={{ marginTop: '16px' }}>
-          <button className="button" onClick={handleJoin} disabled={!canJoin}>
-            {joining ? 'Joining...' : 'Join queue'}
-          </button>
-          <button
-            className="button secondary"
-            onClick={() => balanceQuery.refetch()}
-          >
-            Refresh balance
-          </button>
-        </div>
-        {tokenBalance === 0 && (
-          <p className="subtle" style={{ marginTop: '16px' }}>
-            You need at least 1 token to join the queue.
-          </p>
-        )}
-        <div className="callout" style={{ marginTop: '18px' }}>
-          <strong>Queue safety</strong>
-          <p className="subtle">
-            Sessions end automatically after 45 seconds. You can leave the queue
-            at any time.
-          </p>
-        </div>
+    <section className="home-shell">
+      <div className="home-top-rail">
+        <span className="home-wordmark">VERITY</span>
+        <button
+          className="home-rail-action"
+          onClick={() => (canJoin ? handleJoin() : scrollToHow())}
+          type="button"
+        >
+          {balanceQuery.isLoading ? 'How it works' : `Tokens: ${tokenBalance}`}
+        </button>
       </div>
-      <div className="card">
-        <h2 className="section-title">Buy tokens</h2>
-        <p className="subtle">
-          Stripe checkout opens in a new tab when configured.
-        </p>
-        <p className="subtle">
-          Tokens are non-refundable except where required by law.
-        </p>
-        <div className="stack tight">
-          {PACKS.map((pack) => (
-            <button
-              key={pack.id}
-              className="button secondary"
-              onClick={() => handlePurchase(pack.id)}
-            >
-              {pack.label} · {pack.tokens} tokens
+
+      <section className="home-hero">
+        <div className="home-hero-copy">
+          <p className="home-eyebrow">LIVE INTROS. ZERO SWIPE FATIGUE.</p>
+          <h1 className="home-hero-title">Meet first. Reveal later.</h1>
+          <p className="home-hero-subtitle">
+            Verity matches you into a 45-second live video intro. Mutual match unlocks identity
+            and chat.
+          </p>
+          <div className="home-hero-actions">
+            <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+              {joining ? 'Joining...' : 'Go Live Now'}
             </button>
+            <button className="button secondary" onClick={scrollToHow} type="button">
+              See How It Works
+            </button>
+          </div>
+        </div>
+        <div className="home-hero-visual" aria-hidden="true">
+          <div className="signal-ring ring-1" />
+          <div className="signal-ring ring-2" />
+          <div className="signal-pulse" />
+        </div>
+      </section>
+
+      <section className="home-card-grid">
+        <article className="card home-primary-card" id="home-primary-live">
+          <div className="inline spread">
+            <h2 className="section-title">Ready for your next 45 seconds?</h2>
+            <span className="pill">Live in Canberra</span>
+          </div>
+          <p className="subtle">
+            1 token starts a live intro. If no match forms, your token is returned.
+          </p>
+          <div className="home-balance-line">
+            <span className="subtle">Current balance</span>
+            <strong>{balanceLabel}</strong>
+          </div>
+          <div className="home-card-actions">
+            <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+              {joining ? 'Joining...' : 'Go Live Now'}
+            </button>
+            <button className="button ghost" onClick={scrollToHow} type="button">
+              How Matching Works
+            </button>
+          </div>
+          {tokenBalance === 0 && (
+            <p className="subtle">You need at least 1 token to start a live intro.</p>
+          )}
+        </article>
+
+        <article className="card home-token-card">
+          <h3 className="section-title">Stay in the flow.</h3>
+          <p className="subtle">Top up tokens anytime. Start calls in one tap.</p>
+          <div className="stack tight">
+            {PACKS.map((pack) => (
+              <button
+                key={pack.id}
+                className="button secondary"
+                onClick={() => handlePurchase(pack.id)}
+                disabled={Boolean(buyingPackId)}
+              >
+                {buyingPackId === pack.id
+                  ? 'Starting checkout...'
+                  : `View ${pack.label} · ${pack.tokens} tokens`}
+              </button>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="home-trust-strip">
+        {TRUST_ITEMS.map((item) => (
+          <div key={item} className="home-trust-chip">
+            <span className="home-chip-dot" aria-hidden="true" />
+            {item}
+          </div>
+        ))}
+      </section>
+
+      <section className="card home-how-it-works" id="home-how-it-works">
+        <h2 className="section-title">How it works</h2>
+        <div className="home-step-grid">
+          {HOW_IT_WORKS.map((step) => (
+            <article key={step.title} className="home-step-card">
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </article>
           ))}
         </div>
-      </div>
-      <div className="card">
-        <h2 className="section-title">Safety & privacy</h2>
-        <ul className="list subtle">
-          <li>Anonymous by default until a mutual match.</li>
-          <li>No recording of video sessions.</li>
-          <li>AI moderation monitors for unsafe content.</li>
-        </ul>
-        <div className="callout safety" style={{ marginTop: '16px' }}>
-          <strong>Need help?</strong>
+      </section>
+
+      <section className="home-duo-grid" id="home-safety">
+        <article className="card">
+          <h2 className="section-title">Built for confident conversations.</h2>
+          <ul className="list subtle">
+            <li>Block instantly</li>
+            <li>Report in one tap</li>
+            <li>No profile reveal before mutual match.</li>
+          </ul>
+          <p className="subtle home-support-link">Safety Standards</p>
+        </article>
+        <article className="card">
+          <h2 className="section-title">Private by design.</h2>
           <p className="subtle">
-            You can report unsafe behavior during a session or in chat.
+            No profile reveal before the call. No replay culture.
           </p>
+          <div className="home-quick-actions">
+            <button className="button ghost" type="button">
+              Block
+            </button>
+            <button className="button ghost" type="button">
+              Report
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <section className="home-footer-band" id="home-pricing">
+        <h2>Your next real intro is 45 seconds away.</h2>
+        <div className="inline">
+          <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+            {joining ? 'Joining...' : 'Get Started'}
+          </button>
+          <button className="button secondary" type="button" onClick={scrollToHow}>
+            Learn More
+          </button>
         </div>
+      </section>
+
+      <div className="home-sticky-dock">
+        <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+          {joining ? 'Joining...' : 'Go Live Now'}
+        </button>
+        <button className="button ghost home-sticky-link" type="button" onClick={scrollToHow}>
+          How it works
+        </button>
       </div>
     </section>
   );
