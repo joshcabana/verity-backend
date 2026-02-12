@@ -23,12 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -69,15 +63,6 @@ jobs:
             --file Dockerfile \
             .
 
-      - name: Run Prisma migrations
-        if: ${{ inputs.runMigrations == 'true' }}
-        run: |
-          set -euo pipefail
-          npm ci
-          npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
       - name: Update container apps to latest image
         run: |
           set -euo pipefail
@@ -90,3 +75,12 @@ jobs:
             --name "$WORKER_APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
             --image "$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}"
+
+      - name: Run Prisma migrations
+        if: ${{ inputs.runMigrations == 'true' }}
+        run: |
+          set -euo pipefail
+          npm ci
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
