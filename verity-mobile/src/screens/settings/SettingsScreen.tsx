@@ -14,11 +14,10 @@ import ThemedButton from '../../components/ThemedButton';
 import ThemedCard from '../../components/ThemedCard';
 import { createThemedInputStyles } from '../../components/themedStyles';
 import { useAuth } from '../../hooks/useAuth';
+import { apiJson } from '../../services/api';
 import { useTheme } from '../../theme/ThemeProvider';
 import { spacing, typography } from '../../theme/tokens';
 
-const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? process.env.API_URL ?? 'http://localhost:3000';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -37,28 +36,6 @@ export default function SettingsScreen() {
     [],
   );
 
-  const authenticatedFetch = useCallback(
-    async (path: string, options?: RequestInit) => {
-      if (!token) {
-        throw new Error('Missing auth token');
-      }
-      const response = await fetch(`${API_URL}${path}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          ...(options?.headers ?? {}),
-        },
-      });
-      if (response.status === 401 || response.status === 403) {
-        Alert.alert('Session expired', 'Please log in again.');
-        await logout();
-        return null;
-      }
-      return response;
-    },
-    [token, logout],
-  );
 
   const fetchBalance = useCallback(async () => {
     if (!token) {
@@ -66,19 +43,24 @@ export default function SettingsScreen() {
     }
     setLoadingBalance(true);
     try {
-      const response = await authenticatedFetch('/tokens/balance');
-      if (!response) {
+      const response = await apiJson<{ tokenBalance?: number }>('/tokens/balance');
+      if (response.status === 401 || response.status === 403) {
+        Alert.alert('Session expired', 'Please log in again.');
+        await logout();
         return;
       }
-      const data = await response.json();
-      setTokenBalance(data.tokenBalance ?? 0);
-      await setUser({ ...(user ?? { id: '' }), tokenBalance: data.tokenBalance ?? 0 });
+      if (!response.ok) {
+        return;
+      }
+      const balance = response.data?.tokenBalance ?? 0;
+      setTokenBalance(balance);
+      await setUser({ ...(user ?? { id: '' }), tokenBalance: balance });
     } catch (error) {
       Alert.alert('Balance unavailable', 'Unable to refresh your token balance.');
     } finally {
       setLoadingBalance(false);
     }
-  }, [authenticatedFetch, token, user, setUser]);
+  }, [token, logout, user, setUser]);
 
   useFocusEffect(
     useCallback(() => {
@@ -96,22 +78,27 @@ export default function SettingsScreen() {
       return;
     }
     try {
-      const response = await authenticatedFetch('/auth/verify-email', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: emailInput.trim(),
-          code: emailCodeInput.trim(),
-        }),
-      });
-      if (!response) {
+      const response = await apiJson<{ id?: string; email?: string }>(
+        '/auth/verify-email',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            email: emailInput.trim(),
+            code: emailCodeInput.trim(),
+          }),
+        },
+      );
+      if (response.status === 401 || response.status === 403) {
+        Alert.alert('Session expired', 'Please log in again.');
+        await logout();
         return;
       }
       if (!response.ok) {
         Alert.alert('Verification failed', 'Unable to verify email right now.');
         return;
       }
-      const updated = await response.json();
-      await setUser({ ...(user ?? { id: updated.id }), email: updated.email });
+      const updated = response.data;
+      await setUser({ ...(user ?? { id: updated?.id ?? '' }), email: updated?.email });
       Alert.alert('Email verified', 'Your email has been saved.');
     } catch {
       Alert.alert('Verification failed', 'Unable to verify email right now.');
@@ -128,22 +115,27 @@ export default function SettingsScreen() {
       return;
     }
     try {
-      const response = await authenticatedFetch('/auth/verify-phone', {
-        method: 'POST',
-        body: JSON.stringify({
-          phone: phoneInput.trim(),
-          code: phoneCodeInput.trim(),
-        }),
-      });
-      if (!response) {
+      const response = await apiJson<{ id?: string; phone?: string }>(
+        '/auth/verify-phone',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            phone: phoneInput.trim(),
+            code: phoneCodeInput.trim(),
+          }),
+        },
+      );
+      if (response.status === 401 || response.status === 403) {
+        Alert.alert('Session expired', 'Please log in again.');
+        await logout();
         return;
       }
       if (!response.ok) {
         Alert.alert('Verification failed', 'Unable to verify phone right now.');
         return;
       }
-      const updated = await response.json();
-      await setUser({ ...(user ?? { id: updated.id }), phone: updated.phone });
+      const updated = response.data;
+      await setUser({ ...(user ?? { id: updated?.id ?? '' }), phone: updated?.phone });
       Alert.alert('Phone verified', 'Your phone number has been saved.');
     } catch {
       Alert.alert('Verification failed', 'Unable to verify phone right now.');

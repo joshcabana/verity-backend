@@ -75,8 +75,16 @@ const useQueueStore = create<QueueState>((set, get) => ({
     if (status === 'idle') {
       return false;
     }
-    const response = await apiJson('/queue/leave', { method: 'DELETE' });
+    const response = await apiJson<{ status?: string; refunded?: boolean }>(
+      '/queue/leave',
+      { method: 'DELETE' },
+    );
     set({ status: 'idle', estimatedSeconds: null, match: null, tokenSpent: false });
+    // Trust back-end refund decision when available (GAP-008).
+    // Fallback to local heuristic only if field is missing.
+    if (response.ok && typeof response.data?.refunded === 'boolean') {
+      return response.data.refunded;
+    }
     return response.ok && tokenSpent && status !== 'matched';
   },
 }));

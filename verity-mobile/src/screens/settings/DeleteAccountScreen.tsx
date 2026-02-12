@@ -13,11 +13,10 @@ import ThemedButton from '../../components/ThemedButton';
 import ThemedCard from '../../components/ThemedCard';
 import { createThemedInputStyles } from '../../components/themedStyles';
 import { useAuth } from '../../hooks/useAuth';
+import { apiJson } from '../../services/api';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
 
-const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? process.env.API_URL ?? 'http://localhost:3000';
 
 export default function DeleteAccountScreen() {
   const navigation = useNavigation();
@@ -48,13 +47,7 @@ export default function DeleteAccountScreen() {
 
     setDeleting(true);
     try {
-      const response = await fetch(`${API_URL}/users/me`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiJson('/users/me', { method: 'DELETE' });
 
       if (response.status === 401 || response.status === 403) {
         Alert.alert('Session expired', 'Please log in again.');

@@ -1,29 +1,28 @@
 # Codex Session Notes
 
-Last updated: 2026-02-09
+Last updated: 2026-02-12
 
 ## Goal
-- Continue autonomous stabilization + staging deploy.
+- Close all P0 and P1 mobile-backend gap items.
+- Phase 4 (P2) cleanup retained for phased rollout.
 
 ## Current status
-- Local build + targeted unit tests + Docker-backed e2e smoke already passed.
+- All P0 gaps (GAP-001 through GAP-006) resolved in previous sessions.
+- All P1 gaps (GAP-007, GAP-008) resolved this session.
+- P2 gap GAP-010 (settings/profile raw fetch → apiJson) resolved this session.
+- P2 gap GAP-009 (queue:estimate cleanup) deferred — UI already graceful when absent.
+- Local build + targeted unit tests + Docker-backed e2e smoke previously passed.
 - Staging params file exists: infra/azure/params.staging.json.
 - Deploy blocked on Azure authentication and required deploy env vars.
 
-## Active blocker
-- Running `az login --use-device-code` (session open).
-- Current device code: JLMTRQRZL
-- URL: https://microsoft.com/devicelogin
+## Changes this session (2026-02-12)
+1. **GAP-008**: `useQueue.ts` — `leaveQueue()` now reads and trusts backend `refunded` field from `DELETE /queue/leave`, with fallback to local heuristic.
+2. **GAP-010**: `DeleteAccountScreen.tsx` — replaced raw `fetch` with `apiJson` helper.
+3. **GAP-010**: `SettingsScreen.tsx` — replaced local `authenticatedFetch` helper with project-wide `apiJson`, removed redundant `API_URL` constant.
+4. Updated `docs/notes/mobile-backend-gap-fix-checklist.md` to reflect all completed items.
 
-## Next immediate actions (automatic once login succeeds)
-1. az account show
-2. scripts/preflight-env.sh
-3. scripts/deploy-staging.sh
-4. post-deploy smoke checks
-
-## Backend deploy continuation (Option 1)
-- Ignored verity-mobile changes per user choice.
-- Preflight still blocked by missing deploy env vars.
-- Azure auth attempted again via device login.
-- Current device code: PEYT67USJ
-- Device login URL: https://microsoft.com/devicelogin
+## Remaining work
+- [ ] Update mobile unit tests for `leaveQueue()` refund parsing and settings `apiJson` usage.
+- [ ] Manual smoke test: onboarding → queue → session → decision → chat.
+- [ ] Remove temporary fallback socket listeners after one stable release cycle.
+- [ ] Azure authentication for staging deploy.

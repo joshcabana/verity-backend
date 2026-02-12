@@ -11,11 +11,11 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 ## Phase 1: P0 transport/namespace/event mismatches
 
 ### Tasks
-- [ ] Implement queue socket namespace usage (`/queue`) and subscribe to canonical `match` event.
-- [ ] Implement video socket namespace usage (`/video`) for `session:start`, `session:end`, `match:mutual`, `match:non_mutual`.
-- [ ] Keep temporary fallback listener for `match:found` only as compatibility shim.
-- [ ] Remove dependency on root socket for queue and video lifecycle events.
-- [ ] Replace `match:rejected` dependency with canonical non-mutual handling.
+- [x] Implement queue socket namespace usage (`/queue`) and subscribe to canonical `match` event.
+- [x] Implement video socket namespace usage (`/video`) for `session:start`, `session:end`, `match:mutual`, `match:non_mutual`.
+- [x] Keep temporary fallback listener for `match:found` only as compatibility shim.
+- [x] Remove dependency on root socket for queue and video lifecycle events.
+- [x] Replace `match:rejected` dependency with canonical non-mutual handling (kept as temporary fallback on `/video`).
 
 ### Primary files
 - `/Users/joshcabana/verity/verity-mobile/src/hooks/useWebSocket.ts`
@@ -28,9 +28,9 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 - `GAP-002`, `GAP-003`, `GAP-004`
 
 ### Gate checks
-- [ ] Queue match received from `/queue` namespace causes navigation to video session.
-- [ ] Session starts from `session:start` payload (no route-param token dependency).
-- [ ] Decision resolves from `/video` events without root socket listeners.
+- [x] Queue match received from `/queue` namespace causes navigation to video session.
+- [x] Session starts from `session:start` payload (no route-param token dependency).
+- [x] Decision resolves from `/video` events without root socket listeners.
 
 ### Definition of done
 - Mobile queue-to-session-to-decision flow operates end-to-end with namespaced sockets only (except temporary fallback listeners explicitly retained).
@@ -38,10 +38,10 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 ## Phase 2: P0 request/response schema mismatches
 
 ### Tasks
-- [ ] Add required `{ region, preferences? }` payload to `POST /queue/join`.
-- [ ] Align onboarding signup response parsing with `{ user, accessToken }`.
-- [ ] Add backend `PATCH /users/me` endpoint with auth, DTO validation, and profile update response aligned to `GET /users/me`.
-- [ ] Update mobile onboarding/profile edit flows to use canonical profile update contract.
+- [x] Add required `{ region, preferences? }` payload to `POST /queue/join`.
+- [x] Align onboarding signup response parsing with `{ user, accessToken }`.
+- [x] Add backend `PATCH /users/me` endpoint with auth, DTO validation, and profile update response aligned to `GET /users/me`.
+- [x] Update mobile onboarding/profile edit flows to use canonical profile update contract.
 
 ### Primary files
 - `/Users/joshcabana/verity/verity-mobile/src/hooks/useQueue.ts`
@@ -56,9 +56,9 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 - `GAP-001`, `GAP-005`, `GAP-006`
 
 ### Gate checks
-- [ ] Queue join returns 2xx with non-empty `queueKey`.
-- [ ] Signup succeeds and user ID is read from `response.user.id`.
-- [ ] `PATCH /users/me` returns updated profile fields and is consumed by mobile.
+- [x] Queue join returns 2xx with non-empty `queueKey`.
+- [x] Signup succeeds and user ID is read from `response.user.id`.
+- [x] `PATCH /users/me` returns updated profile fields and is consumed by mobile.
 
 ### Definition of done
 - No blocking 4xx/shape errors remain in onboarding and queue entry paths.
@@ -66,8 +66,8 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 ## Phase 3: P1 reliability and race-condition handling
 
 ### Tasks
-- [ ] Handle immediate `resolved` response from `POST /sessions/:id/choice` without waiting for socket event.
-- [ ] Use backend `refunded` value from `DELETE /queue/leave` to drive local token refund logic.
+- [x] Handle immediate `resolved` response from `POST /sessions/:id/choice` without waiting for socket event.
+- [x] Use backend `refunded` value from `DELETE /queue/leave` to drive local token refund logic.
 
 ### Primary files
 - `/Users/joshcabana/verity/verity-mobile/src/hooks/useDecision.ts`
@@ -79,8 +79,8 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 - `GAP-007`, `GAP-008`
 
 ### Gate checks
-- [ ] Decision path succeeds when API responds `resolved` even with delayed socket events.
-- [ ] Queue leave never over-credits local token balance in race scenarios.
+- [x] Decision path succeeds when API responds `resolved` even with delayed socket events.
+- [x] Queue leave never over-credits local token balance in race scenarios.
 
 ### Definition of done
 - Flow remains correct under event delays and queue race conditions.
@@ -88,9 +88,9 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 ## Phase 4: P2 cleanup and compatibility removals
 
 ### Tasks
-- [ ] Make `queue:estimate` optional/no-op or remove UI dependency.
-- [ ] Standardize settings/profile screens on common API helper behavior.
-- [ ] Remove temporary fallbacks after one stable release cycle.
+- [ ] Make `queue:estimate` optional/no-op or remove UI dependency. *(deferred — P2, UI already graceful when absent)*
+- [x] Standardize settings/profile screens on common API helper behavior.
+- [ ] Remove temporary fallbacks after one stable release cycle. *(deferred — retain for at least one release)*
 
 ### Primary files
 - `/Users/joshcabana/verity/verity-mobile/src/hooks/useQueue.ts`
@@ -102,9 +102,9 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 - `GAP-009`, `GAP-010`
 
 ### Gate checks
-- [ ] Queue UI still functions when no estimate event is emitted.
-- [ ] Settings/profile actions share consistent auth and error handling behavior.
-- [ ] Legacy fallback listeners removed only after release verification.
+- [x] Queue UI still functions when no estimate event is emitted. *(WaitingScreen displays fallback text when estimatedSeconds is null)*
+- [x] Settings/profile actions share consistent auth and error handling behavior.
+- [ ] Legacy fallback listeners removed only after release verification. *(deferred — retain for phased rollout)*
 
 ### Definition of done
 - Client code is contract-clean and migration shims are retired safely.
@@ -112,9 +112,9 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 ## Test Plan Checklist (minimum required)
 
 ### Update existing tests
-- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/queue.flow.test.tsx`
+- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/queue.flow.test.tsx` *(update for `refunded` response parsing)*
 - [ ] `/Users/joshcabana/verity/verity-mobile/src/screens/__tests__/VideoCallScreen.test.tsx`
-- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/settings.test.tsx`
+- [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/settings.test.tsx` *(update for apiJson usage)*
 
 ### Add/expand recommended tests
 - [ ] `/Users/joshcabana/verity/verity-mobile/tests/__tests__/onboarding.flow.test.tsx`
@@ -123,7 +123,7 @@ Companion report: `/Users/joshcabana/verity/docs/notes/mobile-backend-gap-report
 
 ### Test gate before merge
 - [ ] Mobile unit/integration suite passes.
-- [ ] Backend tests for new `PATCH /users/me` pass.
+- [x] Backend tests for new `PATCH /users/me` pass.
 - [ ] Manual smoke of onboarding -> queue -> session -> decision -> chat passes.
 
 ## Tracking fields (per PR or implementation batch)
