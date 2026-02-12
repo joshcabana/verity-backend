@@ -104,7 +104,7 @@ describe('ChatService (unit)', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
-  it('sends messages and emits to both users', async () => {
+  it('sends messages and emits to both users when both acknowledged', async () => {
     prisma.match.findUnique.mockResolvedValue({
       id: 'match-1',
       userAId: 'user-a',
@@ -124,6 +124,10 @@ describe('ChatService (unit)', () => {
 
     expect(message.text).toBe('Hello');
     expect(gateway.events).toHaveLength(2);
+    expect(gateway.events.map((event) => event.userId).sort()).toEqual([
+      'user-a',
+      'user-b',
+    ]);
     expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
       ['user-b'],
       'chat_message_new',
@@ -135,6 +139,40 @@ describe('ChatService (unit)', () => {
     const payload = notificationsService.notifyUsers.mock.calls[0][2];
     expect(payload).not.toHaveProperty('preview');
     expect(payload).not.toHaveProperty('text');
+  });
+
+  it('does not emit to recipients who have not acknowledged reveal', async () => {
+    prisma.match.findUnique.mockResolvedValue({
+      id: 'match-1',
+      userAId: 'user-a',
+      userBId: 'user-b',
+      userARevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      userBRevealAcknowledgedAt: null,
+    });
+    prisma.message.create.mockResolvedValue({
+      id: 'msg-1',
+      matchId: 'match-1',
+      senderId: 'user-a',
+      text: 'Hello',
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+    });
+
+    const message = await service.sendMessage('match-1', 'user-a', 'Hello');
+
+    expect(message.text).toBe('Hello');
+    expect(gateway.events).toHaveLength(1);
+    expect(gateway.events[0]).toMatchObject({
+      userId: 'user-a',
+      payload: expect.objectContaining({ matchId: 'match-1', text: 'Hello' }),
+    });
+    expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
+      ['user-b'],
+      'chat_message_new',
+      expect.objectContaining({
+        matchId: 'match-1',
+        senderId: 'user-a',
+      }),
+    );
   });
 
   it('blocks message access when users are blocked', async () => {
@@ -199,8 +237,6 @@ describe('MatchesService (unit)', () => {
         userBId: 'user-b',
         userARevealAcknowledgedAt: null,
         userBRevealAcknowledgedAt: null,
-        userA: { id: 'user-a', displayName: 'A' },
-        userB: { id: 'user-b', displayName: 'B' },
       },
       {
         id: 'match-2',
@@ -208,17 +244,42 @@ describe('MatchesService (unit)', () => {
         userAId: 'user-c',
         userBId: 'user-a',
         userARevealAcknowledgedAt: null,
-        userBRevealAcknowledgedAt: null,
-        userA: { id: 'user-c', displayName: 'C' },
-        userB: { id: 'user-a', displayName: 'A' },
+        userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
+      },
+    ]);
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: 'user-c',
+        displayName: 'C',
+        photos: ['https://cdn.example/c.jpg'],
+        age: 29,
+        bio: 'C bio',
       },
     ]);
 
     const result = await service.listMatches('user-a');
 
     expect(result).toHaveLength(2);
-    expect(result[0].partner.id).toBe('user-b');
-    expect(result[1].partner.id).toBe('user-c');
+    expect(result[0]).toEqual({
+      matchId: 'match-1',
+      partnerRevealVersion: 1,
+      revealAcknowledged: false,
+      revealAcknowledgedAt: null,
+      partnerReveal: null,
+    });
+    expect(result[1]).toEqual({
+      matchId: 'match-2',
+      partnerRevealVersion: 1,
+      revealAcknowledged: true,
+      revealAcknowledgedAt: '2024-01-01T00:00:00.000Z',
+      partnerReveal: {
+        id: 'user-c',
+        displayName: 'C',
+        primaryPhotoUrl: 'https://cdn.example/c.jpg',
+        age: 29,
+        bio: 'C bio',
+      },
+    });
   });
 
   it('filters blocked partners from matches', async () => {
@@ -231,8 +292,6 @@ describe('MatchesService (unit)', () => {
         userBId: 'user-b',
         userARevealAcknowledgedAt: null,
         userBRevealAcknowledgedAt: null,
-        userA: { id: 'user-a', displayName: 'A' },
-        userB: { id: 'user-b', displayName: 'B' },
       },
     ]);
     prisma.block.findMany.mockResolvedValue([

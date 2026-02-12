@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MatchesListScreen from '../../src/screens/matches/MatchesListScreen';
 
 const mockInvalidateQueries = jest.fn();
+const mockUseMatchesQuery = jest.fn();
 
 jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
@@ -15,21 +16,7 @@ jest.mock('../../src/hooks/useWebSocket', () => ({
 }));
 
 jest.mock('../../src/queries/useMatchesQuery', () => ({
-  useMatchesQuery: () => ({
-    data: [
-      {
-        id: 'match-1',
-        partner: {
-          displayName: 'Avery',
-          age: 26,
-          bio: 'Coffee and coastlines.',
-          interests: ['Travel', 'Music'],
-          photos: ['https://example.com/photo1.jpg'],
-        },
-      },
-    ],
-    isFetching: false,
-  }),
+  useMatchesQuery: () => mockUseMatchesQuery(),
 }));
 
 jest.mock('../../src/theme/ThemeProvider', () => ({
@@ -64,12 +51,53 @@ function TestNavigator() {
 }
 
 describe('Matches list', () => {
-  it('renders match cards with profile data', () => {
+  beforeEach(() => {
+    mockUseMatchesQuery.mockReset();
+  });
+
+  it('renders revealed match cards with profile data', () => {
+    mockUseMatchesQuery.mockReturnValue({
+      data: [
+        {
+          matchId: 'match-1',
+          partnerRevealVersion: 1,
+          revealAcknowledged: true,
+          revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+          partnerReveal: {
+            id: 'user-1',
+            displayName: 'Avery',
+            primaryPhotoUrl: 'https://example.com/photo1.jpg',
+            age: 26,
+            bio: 'Coffee and coastlines.',
+          },
+        },
+      ],
+      isFetching: false,
+    });
+
     const { getByText } = render(<TestNavigator />);
 
     expect(getByText('Avery')).toBeTruthy();
     expect(getByText('Coffee and coastlines.')).toBeTruthy();
-    expect(getByText('Travel')).toBeTruthy();
+  });
+
+  it('renders placeholder copy when reveal is not acknowledged', () => {
+    mockUseMatchesQuery.mockReturnValue({
+      data: [
+        {
+          matchId: 'match-1',
+          partnerRevealVersion: 1,
+          revealAcknowledged: false,
+          revealAcknowledgedAt: null,
+          partnerReveal: null,
+        },
+      ],
+      isFetching: false,
+    });
+
+    const { getByText } = render(<TestNavigator />);
+
+    expect(getByText('New match')).toBeTruthy();
+    expect(getByText('Open this match to view the profile reveal.')).toBeTruthy();
   });
 });
-

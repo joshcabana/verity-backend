@@ -17,8 +17,11 @@ type Message = {
 };
 
 type MatchSummary = {
-  id: string;
-  partner: { id: string; displayName?: string | null };
+  matchId: string;
+  partnerRevealVersion: number;
+  revealAcknowledged: boolean;
+  revealAcknowledgedAt: string | null;
+  partnerReveal: PartnerReveal | null;
 };
 
 type PartnerReveal = {
@@ -137,7 +140,7 @@ export const Chat: React.FC = () => {
       if (!response.ok || !response.data) {
         throw new Error('Failed to load match');
       }
-      return response.data.find((item) => item.id === matchId) ?? null;
+      return response.data.find((item) => item.matchId === matchId) ?? null;
     },
     enabled: Boolean(matchId),
   });
@@ -312,9 +315,9 @@ export const Chat: React.FC = () => {
 
   const partnerName =
     partnerReveal?.displayName ??
-    matchQuery.data?.partner.displayName ??
+    matchQuery.data?.partnerReveal?.displayName ??
     'Your match';
-  const partnerId = partnerReveal?.id ?? matchQuery.data?.partner.id ?? null;
+  const partnerId = partnerReveal?.id ?? matchQuery.data?.partnerReveal?.id ?? null;
   const chatLocked = !revealAcknowledged;
   const matchWarning = matchQuery.isError
     ? offline

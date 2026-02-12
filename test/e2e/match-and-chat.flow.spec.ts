@@ -152,11 +152,11 @@ describe('Match + chat flow (e2e)', () => {
     expect(list.body).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: choiceB.body.matchId,
-          partner: expect.objectContaining({
-            id: userB.id,
-            displayName: 'Beta',
-          }),
+          matchId: choiceB.body.matchId,
+          partnerRevealVersion: 1,
+          revealAcknowledged: false,
+          revealAcknowledgedAt: null,
+          partnerReveal: null,
         }),
       ]),
     );
@@ -187,10 +187,33 @@ describe('Match + chat flow (e2e)', () => {
         expect(res.body.revealAcknowledged).toBe(true);
       });
 
+    await request(context.app.getHttpServer())
+      .get('/matches')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(200)
+      .expect((res) => {
+        const match = res.body.find(
+          (item: { matchId: string }) => item.matchId === choiceB.body.matchId,
+        );
+        expect(match).toEqual(
+          expect.objectContaining({
+            matchId: choiceB.body.matchId,
+            partnerRevealVersion: 1,
+            revealAcknowledged: true,
+          }),
+        );
+        expect(match.partnerReveal).toEqual(
+          expect.objectContaining({
+            id: userB.id,
+            displayName: 'Beta',
+          }),
+        );
+      });
+
     const chatSocketA = await connectSocket(context.baseUrl, '/chat', tokenA);
     const chatSocketB = await connectSocket(context.baseUrl, '/chat', tokenB);
 
-    const messagePromise = waitForEvent(chatSocketB, 'message:new');
+    const messagePromise = waitForEvent(chatSocketB, 'message:new', 1000);
 
     const message = await request(context.app.getHttpServer())
       .post(`/matches/${choiceB.body.matchId}/messages`)
@@ -200,9 +223,9 @@ describe('Match + chat flow (e2e)', () => {
 
     expect(message.body.text).toBe('Hello from e2e');
 
-    const messagePayload = await messagePromise;
-    expect(messagePayload.text).toBe('Hello from e2e');
-    expect(messagePayload.matchId).toBe(choiceB.body.matchId);
+    await expect(messagePromise).rejects.toThrow(
+      /Timed out waiting for message:new/,
+    );
 
     const history = await request(context.app.getHttpServer())
       .get(`/matches/${choiceB.body.matchId}/messages`)
@@ -210,6 +233,23 @@ describe('Match + chat flow (e2e)', () => {
       .expect(200);
 
     expect(history.body.length).toBeGreaterThanOrEqual(1);
+
+    await request(context.app.getHttpServer())
+      .get(`/matches/${choiceB.body.matchId}/messages`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(403)
+      .expect((res) => {
+        expect(res.body.code).toBe('REVEAL_ACK_REQUIRED');
+      });
+
+    await request(context.app.getHttpServer())
+      .post(`/matches/${choiceB.body.matchId}/messages`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .send({ text: 'blocked until reveal ack' })
+      .expect(403)
+      .expect((res) => {
+        expect(res.body.code).toBe('REVEAL_ACK_REQUIRED');
+      });
 
     chatSocketA.disconnect();
     chatSocketB.disconnect();

@@ -64,9 +64,17 @@ export async function mockApi(page: Page) {
       await route.fulfill(
         json([
           {
-            id: 'match-1',
-            createdAt: '2026-02-06T00:00:00.000Z',
-            partner: { id: 'user-2', displayName: 'Jordan' },
+            matchId: 'match-1',
+            partnerRevealVersion: 1,
+            revealAcknowledged: true,
+            revealAcknowledgedAt: '2026-02-06T00:00:00.000Z',
+            partnerReveal: {
+              id: 'user-2',
+              displayName: 'Jordan',
+              primaryPhotoUrl: null,
+              age: null,
+              bio: null,
+            },
           },
         ]),
       );

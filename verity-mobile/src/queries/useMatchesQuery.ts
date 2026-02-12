@@ -1,20 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
-
-export type MatchProfile = {
-  id: string;
-  displayName?: string | null;
-  age?: number | null;
-  bio?: string | null;
-  interests?: string[] | null;
-  photos?: string[] | null;
-};
+import type { PartnerReveal } from '../types/reveal';
 
 export type MatchItem = {
-  id: string;
-  partner: MatchProfile;
-  createdAt?: string;
+  matchId: string;
+  partnerRevealVersion: number;
+  revealAcknowledged: boolean;
+  revealAcknowledgedAt: string | null;
+  partnerReveal: PartnerReveal | null;
 };
 
 export function useMatchesQuery() {

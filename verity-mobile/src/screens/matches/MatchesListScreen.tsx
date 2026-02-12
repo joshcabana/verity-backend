@@ -56,10 +56,10 @@ export default function MatchesListScreen() {
 
       <FlatList
         data={data ?? []}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.matchId}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => navigation.navigate('MatchProfile', { matchId: item.id })}
+            onPress={() => navigation.navigate('MatchProfile', { matchId: item.matchId })}
           >
             <MatchCard match={item} />
           </TouchableOpacity>
@@ -79,25 +79,23 @@ export default function MatchesListScreen() {
 function MatchCard({ match }: { match: MatchItem }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const partner = match.partner;
+  const partner = match.partnerReveal;
+  const photos = partner?.primaryPhotoUrl ? [partner.primaryPhotoUrl] : [];
 
   return (
     <ThemedCard style={styles.card}>
-      <PhotoCarousel photos={partner.photos ?? []} />
+      <PhotoCarousel photos={photos} />
       <View style={styles.headerRow}>
-        <Text style={styles.name}>{partner.displayName ?? 'Anonymous'}</Text>
-        {partner.age ? <Text style={styles.age}>{partner.age}</Text> : null}
+        <Text style={styles.name}>{partner?.displayName ?? 'New match'}</Text>
+        {partner?.age ? <Text style={styles.age}>{partner.age}</Text> : null}
       </View>
-      {partner.bio ? <Text style={styles.bio}>{partner.bio}</Text> : null}
-      {partner.interests?.length ? (
-        <View style={styles.tags}>
-          {partner.interests.map((interest) => (
-            <View key={interest} style={styles.tag}>
-              <Text style={styles.tagText}>{interest}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      {partner?.bio ? (
+        <Text style={styles.bio}>{partner.bio}</Text>
+      ) : (
+        <Text style={styles.placeholder}>
+          Open this match to view the profile reveal.
+        </Text>
+      )}
     </ThemedCard>
   );
 }
@@ -145,22 +143,10 @@ const createStyles = (colors: {
       lineHeight: lineHeights.base,
       marginBottom: spacing.sm,
     },
-    tags: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-    },
-    tag: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: 999,
-      backgroundColor: colors.border,
-      marginRight: spacing.sm,
-      marginBottom: spacing.sm,
-    },
-    tagText: {
-      fontSize: typography.xs,
-      color: colors.text,
-      fontWeight: '600',
+    placeholder: {
+      fontSize: typography.sm,
+      color: colors.muted,
+      lineHeight: lineHeights.base,
     },
     empty: {
       padding: spacing.lg,
