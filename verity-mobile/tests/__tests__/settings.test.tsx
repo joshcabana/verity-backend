@@ -177,7 +177,12 @@ describe('SettingsScreen', () => {
     await waitFor(() =>
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/users/me'),
-        expect.objectContaining({ method: 'PATCH' }),
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer token-123',
+          }),
+        }),
       ),
     );
 
