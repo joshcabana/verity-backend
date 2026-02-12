@@ -5,7 +5,8 @@ import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 export type PushEventType =
   | 'queue_match_found'
   | 'match_mutual'
-  | 'chat_message_new';
+  | 'chat_message_new'
+  | 'chat_reveal_required';
 
 @Injectable()
 export class NotificationsService {

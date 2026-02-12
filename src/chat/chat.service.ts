@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import type { PushEventType } from '../notifications/notifications.service';
 import { Message } from '@prisma/client';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -93,14 +94,41 @@ export class ChatService {
     }
 
     const recipientId = match.userAId === userId ? match.userBId : match.userAId;
+    const recipientRevealAcknowledged = this.hasRevealAcknowledged(
+      match,
+      recipientId,
+    );
+    const sender = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    });
+    const senderDisplayName = sender?.displayName?.trim() || 'Someone';
+
+    const notificationEvent: PushEventType = recipientRevealAcknowledged
+      ? 'chat_message_new'
+      : 'chat_reveal_required';
+    const notificationData = recipientRevealAcknowledged
+      ? {
+          matchId: message.matchId,
+          messageId: message.id,
+          senderId: message.senderId,
+          title: 'New message',
+          body: `From ${senderDisplayName}`,
+          deepLinkTarget: 'chat',
+        }
+      : {
+          matchId: message.matchId,
+          messageId: message.id,
+          senderId: message.senderId,
+          title: 'New match',
+          body: 'A message is waiting — reveal to view',
+          deepLinkTarget: 'reveal',
+        };
+
     void this.notificationsService.notifyUsers(
       [recipientId],
-      'chat_message_new',
-      {
-        matchId: message.matchId,
-        messageId: message.id,
-        senderId: message.senderId,
-      },
+      notificationEvent,
+      notificationData,
     );
 
     this.analyticsService?.trackServerEvent({
@@ -165,6 +193,22 @@ export class ChatService {
       code: REVEAL_ACK_REQUIRED_CODE,
       message: 'Profile reveal acknowledgement required before chat',
     });
+  }
+
+  private hasRevealAcknowledged(
+    match: {
+      userAId: string;
+      userBId: string;
+      userARevealAcknowledgedAt?: Date | null;
+      userBRevealAcknowledgedAt?: Date | null;
+    },
+    userId: string,
+  ): boolean {
+    return Boolean(
+      match.userAId === userId
+        ? match.userARevealAcknowledgedAt
+        : match.userBRevealAcknowledgedAt,
+    );
   }
 
   private async getExistingMessageCount(matchId: string): Promise<number> {
