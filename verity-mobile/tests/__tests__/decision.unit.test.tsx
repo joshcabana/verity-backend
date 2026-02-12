@@ -1,5 +1,4 @@
-import React from 'react';
-import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import { useDecision } from '../../src/hooks/useDecision';
 import { apiJson } from '../../src/services/api';
 import { Alert } from 'react-native';
@@ -52,10 +51,13 @@ describe('useDecision unit test', () => {
     expect(result.current.status).toBe('resolved');
     expect(result.current.result?.outcome).toBe('mutual');
     expect(result.current.result?.matchId).toBe(mockMatchId);
-    expect(apiJson).toHaveBeenCalledWith('/sessions/session-1/choice', expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({ choice: 'MATCH' }),
-    }));
+    expect(apiJson).toHaveBeenCalledWith(
+      '/sessions/session-1/choice',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ choice: 'MATCH' }),
+      }),
+    );
   });
 
   it('transitions to waiting state when API returns pending', async () => {
@@ -90,6 +92,9 @@ describe('useDecision unit test', () => {
     });
 
     expect(result.current.status).toBe('idle');
-    expect(Alert.alert).toHaveBeenCalledWith('Submission failed', expect.any(String));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Submission failed',
+      expect.any(String),
+    );
   });
 });

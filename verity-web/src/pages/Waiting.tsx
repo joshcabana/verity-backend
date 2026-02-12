@@ -65,8 +65,8 @@ export const Waiting: React.FC = () => {
       <div className="callout safety mt-md">
         <strong>Keep it safe</strong>
         <p className="subtle">
-          Sessions are 45 seconds and never recorded. You can leave
-          the queue at any time.
+          Sessions are 45 seconds and never recorded. You can leave the queue at
+          any time.
         </p>
       </div>
       <button

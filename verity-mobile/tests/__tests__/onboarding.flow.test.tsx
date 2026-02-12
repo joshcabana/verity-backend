@@ -17,7 +17,8 @@ jest.mock('../../src/hooks/useAuth', () => ({
 }));
 
 jest.mock('../../src/services/api', () => ({
-  apiJson: (...args: unknown[]) => mockApiJson(...args),
+  apiJson: (...args: unknown[]) =>
+    mockApiJson(...args),
 }));
 
 jest.mock('expo-image-picker', () => ({
@@ -79,19 +80,29 @@ describe('Onboarding flow', () => {
     fireEvent.press(getByTestId('onboarding-submit'));
 
     await waitFor(() => expect(mockApiJson).toHaveBeenCalledTimes(2));
-    expect(mockApiJson).toHaveBeenNthCalledWith(1, '/auth/signup-anonymous', expect.anything());
-    expect(mockApiJson).toHaveBeenNthCalledWith(2, '/users/me', expect.objectContaining({
-      method: 'PATCH',
-      body: JSON.stringify({
-        displayName: 'Alex',
-        age: 29,
-        interests: [],
-        photos: [],
+    expect(mockApiJson).toHaveBeenNthCalledWith(
+      1,
+      '/auth/signup-anonymous',
+      expect.anything(),
+    );
+    expect(mockApiJson).toHaveBeenNthCalledWith(
+      2,
+      '/users/me',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          displayName: 'Alex',
+          age: 29,
+          interests: [],
+          photos: [],
+        }),
       }),
-    }));
+    );
     await waitFor(() => expect(mockSetToken).toHaveBeenCalledWith('token-123'));
     await waitFor(() =>
-      expect(mockSetUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' })),
+      expect(mockSetUser).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+      ),
     );
   });
 });
