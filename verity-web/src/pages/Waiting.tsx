@@ -40,7 +40,12 @@ export const Waiting: React.FC = () => {
   }, [socket, navigate]);
 
   const handleCancel = async () => {
-    await apiJson('/queue/leave', { method: 'DELETE' });
+    const response = await apiJson<{ refunded?: boolean }>('/queue/leave', {
+      method: 'DELETE',
+    });
+    if (response.ok && response.data?.refunded) {
+      alert('Your token has been refunded.');
+    }
     navigate('/home');
   };
 

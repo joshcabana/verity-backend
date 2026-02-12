@@ -79,6 +79,11 @@ describe('Onboarding flow', () => {
     fireEvent.press(getByTestId('onboarding-submit'));
 
     await waitFor(() => expect(mockApiJson).toHaveBeenCalledTimes(2));
+    expect(mockApiJson).toHaveBeenNthCalledWith(1, '/auth/signup-anonymous', expect.anything());
+    expect(mockApiJson).toHaveBeenNthCalledWith(2, '/users/me', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ displayName: 'Alex', age: '29' }),
+    }));
     await waitFor(() => expect(mockSetToken).toHaveBeenCalledWith('token-123'));
     await waitFor(() =>
       expect(mockSetUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' })),
