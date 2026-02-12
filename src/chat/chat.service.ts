@@ -85,8 +85,12 @@ export class ChatService {
       createdAt: message.createdAt.toISOString(),
     };
 
-    this.gateway.emitMessage(match.userAId, payload);
-    this.gateway.emitMessage(match.userBId, payload);
+    if (match.userARevealAcknowledgedAt) {
+      this.gateway.emitMessage(match.userAId, payload);
+    }
+    if (match.userBRevealAcknowledgedAt) {
+      this.gateway.emitMessage(match.userBId, payload);
+    }
 
     const recipientId = match.userAId === userId ? match.userBId : match.userAId;
     void this.notificationsService.notifyUsers(
