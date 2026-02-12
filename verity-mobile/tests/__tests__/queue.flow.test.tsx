@@ -66,9 +66,9 @@ describe('Queue flow', () => {
   });
 
   it('joins the queue and navigates to waiting', async () => {
-    const { getByText } = render(<TestNavigator />);
+    const { getAllByText, getByText } = render(<TestNavigator />);
 
-    fireEvent.press(getByText('Go Live (1 token)'));
+    fireEvent.press(getAllByText('Go Live Now')[0]);
 
     await waitFor(() => expect(mockJoinQueue).toHaveBeenCalledWith('au'));
     await waitFor(() => expect(mockSetUser).toHaveBeenCalled());

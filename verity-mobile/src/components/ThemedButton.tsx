@@ -8,7 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
-import { spacing } from '../theme/tokens';
+import { fontFamilies, spacing, typography } from '../theme/tokens';
 
 export type ThemedButtonVariant =
   | 'primary'
@@ -37,7 +37,7 @@ export default function ThemedButton({
   testID,
 }: ThemedButtonProps) {
   const { colors } = useTheme();
-  const styles = useMemo(() => createBaseStyles(colors), [colors]);
+  const styles = useMemo(() => createBaseStyles(), []);
   const variants = useMemo(() => createVariantStyles(colors), [colors]);
   const variantStyles = variants[variant];
 
@@ -54,16 +54,20 @@ export default function ThemedButton({
   );
 }
 
-const createBaseStyles = (colors: { border: string }) =>
+const createBaseStyles = () =>
   StyleSheet.create({
     base: {
+      minHeight: 56,
       paddingVertical: spacing.md,
-      borderRadius: 12,
+      paddingHorizontal: spacing.lg,
+      borderRadius: 999,
       alignItems: 'center',
       justifyContent: 'center',
     },
     textBase: {
-      fontWeight: '600',
+      fontFamily: fontFamilies.bodyBold,
+      fontSize: typography.md,
+      letterSpacing: 0.2,
     },
     disabled: {
       opacity: 0.6,
@@ -80,14 +84,21 @@ const createVariantStyles = (colors: {
   primary: {
     container: {
       backgroundColor: colors.primary,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.28,
+      shadowRadius: 20,
+      elevation: 6,
     },
     text: {
-      color: '#FFFFFF',
+      color: '#000000',
     },
   },
   secondary: {
     container: {
-      backgroundColor: colors.border,
+      backgroundColor: '#0B0B0B',
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     text: {
       color: colors.text,
@@ -109,6 +120,7 @@ const createVariantStyles = (colors: {
     },
     text: {
       color: colors.text,
+      fontFamily: fontFamilies.bodySemibold,
     },
   },
   dangerOutline: {
