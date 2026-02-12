@@ -138,6 +138,7 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     await this.queueService.cleanupQueueKey(queueKey);
+    await this.gateway.emitQueueStatus(queueKey);
   }
 
   private isWorkerEnabled() {

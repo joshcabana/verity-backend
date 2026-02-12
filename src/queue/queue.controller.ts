@@ -3,16 +3,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { IsObject, IsOptional, IsString } from 'class-validator';
 import type { Request } from 'express';
 import { getRequestUserId } from '../auth/request-user';
+import { QueueGateway } from './queue.gateway';
 import { QueueService } from './queue.service';
 
 class JoinQueueDto {
-  @IsOptional()
   @IsString()
-  city?: string;
-
-  @IsOptional()
-  @IsString()
-  region?: string;
+  region!: string;
 
   @IsOptional()
   @IsObject()
@@ -21,23 +17,31 @@ class JoinQueueDto {
 
 @Controller('queue')
 export class QueueController {
-  constructor(private readonly queueService: QueueService) {}
+  constructor(
+    private readonly queueService: QueueService,
+    private readonly queueGateway: QueueGateway,
+  ) {}
 
   @Post('join')
   @UseGuards(AuthGuard('jwt'))
   async joinQueue(@Req() req: Request, @Body() dto: JoinQueueDto) {
     const userId = getRequestUserId(req);
-    return this.queueService.joinQueue(userId, {
-      city: dto.city,
+    const result = await this.queueService.joinQueue(userId, {
       region: dto.region,
       preferences: dto.preferences,
     });
+    void this.queueGateway.emitQueueStatus(result.queueKey);
+    return result;
   }
 
   @Delete('leave')
   @UseGuards(AuthGuard('jwt'))
   async leaveQueue(@Req() req: Request) {
     const userId = getRequestUserId(req);
-    return this.queueService.leaveQueue(userId);
+    const result = await this.queueService.leaveQueue(userId);
+    if (result.queueKey) {
+      void this.queueGateway.emitQueueStatus(result.queueKey);
+    }
+    return result;
   }
 }

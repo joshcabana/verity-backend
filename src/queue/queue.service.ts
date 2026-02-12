@@ -21,11 +21,9 @@ const USER_MATCHED_PREFIX = 'queue:matched:';
 
 const LOCK_TTL_MS = 3000;
 const MATCHED_TTL_MS = 60 * 60 * 1000;
-const DEFAULT_QUEUE_CITY = 'canberra';
 
 export type QueueJoinInput = {
-  city?: unknown;
-  region?: unknown;
+  region: string;
   preferences?: Record<string, unknown>;
 };
 
@@ -39,6 +37,12 @@ type QueuePair = {
   userB: string;
   scoreA: number;
   scoreB: number;
+};
+
+export type QueueLeaveResult = {
+  status: 'left' | 'not_queued' | 'already_matched';
+  refunded: boolean;
+  queueKey?: string;
 };
 
 @Injectable()
@@ -62,8 +66,7 @@ export class QueueService {
     if (banned) {
       throw new UnauthorizedException('Account is temporarily suspended');
     }
-    const queueCity = this.resolveQueueCity(input);
-    const queueKey = this.buildQueueKey(queueCity, input.preferences);
+    const queueKey = this.buildQueueKey(input.region, input.preferences);
     const queueUserKey = this.userQueueKey(userId);
 
     const lockValue = await this.acquireLock(userId);
@@ -76,11 +79,7 @@ export class QueueService {
             this.queueZsetKey(state.queueKey),
             userId,
           );
-          return {
-            status: 'already_queued',
-            queueKey: state.queueKey,
-            position,
-          };
+          return { status: 'already_queued', queueKey: state.queueKey, position };
         }
       }
       throw new ConflictException('Queue operation in progress');
@@ -95,11 +94,7 @@ export class QueueService {
             this.queueZsetKey(state.queueKey),
             userId,
           );
-          return {
-            status: 'already_queued',
-            queueKey: state.queueKey,
-            position,
-          };
+          return { status: 'already_queued', queueKey: state.queueKey, position };
         }
       }
 
@@ -143,7 +138,6 @@ export class QueueService {
         userId,
         name: 'queue_joined',
         properties: {
-          city: queueCity,
           queueKey,
           status: 'queued',
           position: position ?? -1,
@@ -155,18 +149,30 @@ export class QueueService {
     }
   }
 
-  async leaveQueue(userId: string): Promise<{
-    status: 'left' | 'not_queued' | 'already_matched';
-    refunded: boolean;
-  }> {
+  async leaveQueue(userId: string): Promise<QueueLeaveResult> {
     const queueUserKey = this.userQueueKey(userId);
     return this.withUserLock(userId, async () => {
       const stateRaw = await this.redis.get(queueUserKey);
       if (!stateRaw) {
-        return { status: 'not_queued', refunded: false };
+        const result: QueueLeaveResult = {
+          status: 'not_queued',
+          refunded: false,
+        };
+        this.trackQueueLeft(userId, result);
+        return result;
       }
 
-      const state = JSON.parse(stateRaw) as QueueEntryState;
+      const state = this.parseQueueEntryState(stateRaw);
+      if (!state) {
+        await this.redis.del(queueUserKey);
+        const result: QueueLeaveResult = {
+          status: 'not_queued',
+          refunded: false,
+        };
+        this.trackQueueLeft(userId, result);
+        return result;
+      }
+
       const zsetKey = this.queueZsetKey(state.queueKey);
       const matched = await this.redis.get(this.userMatchedKey(userId));
 
@@ -179,45 +185,37 @@ export class QueueService {
           where: { id: userId },
           data: { tokenBalance: { increment: 1 } },
         });
-        this.analyticsService.trackServerEvent({
-          userId,
-          name: 'queue_cancel',
-          properties: { status: 'refunded' },
-        });
-        return { status: 'left', refunded: true };
+        const result: QueueLeaveResult = {
+          status: 'left',
+          refunded: true,
+          queueKey: state.queueKey,
+        };
+        this.trackQueueLeft(userId, result);
+        return result;
       }
 
-      this.analyticsService.trackServerEvent({
-        userId,
-        name: 'queue_cancel',
-        properties: {
-          status: matched ? 'matched_concurrently' : 'not_refunded',
-        },
-      });
-      return { status: matched ? 'already_matched' : 'left', refunded: false };
+      const result: QueueLeaveResult = {
+        status: matched ? 'already_matched' : 'left',
+        refunded: false,
+        queueKey: state.queueKey,
+      };
+      this.trackQueueLeft(userId, result);
+      return result;
     });
   }
 
-  async getGlobalSearchStats(): Promise<{
-    usersSearching: number;
-    activeMatches: number;
-  }> {
-    const queueKeys = await this.redis.smembers(QUEUE_KEYS_SET);
-    let usersSearching = 0;
-
-    for (const queueKey of queueKeys) {
-      const count = await this.redis.zcard(this.queueZsetKey(queueKey));
-      usersSearching += count;
+  async getQueuedUserIds(queueKey: string): Promise<string[]> {
+    if (!queueKey) {
+      return [];
     }
+    return this.redis.zrange(this.queueZsetKey(queueKey), 0, -1);
+  }
 
-    // Active matches are harder to count precisely without a dedicated set,
-    // but we can estimate or use a simple counter for now if needed.
-    // For this pass, we'll return usersSearching and a placeholder for matches
-    // unless we add a specific ZSET for active sessions.
-    return {
-      usersSearching,
-      activeMatches: 0, // Placeholder or implement session counter
-    };
+  async getQueueSize(queueKey: string): Promise<number> {
+    if (!queueKey) {
+      return 0;
+    }
+    return this.redis.zcard(this.queueZsetKey(queueKey));
   }
 
   async popPair(queueKey: string): Promise<QueuePair | null> {
@@ -291,12 +289,12 @@ export class QueueService {
     userBId: string,
     queueKey: string,
   ): Promise<Session> {
-    const [city] = queueKey.split(':');
+    const [region] = queueKey.split(':');
     const session = await this.prisma.session.create({
       data: {
         userAId,
         userBId,
-        region: city,
+        region,
         queueKey,
       },
     });
@@ -311,17 +309,6 @@ export class QueueService {
       .set(this.userMatchedKey(userAId), sessionId, 'PX', MATCHED_TTL_MS)
       .set(this.userMatchedKey(userBId), sessionId, 'PX', MATCHED_TTL_MS)
       .exec();
-
-    this.analyticsService.trackServerEvent({
-      userId: userAId,
-      name: 'queue_match_found',
-      properties: { sessionId, partnerId: userBId },
-    });
-    this.analyticsService.trackServerEvent({
-      userId: userBId,
-      name: 'queue_match_found',
-      properties: { sessionId, partnerId: userAId },
-    });
   }
 
   async cleanupExpiredSessions() {
@@ -365,54 +352,16 @@ export class QueueService {
   }
 
   buildQueueKey(
-    cityRaw: string,
+    regionRaw: string,
     preferences?: Record<string, unknown>,
   ): string {
-    const city = this.normalizeQueueCity(cityRaw);
-    if (!city) {
-      throw new BadRequestException('City is required');
+    const region = regionRaw?.trim().toLowerCase();
+    if (!region) {
+      throw new BadRequestException('Region is required');
     }
     const stable = stableStringify(preferences ?? {});
     const hash = createHash('sha256').update(stable).digest('hex').slice(0, 12);
-    return `${city}:${hash}`;
-  }
-
-  private resolveQueueCity(input: QueueJoinInput): string {
-    const hasCity = input.city !== undefined;
-    if (hasCity) {
-      if (typeof input.city !== 'string') {
-        throw new BadRequestException(
-          'City must be a non-empty string when provided',
-        );
-      }
-      const city = this.normalizeQueueCity(input.city);
-      if (!city) {
-        throw new BadRequestException(
-          'City must be a non-empty string when provided',
-        );
-      }
-      return city;
-    }
-    const legacyRegion = this.normalizeQueueCity(input.region);
-    if (legacyRegion === 'au') {
-      return DEFAULT_QUEUE_CITY;
-    }
-    if (legacyRegion) {
-      return legacyRegion;
-    }
-    return DEFAULT_QUEUE_CITY;
-  }
-
-  private normalizeQueueCity(value: unknown): string | null {
-    if (typeof value !== 'string') {
-      return null;
-    }
-    const normalized = value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    return normalized.length > 0 ? normalized : null;
+    return `${region}:${hash}`;
   }
 
   private queueZsetKey(queueKey: string) {
@@ -519,6 +468,18 @@ export class QueueService {
     } catch {
       return null;
     }
+  }
+
+  private trackQueueLeft(userId: string, result: QueueLeaveResult) {
+    this.analyticsService.trackServerEvent({
+      userId,
+      name: 'queue_left',
+      properties: {
+        queueKey: result.queueKey ?? null,
+        status: result.status,
+        refunded: result.refunded,
+      },
+    });
   }
 }
 
