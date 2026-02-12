@@ -398,9 +398,10 @@ Security behavior:
 
 ## Identity Reveal & Chat
 
-- `GET /matches` returns mutual matches with full partner profiles.
+- `GET /matches` returns match metadata and reveal-ack state; `partnerReveal` is `null` until the requester acknowledges reveal for that match.
+- `GET /matches/:id/reveal` and `POST /matches/:id/reveal-ack` are the source of truth for reveal state and profile payloads.
 - `GET /matches/:id/messages` and `POST /matches/:id/messages` provide persistent chat history and delivery.
-- Chat messages are stored in PostgreSQL and delivered in real time via `/chat` WebSocket events.
+- Chat messages are stored in PostgreSQL and delivered in real time via `/chat` WebSocket events to participants who have acknowledged reveal.
 - Access is limited to match participants; identity data is revealed only after mutual match.
 
 ## Token System & Stripe Integration
