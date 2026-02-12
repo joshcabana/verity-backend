@@ -23,6 +23,9 @@ class FakePrismaService {
   messages: Message[] = [];
 
   user = {
+    findUnique: async ({ where }: { where: { id: string } }) => {
+      return this.users.get(where.id) ?? null;
+    },
     findMany: async ({ where }: { where: { id: { in: string[] } } }) => {
       return where.id.in
         .map((id) => this.users.get(id))

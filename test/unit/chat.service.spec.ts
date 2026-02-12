@@ -119,6 +119,9 @@ describe('ChatService (unit)', () => {
       text: 'Hello',
       createdAt: new Date('2024-01-01T00:00:00Z'),
     });
+    prisma.user.findUnique.mockResolvedValue({
+      displayName: 'Alex',
+    });
 
     const message = await service.sendMessage('match-1', 'user-a', 'Hello');
 
@@ -134,8 +137,15 @@ describe('ChatService (unit)', () => {
       expect.objectContaining({
         matchId: 'match-1',
         senderId: 'user-a',
+        title: 'New message',
+        body: 'From Alex',
+        deepLinkTarget: 'chat',
       }),
     );
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'user-a' },
+      select: { displayName: true },
+    });
     const payload = notificationsService.notifyUsers.mock.calls[0][2];
     expect(payload).not.toHaveProperty('preview');
     expect(payload).not.toHaveProperty('text');
@@ -156,6 +166,9 @@ describe('ChatService (unit)', () => {
       text: 'Hello',
       createdAt: new Date('2024-01-01T00:00:00Z'),
     });
+    prisma.user.findUnique.mockResolvedValue({
+      displayName: 'Alex',
+    });
 
     const message = await service.sendMessage('match-1', 'user-a', 'Hello');
 
@@ -167,12 +180,16 @@ describe('ChatService (unit)', () => {
     });
     expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
       ['user-b'],
-      'chat_message_new',
+      'chat_reveal_required',
       expect.objectContaining({
         matchId: 'match-1',
         senderId: 'user-a',
+        title: 'New match',
+        body: 'A message is waiting — reveal to view',
+        deepLinkTarget: 'reveal',
       }),
     );
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
   it('blocks message access when users are blocked', async () => {
