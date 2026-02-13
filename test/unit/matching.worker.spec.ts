@@ -17,6 +17,7 @@ describe('MatchingWorker (unit)', () => {
     releaseUserLocks: jest.Mock;
     cleanupQueueKey: jest.Mock;
     cleanupExpiredSessions: jest.Mock;
+    getQueueSize: jest.Mock;
   };
   let gateway: { emitMatch: jest.Mock; emitQueueStatus: jest.Mock };
   let notificationsService: { notifyUsers: jest.Mock };
@@ -33,6 +34,7 @@ describe('MatchingWorker (unit)', () => {
       releaseUserLocks: jest.fn(),
       cleanupQueueKey: jest.fn(),
       cleanupExpiredSessions: jest.fn(),
+      getQueueSize: jest.fn(),
     };
     gateway = { emitMatch: jest.fn(), emitQueueStatus: jest.fn() };
     notificationsService = { notifyUsers: jest.fn() };
@@ -89,6 +91,9 @@ describe('MatchingWorker (unit)', () => {
       id: 'session-1',
       queueKey: 'au:hash',
     });
+    queueService.getQueueSize
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(0);
 
     await (worker as unknown as { tick: () => Promise<void> }).tick();
 
@@ -106,5 +111,17 @@ describe('MatchingWorker (unit)', () => {
       }),
     );
     expect(gateway.emitQueueStatus).toHaveBeenCalledWith('au:hash');
+  });
+
+  it('does not emit queue status when queue size is unchanged', async () => {
+    redis.smembers.mockResolvedValue(['au:hash']);
+    queueService.popPair.mockResolvedValue(null);
+    queueService.getQueueSize
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(1);
+
+    await (worker as unknown as { tick: () => Promise<void> }).tick();
+
+    expect(gateway.emitQueueStatus).not.toHaveBeenCalled();
   });
 });
