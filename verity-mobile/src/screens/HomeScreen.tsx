@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
+  Dimensions,
+  Easing,
   Keyboard,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,22 +13,17 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import GoLiveButton from '../components/GoLiveButton';
 import ThemedButton from '../components/ThemedButton';
-import TokenBalanceDisplay from '../components/TokenBalanceDisplay';
 import { useAuth } from '../hooks/useAuth';
 import { useTokenBalance } from '../hooks/usePurchaseTokens';
 import { useQueue } from '../hooks/useQueue';
 import { useTheme } from '../theme/ThemeProvider';
-import {
-  fontFamilies,
-  lineHeights,
-  spacing,
-  typography,
-} from '../theme/tokens';
+import { fontFamilies, spacing, typography } from '../theme/tokens';
 
-const DEFAULT_QUEUE_REGION =
-  process.env.EXPO_PUBLIC_QUEUE_REGION ?? process.env.QUEUE_REGION ?? 'au';
+const { width } = Dimensions.get('window');
+
+const TICKER_TEXT =
+  ' • 124 Online • Matching in ~10s • Sydney • 85 Online • Matching in ~5s • Melbourne • 40 Online • Matching in ~15s • ';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -35,50 +32,68 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { joinQueue, status, markTokenSpent } = useQueue();
   const { balance, refreshBalance, refreshing } = useTokenBalance();
+  
+  const tokenBalance = balance ?? user?.tokenBalance ?? 0;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [showPurchase, setShowPurchase] = useState(false);
   const [joining, setJoining] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [dockVisible, setDockVisible] = useState(true);
+  const [city, setCity] = useState('Sydney'); // Hardcoded for simplified UI, but functional
 
-  const tokenBalance = balance ?? user?.tokenBalance ?? 0;
+  /* Animations */
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Infinite Ticker Animation
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () =>
-      setDockVisible(false),
-    );
-    const hideSub = Keyboard.addListener('keyboardDidHide', () =>
-      setDockVisible(true),
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
+    Animated.loop(
+      Animated.timing(scrollX, {
+        toValue: -width, // Scroll one screen width (since text repeats)
+        duration: 15000, // Speed
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ).start();
+  }, [scrollX]);
+
+  // Pulse Core Animation
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [pulseAnim]);
 
   const handleGoLive = async () => {
     if (tokenBalance < 1) {
-      setShowPurchase(true);
+      Alert.alert('Out of Tokens', 'You need at least 1 token to go live.', [
+        { text: 'Get Tokens', onPress: () => navigation.navigate('TokenShop' as never) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
       return;
     }
-    if (status === 'joining' || status === 'waiting') {
-      navigation.navigate('Waiting' as never);
-      return;
-    }
-
+    
     setJoining(true);
     const optimisticBalance = tokenBalance - 1;
     await setUser({ ...(user ?? { id: '' }), tokenBalance: optimisticBalance });
     markTokenSpent(true);
 
     try {
-      await joinQueue(DEFAULT_QUEUE_REGION);
+      await joinQueue('au'); // Default region
       navigation.navigate('Waiting' as never);
     } catch {
       await setUser({ ...(user ?? { id: '' }), tokenBalance });
       markTokenSpent(false);
-      Alert.alert('Queue unavailable', 'Unable to join the queue right now.');
+      Alert.alert('Queue unavailable', 'Unable to join right now.');
     } finally {
       setJoining(false);
     }
@@ -87,515 +102,297 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: 180 + Math.max(insets.bottom, spacing.md) },
-        ]}
-        onScroll={(event) =>
-          setScrolled(event.nativeEvent.contentOffset.y > 16)
-        }
-        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+        bounces={false}
       >
-        <View
-          style={[
-            styles.topRail,
-            scrolled && styles.topRailScrolled,
-            { marginTop: insets.top > 0 ? insets.top : spacing.md },
-          ]}
-        >
-          <Text style={styles.wordmark}>VERITY</Text>
-          <TouchableOpacity
-            accessibilityRole="button"
+        {/* A. Header (Sticky feel) */}
+        <View style={[styles.header, { marginTop: insets.top }]}>
+          <Text style={styles.logoText}>VERITY</Text>
+          <TouchableOpacity 
+            style={styles.balancePill} 
             onPress={refreshBalance}
-            style={styles.topRailAction}
+            activeOpacity={0.7}
           >
-            <Text style={styles.topRailActionText}>
-              {refreshing ? 'Refreshing...' : `Tokens: ${tokenBalance}`}
-            </Text>
+            <View style={styles.goldDot} />
+            <Text style={styles.balanceText}>{refreshing ? '...' : `${tokenBalance} Tokens`}</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.heroCard}>
-          <Text style={styles.eyebrow}>LIVE VIDEO SPEED DATING</Text>
-          <Text style={styles.heroTitle}>Meet first. Reveal later.</Text>
-          <Text style={styles.heroSubtitle}>
-            45 seconds. Real chemistry. No swiping.
-          </Text>
-          <View style={styles.heroVisual} accessible={false}>
-            <View style={[styles.ring, styles.ringLarge]} />
-            <View style={[styles.ring, styles.ringSmall]} />
-            <View style={styles.heroPulse} />
-            <View style={[styles.orbit, styles.orbitOne]} />
-            <View style={[styles.orbit, styles.orbitTwo]} />
+        {/* B. Hero Section (The Portal) */}
+        <View style={styles.heroContainer}>
+          <View style={styles.portalVisual}>
+            <View style={styles.portalCoreGlow} />
+            <Animated.View 
+              style={[
+                styles.portalPulseRing, 
+                { transform: [{ scale: pulseAnim }] }
+              ]} 
+            />
+            <View style={[styles.portalOrbit, styles.orbit1]} />
+            <View style={[styles.portalOrbit, styles.orbit2]} />
           </View>
-        </View>
 
-        <View style={[styles.panelCard, styles.section]}>
-          <View style={styles.panelHeader}>
-            <Text style={styles.panelTitle}>
-              Ready for your next 45 seconds?
+          <View style={styles.heroContent}>
+            <Text style={styles.heroTitle}>
+              No profiles.{'\n'}Just chemistry.
             </Text>
-            <View style={styles.statusPill}>
-              <Text style={styles.statusPillText}>Live in Canberra</Text>
+            <Text style={styles.heroSubhead}>45 seconds to decide.</Text>
+            
+            <View style={styles.actionArea}>
+              <View style={styles.cityPicker}>
+                <Text style={styles.cityLabel}>Live in </Text>
+                <Text style={styles.cityValue}>{city} ▾</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.goLiveButton}
+                onPress={handleGoLive}
+                activeOpacity={0.9}
+                disabled={joining}
+              >
+                <Text style={styles.goLiveText}>
+                  {joining ? 'CONNECTING...' : 'Go Live'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-          <Text style={styles.bodyText}>
-            1 token starts a live intro. If no match forms, your token is
-            returned.
-          </Text>
-          <View style={styles.balanceRow}>
-            <Text style={styles.metaText}>Token balance</Text>
-            <Text style={styles.balanceValue}>{tokenBalance}</Text>
-          </View>
-          <GoLiveButton onPress={handleGoLive} loading={joining} />
-          <ThemedButton
-            label="How Matching Works"
-            variant="outline"
-            onPress={() =>
-              Alert.alert(
-                'How it works',
-                'Go live, chat for 45 seconds, then choose MATCH or PASS privately.',
-              )
-            }
-            style={styles.secondaryButton}
-          />
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.trustStrip}
-          style={styles.section}
-        >
-          {['Unrecorded Calls', 'Mutual Reveal Only', 'Report in One Tap'].map(
-            (item) => (
-              <View key={item} style={styles.trustChip}>
-                <View style={styles.trustDot} />
-                <Text style={styles.trustChipText}>{item}</Text>
-              </View>
-            ),
-          )}
-        </ScrollView>
+        {/* C. Queue Ticker */}
+        <View style={styles.tickerContainer}>
+          <Animated.View style={{ flexDirection: 'row', transform: [{ translateX: scrollX }] }}>
+            <Text style={styles.tickerText}>{TICKER_TEXT}</Text>
+            <Text style={styles.tickerText}>{TICKER_TEXT}</Text>
+            <Text style={styles.tickerText}>{TICKER_TEXT}</Text>
+          </Animated.View>
+        </View>
 
-        <View style={[styles.panelCard, styles.section]}>
-          <Text style={styles.panelTitle}>How it works</Text>
+        {/* D. How it Works */}
+        <View style={styles.stepsContainer}>
           {[
-            ['1 — Go Live', 'Join instantly. No browsing profiles.'],
-            ['2 — 45-Second Call', 'Talk face-to-face in a timed live intro.'],
-            [
-              '3 — Match or Pass',
-              'Only mutual matches reveal identity and unlock chat.',
-            ],
-          ].map(([title, body]) => (
-            <View key={title} style={styles.stepCard}>
-              <Text style={styles.stepTitle}>{title}</Text>
-              <Text style={styles.stepBody}>{body}</Text>
+            { icon: '🚪', title: 'Join Queue', desc: 'Enter the blind pool.' },
+            { icon: '⏱️', title: '45s Date', desc: 'Video reveals personality.' },
+            { icon: '❤️', title: 'Decide', desc: 'Match to reveal identity.' },
+          ].map((step, i) => (
+            <View key={i} style={styles.stepCard}>
+              <View style={styles.stepIconBox}>
+                <Text style={styles.stepIcon}>{step.icon}</Text>
+              </View>
+              <View>
+                <Text style={styles.stepTitle}>{step.title}</Text>
+                <Text style={styles.stepDesc}>{step.desc}</Text>
+              </View>
             </View>
           ))}
         </View>
-
-        <View style={[styles.panelCard, styles.section]}>
-          <Text style={styles.panelTitle}>Private by design.</Text>
-          <Text style={styles.bodyText}>
-            No profile reveal before the call. No replay culture.
-          </Text>
-          <View style={styles.actionGrid}>
-            <ThemedButton
-              label="Block"
-              variant="outline"
-              onPress={() => navigation.navigate('BlockList' as never)}
+        
+        {/* Footer Actions */}
+        <View style={{ padding: spacing.lg, gap: spacing.md }}>
+            <ThemedButton 
+                label="Safety & Standards" 
+                variant="outline" 
+                onPress={() => navigation.navigate('Settings' as never)} 
             />
-            <ThemedButton
-              label="Report"
-              variant="outline"
-              onPress={() => navigation.navigate('Report' as never)}
-            />
-          </View>
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() => navigation.navigate('Settings' as never)}
-          >
-            <Text style={styles.supportLink}>Safety Standards</Text>
-          </TouchableOpacity>
         </View>
 
-        <View style={[styles.panelCard, styles.section]}>
-          <Text style={styles.panelTitle}>Stay in the flow.</Text>
-          <Text style={styles.bodyText}>
-            Top up tokens anytime. Start calls in one tap.
-          </Text>
-          <ThemedButton
-            label="View Token Packs"
-            onPress={() => navigation.navigate('TokenShop' as never)}
-            style={styles.secondaryButton}
-          />
-          <TokenBalanceDisplay
-            balance={tokenBalance}
-            subtitle="Refresh your balance before going live."
-            onRefresh={refreshBalance}
-            refreshing={refreshing}
-          />
-        </View>
       </ScrollView>
-
-      {dockVisible && (
-        <View
-          style={[
-            styles.bottomDock,
-            { paddingBottom: Math.max(insets.bottom, spacing.md) },
-          ]}
-        >
-          <GoLiveButton onPress={handleGoLive} loading={joining} />
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() =>
-              Alert.alert(
-                'How matching works',
-                'Go live, complete your 45-second call, then choose MATCH or PASS privately.',
-              )
-            }
-          >
-            <Text style={styles.signInText}>How Matching Works</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <Modal visible={showPurchase} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Out of tokens</Text>
-            <Text style={styles.modalSubtitle}>
-              You need at least 1 token to go live. Purchase more to keep
-              matching.
-            </Text>
-            <ThemedButton
-              label="Browse token packs"
-              onPress={() => {
-                setShowPurchase(false);
-                navigation.navigate('TokenShop' as never);
-              }}
-            />
-            <ThemedButton
-              label="Not now"
-              variant="outline"
-              onPress={() => setShowPurchase(false)}
-              style={styles.modalButton}
-            />
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
-const createStyles = (colors: {
-  text: string;
-  muted: string;
-  background: string;
-  card: string;
-  border: string;
-}) =>
+const createStyles = (colors: any) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.background, // Void Black
     },
-    scrollContent: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
-    },
-    section: {
-      marginTop: spacing.lg,
-    },
-    topRail: {
-      minHeight: 72,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: 'rgba(0,0,0,0.35)',
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.md,
+      zIndex: 10,
+    },
+    logoText: {
+      color: colors.text,
+      fontFamily: fontFamilies.display,
+      fontSize: 24,
+      letterSpacing: 1,
+    },
+    balancePill: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    topRailScrolled: {
-      backgroundColor: 'rgba(0,0,0,0.72)',
-    },
-    wordmark: {
-      color: colors.text,
-      fontFamily: fontFamilies.display,
-      letterSpacing: 3,
-      fontSize: typography.lg,
-    },
-    topRailAction: {
-      borderWidth: 1,
-      borderColor: '#D4AF37',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
       borderRadius: 999,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs + 2,
-      backgroundColor: 'rgba(212,175,55,0.08)',
-    },
-    topRailActionText: {
-      color: colors.text,
-      fontFamily: fontFamilies.bodySemibold,
-      fontSize: typography.xs,
-      letterSpacing: 0.7,
-      textTransform: 'uppercase',
-    },
-    heroCard: {
-      minHeight: 320,
-      borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: '#0B0B0B',
-      padding: spacing.xl,
-      marginTop: spacing.lg,
+      backgroundColor: 'rgba(26,26,26,0.8)',
     },
-    eyebrow: {
-      color: '#F1D77A',
-      fontFamily: fontFamilies.bodySemibold,
-      fontSize: typography.xs,
-      letterSpacing: 1.8,
-      textTransform: 'uppercase',
-      marginBottom: spacing.md,
+    goldDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 999,
+      backgroundColor: colors.primary,
+      marginRight: 6,
     },
-    heroTitle: {
+    balanceText: {
       color: colors.text,
-      fontFamily: fontFamilies.display,
-      fontSize: typography.hero,
-      lineHeight: 40,
-      marginBottom: spacing.sm,
+      fontSize: 12,
+      fontFamily: fontFamilies.mono,
+      textTransform: 'uppercase',
     },
-    heroSubtitle: {
-      color: colors.muted,
-      fontFamily: fontFamilies.body,
-      fontSize: typography.md,
-      lineHeight: lineHeights.base,
-      marginBottom: spacing.lg,
-    },
-    heroVisual: {
-      flex: 1,
-      minHeight: 140,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: '#3B3215',
-      backgroundColor: '#080808',
-      overflow: 'hidden',
+    heroContainer: {
+      height: Dimensions.get('window').height * 0.75, // 75% screen height
       alignItems: 'center',
       justifyContent: 'center',
+      position: 'relative',
     },
-    ring: {
+    portalVisual: {
       position: 'absolute',
+      width: 300,
+      height: 300,
+      justifyContent: 'center',
+      alignItems: 'center',
+      top: '20%', // Shift visual up visually behind text
+    },
+    portalCoreGlow: {
+      position: 'absolute',
+      width: 100,
+      height: 100,
+      borderRadius: 999,
+      backgroundColor: colors.primary,
+      opacity: 0.15,
+      shadowColor: colors.primary,
+      shadowOpacity: 0.5,
+      shadowRadius: 40,
+    },
+    portalPulseRing: {
+      position: 'absolute',
+      width: 180,
+      height: 180,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: '#F1D77A',
+      borderColor: 'rgba(212,175,55,0.3)',
     },
-    ringLarge: {
-      width: 190,
-      height: 190,
-      opacity: 0.7,
-    },
-    ringSmall: {
-      width: 120,
-      height: 120,
-      opacity: 0.85,
-    },
-    heroPulse: {
-      width: 14,
-      height: 14,
-      borderRadius: 999,
-      backgroundColor: '#D4AF37',
-      shadowColor: '#D4AF37',
-      shadowOpacity: 0.45,
-      shadowOffset: { width: 0, height: 0 },
-      shadowRadius: 10,
-      elevation: 8,
-    },
-    orbit: {
+    portalOrbit: {
       position: 'absolute',
-      width: 9,
-      height: 9,
+      width: 260,
+      height: 260,
       borderRadius: 999,
-      backgroundColor: '#F1D77A',
-    },
-    orbitOne: {
-      top: '30%',
-      right: '26%',
-    },
-    orbitTwo: {
-      bottom: '28%',
-      left: '28%',
-    },
-    panelCard: {
-      borderRadius: 18,
       borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
-      padding: spacing.lg,
+      borderColor: 'rgba(255,255,255,0.05)',
     },
-    panelHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: spacing.md,
+    orbit1: { transform: [{ rotate: '45deg' }] },
+    orbit2: { transform: [{ rotate: '-45deg' }, { scale: 0.8 }] },
+    heroContent: {
+      width: '100%',
+      paddingHorizontal: spacing.xl,
+      alignItems: 'center',
+      marginTop: 40,
+    },
+    heroTitle: {
+      color: colors.text, // White
+      fontFamily: fontFamilies.display,
+      fontSize: 42,
+      textAlign: 'center',
+      lineHeight: 46,
       marginBottom: spacing.sm,
     },
-    panelTitle: {
-      color: colors.text,
-      fontFamily: fontFamilies.bodyBold,
-      fontSize: typography.xl,
-      lineHeight: 28,
-    },
-    bodyText: {
+    heroSubhead: {
       color: colors.muted,
       fontFamily: fontFamilies.body,
-      fontSize: typography.md,
-      lineHeight: lineHeights.base,
+      fontSize: 18,
+      textAlign: 'center',
+      marginBottom: spacing.xl,
     },
-    statusPill: {
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: '#4A3A10',
-      backgroundColor: 'rgba(212,175,55,0.12)',
-      paddingHorizontal: spacing.sm + 2,
-      paddingVertical: spacing.xs + 1,
-    },
-    statusPillText: {
-      color: colors.text,
-      fontFamily: fontFamilies.bodySemibold,
-      fontSize: typography.xs,
-      textTransform: 'uppercase',
-      letterSpacing: 0.7,
-    },
-    balanceRow: {
-      marginVertical: spacing.md,
-      flexDirection: 'row',
+    actionArea: {
+      width: '100%',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      marginTop: spacing.xl,
     },
-    metaText: {
+    cityPicker: {
+      flexDirection: 'row',
+      marginBottom: spacing.md,
+    },
+    cityLabel: {
       color: colors.muted,
-      fontFamily: fontFamilies.bodyMedium,
-      fontSize: typography.sm,
-      letterSpacing: 0.4,
-      textTransform: 'uppercase',
+      fontSize: 14,
     },
-    balanceValue: {
+    cityValue: {
       color: colors.text,
-      fontFamily: fontFamilies.monoBold,
-      fontSize: typography.lg,
+      fontSize: 14,
+      fontWeight: '600',
     },
-    secondaryButton: {
-      marginTop: spacing.sm,
-    },
-    trustStrip: {
-      gap: spacing.sm + 2,
-      paddingRight: spacing.md,
-    },
-    trustChip: {
-      minHeight: 56,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: '#121212',
-      paddingHorizontal: spacing.md,
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginRight: spacing.sm,
-    },
-    trustDot: {
-      width: 8,
-      height: 8,
+    goLiveButton: {
+      width: '100%',
+      height: 56,
       borderRadius: 999,
-      backgroundColor: '#D4AF37',
-      marginRight: spacing.sm,
+      backgroundColor: colors.primary, // Gold
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 5,
     },
-    trustChipText: {
-      color: colors.text,
-      fontFamily: fontFamilies.bodyMedium,
-      fontSize: typography.sm,
-      letterSpacing: 0.2,
+    goLiveText: {
+      color: '#000',
+      fontSize: 18,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    tickerContainer: {
+      height: 50,
+      backgroundColor: '#111',
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: '#222',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    tickerText: {
+      color: '#888',
+      fontSize: 14,
+      fontFamily: fontFamilies.mono,
+      marginRight: 40,
+    },
+    stepsContainer: {
+      padding: spacing.lg,
+      gap: spacing.md,
     },
     stepCard: {
-      marginTop: spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#0A0A0A',
       borderWidth: 1,
-      borderColor: '#3B3215',
-      borderRadius: 14,
-      backgroundColor: 'rgba(212,175,55,0.05)',
-      padding: spacing.md,
+      borderColor: '#222',
+      borderRadius: 16,
+      padding: spacing.lg,
+    },
+    stepIconBox: {
+      width: 40,
+      height: 40,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.05)',
+      borderRadius: 999,
+      marginRight: spacing.md,
+    },
+    stepIcon: {
+      fontSize: 20,
     },
     stepTitle: {
       color: colors.text,
-      fontFamily: fontFamilies.bodySemibold,
-      fontSize: typography.lg,
-      marginBottom: spacing.xs,
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 2,
     },
-    stepBody: {
+    stepDesc: {
       color: colors.muted,
-      fontFamily: fontFamilies.body,
-      fontSize: typography.sm,
-      lineHeight: lineHeights.base,
-    },
-    actionGrid: {
-      marginTop: spacing.md,
-      flexDirection: 'row',
-      gap: spacing.sm,
-    },
-    supportLink: {
-      marginTop: spacing.md,
-      color: '#F1D77A',
-      fontFamily: fontFamilies.bodySemibold,
-      fontSize: typography.sm,
-      letterSpacing: 0.3,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: spacing.xl,
-    },
-    modalCard: {
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      padding: spacing.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      width: '100%',
-    },
-    modalTitle: {
-      fontSize: typography.lg,
-      fontFamily: fontFamilies.bodyBold,
-      color: colors.text,
-      marginBottom: spacing.sm,
-    },
-    modalSubtitle: {
-      fontSize: typography.md,
-      fontFamily: fontFamilies.body,
-      color: colors.muted,
-      marginBottom: spacing.lg,
-      lineHeight: lineHeights.base,
-    },
-    modalButton: {
-      marginTop: spacing.sm,
-    },
-    bottomDock: {
-      position: 'absolute',
-      left: spacing.lg,
-      right: spacing.lg,
-      bottom: spacing.md,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: 'rgba(0,0,0,0.82)',
-      padding: spacing.sm,
-      gap: spacing.sm,
-    },
-    signInText: {
-      textAlign: 'center',
-      color: colors.muted,
-      fontFamily: fontFamilies.bodyMedium,
-      fontSize: typography.sm,
+      fontSize: 14,
     },
   });
