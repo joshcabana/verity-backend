@@ -188,7 +188,9 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 ref={reasonRef}
                 className="input"
                 value={reason}
-                onChange={(event) => setReason(event.target.value)}
+                onChange={(event) =>
+                  setReason(event.target.value as (typeof REASONS)[number]['value'])
+                }
               >
                 {REASONS.map((item) => (
                   <option key={item.value} value={item.value}>
