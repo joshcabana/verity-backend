@@ -82,7 +82,11 @@ export const Home: React.FC = () => {
       queueKey: response.data?.queueKey ?? '',
       position: response.data?.position ?? -1,
     });
-    navigate('/waiting');
+    navigate('/waiting', {
+      state: {
+        queueKey: response.data?.queueKey ?? null,
+      },
+    });
   };
 
   const handlePurchase = async (packId: string) => {

@@ -1,15 +1,17 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import WaitingScreen from '../../src/screens/WaitingScreen';
 
 const mockReset = jest.fn();
 const mockGoBack = jest.fn();
 const mockSetUser = jest.fn();
+const mockTrackEvent = jest.fn();
 
 type QueueStateMock = {
   status: 'idle' | 'joining' | 'waiting' | 'matched';
   estimatedSeconds: number | null;
   usersSearching: number | null;
+  queueKey: string | null;
   match: Record<string, unknown> | null;
   leaveQueue: jest.Mock<Promise<boolean>, []>;
 };
@@ -32,6 +34,10 @@ jest.mock('../../src/hooks/useAuth', () => ({
     user: { id: 'user-1', tokenBalance: 2 },
     setUser: mockSetUser,
   }),
+}));
+
+jest.mock('../../src/services/analytics', () => ({
+  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }));
 
 jest.mock('../../src/theme/ThemeProvider', () => ({
@@ -60,6 +66,7 @@ describe('WaitingScreen', () => {
       status: 'idle',
       estimatedSeconds: null,
       usersSearching: null,
+      queueKey: 'queue-1',
       match: null,
       leaveQueue: jest.fn().mockResolvedValue(false),
     };
@@ -100,7 +107,7 @@ describe('WaitingScreen', () => {
     mockQueueState.leaveQueue.mockResolvedValue(true);
 
     const { getByText } = render(<WaitingScreen />);
-    fireEvent.press(getByText('Cancel'));
+    fireEvent.press(getByText('Leave queue'));
 
     await waitFor(() => expect(mockQueueState.leaveQueue).toHaveBeenCalledTimes(1));
     await waitFor(() =>
@@ -122,5 +129,79 @@ describe('WaitingScreen', () => {
     rerender(<WaitingScreen />);
 
     expect(mockReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows timeout prompt and tracks timeout shown once', () => {
+    jest.useFakeTimers();
+    try {
+      mockQueueState.status = 'waiting';
+      const { getByText } = render(<WaitingScreen />);
+
+      act(() => {
+        jest.advanceTimersByTime(46_000);
+      });
+
+      expect(getByText('No one nearby yet.')).toBeTruthy();
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'queue_timeout_shown',
+        expect.objectContaining({
+          queueKey: 'queue-1',
+          elapsedSeconds: expect.any(Number),
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('tracks timeout continue and hides prompt', () => {
+    jest.useFakeTimers();
+    try {
+      mockQueueState.status = 'waiting';
+      const { getByText, queryByText } = render(<WaitingScreen />);
+
+      act(() => {
+        jest.advanceTimersByTime(46_000);
+      });
+      fireEvent.press(getByText('Keep searching'));
+
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'queue_timeout_continue',
+        expect.objectContaining({
+          queueKey: 'queue-1',
+          elapsedSeconds: expect.any(Number),
+        }),
+      );
+      expect(queryByText('No one nearby yet.')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('tracks timeout leave event with refund outcome', async () => {
+    jest.useFakeTimers();
+    try {
+      mockQueueState.status = 'waiting';
+      mockQueueState.leaveQueue.mockResolvedValue(true);
+      const { getAllByText } = render(<WaitingScreen />);
+
+      act(() => {
+        jest.advanceTimersByTime(46_000);
+      });
+      fireEvent.press(getAllByText('Leave queue')[0]);
+
+      await waitFor(() =>
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          'queue_timeout_leave',
+          expect.objectContaining({
+            queueKey: 'queue-1',
+            elapsedSeconds: expect.any(Number),
+            refunded: true,
+          }),
+        ),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

@@ -15,6 +15,7 @@ jest.mock('../../src/hooks/useQueue', () => ({
     status: 'idle',
     estimatedSeconds: 12,
     usersSearching: null,
+    queueKey: null,
     match: null,
     joinQueue: mockJoinQueue,
     leaveQueue: mockLeaveQueue,
