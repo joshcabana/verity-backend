@@ -24,7 +24,13 @@ function renderMatches() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/matches']}>
+      <MemoryRouter
+        initialEntries={['/matches']}
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
           <Route path="/matches" element={<Matches />} />
           <Route path="/chat/:matchId" element={<ChatRouteProbe />} />
