@@ -89,6 +89,7 @@ export const Home: React.FC = () => {
       <section className="hero-split home-hero">
         <div className="hero-content">
           <span className="pill">Live. Private. Human.</span>
+          <p className="caption home-kicker">Curated for meaningful, face-to-face connection.</p>
           <h1 className="hero-title">
             No Profiles.<br />
             Just Chemistry.
@@ -163,7 +164,7 @@ export const Home: React.FC = () => {
         <h2 className="section-title text-center">How It Works</h2>
         <div className="grid-3">
           <div className="card text-center home-feature-card">
-            <div className="flex-center mb-md">
+            <div className="flex-center mb-md feature-icon-wrap">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 22h14" />
                 <path d="M5 2h14" />
@@ -171,32 +172,32 @@ export const Home: React.FC = () => {
                 <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
               </svg>
             </div>
-            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>Join The Queue</h3>
+            <h3 className="body-large feature-title">Join The Queue</h3>
             <p className="body-standard mt-md">
               Enter the live waiting room for your city. No browsing, just join.
             </p>
           </div>
           
           <div className="card text-center home-feature-card">
-             <div className="flex-center mb-md">
+             <div className="flex-center mb-md feature-icon-wrap">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 7l-7 5 7 5V7z" />
                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
             </div>
-            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>45s Date</h3>
+            <h3 className="body-large feature-title">45s Date</h3>
             <p className="body-standard mt-md">
               Connect instantly via video. Audio on. No filters. Pure chemistry.
             </p>
           </div>
           
           <div className="card text-center home-feature-card">
-             <div className="flex-center mb-md">
+             <div className="flex-center mb-md feature-icon-wrap">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             </div>
-            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>Decide</h3>
+            <h3 className="body-large feature-title">Decide</h3>
             <p className="body-standard mt-md">
               Private decision. Only a mutual match reveals identities and unlocks chat.
             </p>

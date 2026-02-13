@@ -30,6 +30,12 @@
   --radius-sm: 8px;
   --radius-md: 16px;
   --radius-full: 999px;
+
+  /* Motion */
+  --motion-fast: 180ms;
+  --motion-base: 260ms;
+  --motion-slow: 420ms;
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -189,6 +195,11 @@ header {
   background: rgba(124, 137, 255, 0.12);
 }
 
+.home-kicker {
+  margin-top: -4px;
+  color: rgba(174, 184, 208, 0.88);
+}
+
 .home-subtitle {
   max-width: 48ch;
 }
@@ -233,13 +244,27 @@ header {
 }
 
 .home-feature-card {
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: transform var(--motion-base) var(--ease-premium), border-color var(--motion-base) var(--ease-premium), box-shadow var(--motion-base) var(--ease-premium);
 }
 
 .home-feature-card:hover {
   transform: translateY(-4px);
   border-color: rgba(212, 175, 55, 0.35);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(212, 175, 55, 0.1);
+}
+
+.feature-icon-wrap {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: radial-gradient(circle at 30% 30%, rgba(212, 175, 55, 0.2), rgba(124, 137, 255, 0.08));
+}
+
+.feature-title {
+  font-weight: 600;
+  color: var(--paper-white);
 }
 
 .home-safety {
@@ -297,7 +322,7 @@ header {
   font-size: 1rem;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  transition: transform var(--motion-fast) var(--ease-premium), box-shadow var(--motion-base) var(--ease-premium), background var(--motion-fast) var(--ease-premium);
   border: none;
   text-decoration: none;
 }
