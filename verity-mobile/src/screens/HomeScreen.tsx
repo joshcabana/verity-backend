@@ -18,12 +18,15 @@ import { useAuth } from '../hooks/useAuth';
 import { useTokenBalance } from '../hooks/usePurchaseTokens';
 import { useQueue } from '../hooks/useQueue';
 import { useTheme } from '../theme/ThemeProvider';
-import { fontFamilies, lineHeights, spacing, typography } from '../theme/tokens';
+import {
+  fontFamilies,
+  lineHeights,
+  spacing,
+  typography,
+} from '../theme/tokens';
 
 const DEFAULT_QUEUE_REGION =
-  process.env.EXPO_PUBLIC_QUEUE_REGION ??
-  process.env.QUEUE_REGION ??
-  'au';
+  process.env.EXPO_PUBLIC_QUEUE_REGION ?? process.env.QUEUE_REGION ?? 'au';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -42,8 +45,12 @@ export default function HomeScreen() {
   const tokenBalance = balance ?? user?.tokenBalance ?? 0;
 
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setDockVisible(false));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setDockVisible(true));
+    const showSub = Keyboard.addListener('keyboardDidShow', () =>
+      setDockVisible(false),
+    );
+    const hideSub = Keyboard.addListener('keyboardDidHide', () =>
+      setDockVisible(true),
+    );
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -84,7 +91,9 @@ export default function HomeScreen() {
           styles.scrollContent,
           { paddingBottom: 180 + Math.max(insets.bottom, spacing.md) },
         ]}
-        onScroll={(event) => setScrolled(event.nativeEvent.contentOffset.y > 16)}
+        onScroll={(event) =>
+          setScrolled(event.nativeEvent.contentOffset.y > 16)
+        }
         scrollEventThrottle={16}
       >
         <View
@@ -123,13 +132,16 @@ export default function HomeScreen() {
 
         <View style={[styles.panelCard, styles.section]}>
           <View style={styles.panelHeader}>
-            <Text style={styles.panelTitle}>Ready for your next 45 seconds?</Text>
+            <Text style={styles.panelTitle}>
+              Ready for your next 45 seconds?
+            </Text>
             <View style={styles.statusPill}>
               <Text style={styles.statusPillText}>Live in Canberra</Text>
             </View>
           </View>
           <Text style={styles.bodyText}>
-            1 token starts a live intro. If no match forms, your token is returned.
+            1 token starts a live intro. If no match forms, your token is
+            returned.
           </Text>
           <View style={styles.balanceRow}>
             <Text style={styles.metaText}>Token balance</Text>
@@ -155,12 +167,14 @@ export default function HomeScreen() {
           contentContainerStyle={styles.trustStrip}
           style={styles.section}
         >
-          {['Unrecorded Calls', 'Mutual Reveal Only', 'Report in One Tap'].map((item) => (
-            <View key={item} style={styles.trustChip}>
-              <View style={styles.trustDot} />
-              <Text style={styles.trustChipText}>{item}</Text>
-            </View>
-          ))}
+          {['Unrecorded Calls', 'Mutual Reveal Only', 'Report in One Tap'].map(
+            (item) => (
+              <View key={item} style={styles.trustChip}>
+                <View style={styles.trustDot} />
+                <Text style={styles.trustChipText}>{item}</Text>
+              </View>
+            ),
+          )}
         </ScrollView>
 
         <View style={[styles.panelCard, styles.section]}>
@@ -168,7 +182,10 @@ export default function HomeScreen() {
           {[
             ['1 — Go Live', 'Join instantly. No browsing profiles.'],
             ['2 — 45-Second Call', 'Talk face-to-face in a timed live intro.'],
-            ['3 — Match or Pass', 'Only mutual matches reveal identity and unlock chat.'],
+            [
+              '3 — Match or Pass',
+              'Only mutual matches reveal identity and unlock chat.',
+            ],
           ].map(([title, body]) => (
             <View key={title} style={styles.stepCard}>
               <Text style={styles.stepTitle}>{title}</Text>
@@ -204,7 +221,9 @@ export default function HomeScreen() {
 
         <View style={[styles.panelCard, styles.section]}>
           <Text style={styles.panelTitle}>Stay in the flow.</Text>
-          <Text style={styles.bodyText}>Top up tokens anytime. Start calls in one tap.</Text>
+          <Text style={styles.bodyText}>
+            Top up tokens anytime. Start calls in one tap.
+          </Text>
           <ThemedButton
             label="View Token Packs"
             onPress={() => navigation.navigate('TokenShop' as never)}
@@ -220,7 +239,12 @@ export default function HomeScreen() {
       </ScrollView>
 
       {dockVisible && (
-        <View style={[styles.bottomDock, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+        <View
+          style={[
+            styles.bottomDock,
+            { paddingBottom: Math.max(insets.bottom, spacing.md) },
+          ]}
+        >
           <GoLiveButton onPress={handleGoLive} loading={joining} />
           <TouchableOpacity
             accessibilityRole="button"
@@ -241,7 +265,8 @@ export default function HomeScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Out of tokens</Text>
             <Text style={styles.modalSubtitle}>
-              You need at least 1 token to go live. Purchase more to keep matching.
+              You need at least 1 token to go live. Purchase more to keep
+              matching.
             </Text>
             <ThemedButton
               label="Browse token packs"

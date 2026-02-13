@@ -16,8 +16,14 @@ export default function WaitingScreen() {
   const { user, setUser } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { status, estimatedSeconds, leaveQueue, match, usersSearching, queueKey } =
-    useQueue();
+  const {
+    status,
+    estimatedSeconds,
+    leaveQueue,
+    match,
+    usersSearching,
+    queueKey,
+  } = useQueue();
   const statusRef = useRef(status);
   const lastNavigatedSessionRef = useRef<string | null>(null);
   const timeoutPromptTrackedRef = useRef(false);

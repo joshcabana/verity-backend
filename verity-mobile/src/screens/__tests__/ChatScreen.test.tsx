@@ -77,49 +77,55 @@ describe('ChatScreen', () => {
     }));
 
     server.use(
-      rest.get(`${API_URL}/matches/:matchId/reveal`, (_req: any, res: any, ctx: any) =>
-        res(
-          ctx.status(200),
-          ctx.json({
-            matchId: 'match-1',
-            partnerRevealVersion: 1,
-            partnerReveal: {
-              id: 'user-2',
-              displayName: 'Alex',
-              primaryPhotoUrl: 'https://example.com/alex.jpg',
-              age: 28,
-              bio: 'Coffee and coastlines.',
-            },
-            revealAcknowledged: true,
-            revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
-          }),
-        ),
-      ),
-      rest.get(`${API_URL}/matches/:matchId/messages`, (_req: any, res: any, ctx: any) =>
-        res(
-          ctx.status(200),
-          ctx.json([
-            {
-              id: 'msg-1',
+      rest.get(
+        `${API_URL}/matches/:matchId/reveal`,
+        (_req: any, res: any, ctx: any) =>
+          res(
+            ctx.status(200),
+            ctx.json({
               matchId: 'match-1',
-              senderId: 'user-2',
-              text: 'Hello there',
-              createdAt: '2025-01-01T00:00:00.000Z',
-            },
-          ]),
-        ),
+              partnerRevealVersion: 1,
+              partnerReveal: {
+                id: 'user-2',
+                displayName: 'Alex',
+                primaryPhotoUrl: 'https://example.com/alex.jpg',
+                age: 28,
+                bio: 'Coffee and coastlines.',
+              },
+              revealAcknowledged: true,
+              revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+            }),
+          ),
       ),
-      rest.post(`${API_URL}/matches/:matchId/messages`, (_req: any, res: any, ctx: any) =>
-        res(
-          ctx.status(200),
-          ctx.json({
-            id: 'msg-2',
-            matchId: 'match-1',
-            senderId: 'user-1',
-            text: 'Hey!',
-            createdAt: '2025-01-01T00:00:05.000Z',
-          }),
-        ),
+      rest.get(
+        `${API_URL}/matches/:matchId/messages`,
+        (_req: any, res: any, ctx: any) =>
+          res(
+            ctx.status(200),
+            ctx.json([
+              {
+                id: 'msg-1',
+                matchId: 'match-1',
+                senderId: 'user-2',
+                text: 'Hello there',
+                createdAt: '2025-01-01T00:00:00.000Z',
+              },
+            ]),
+          ),
+      ),
+      rest.post(
+        `${API_URL}/matches/:matchId/messages`,
+        (_req: any, res: any, ctx: any) =>
+          res(
+            ctx.status(200),
+            ctx.json({
+              id: 'msg-2',
+              matchId: 'match-1',
+              senderId: 'user-1',
+              text: 'Hey!',
+              createdAt: '2025-01-01T00:00:05.000Z',
+            }),
+          ),
       ),
     );
   });
@@ -145,8 +151,9 @@ describe('ChatScreen', () => {
 
   it('adds incoming messages from the WebSocket event store', async () => {
     server.use(
-      rest.get(`${API_URL}/matches/:matchId/messages`, (_req: any, res: any, ctx: any) =>
-        res(ctx.status(200), ctx.json([])),
+      rest.get(
+        `${API_URL}/matches/:matchId/messages`,
+        (_req: any, res: any, ctx: any) => res(ctx.status(200), ctx.json([])),
       ),
     );
 

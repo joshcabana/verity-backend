@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import ThemedScreen from '../components/ThemedScreen';
@@ -7,7 +13,10 @@ import TokenPackCard, { type TokenPack } from '../components/TokenPackCard';
 import { usePurchaseTokens } from '../hooks/usePurchaseTokens';
 import { useTheme } from '../theme/ThemeProvider';
 import { spacing, typography } from '../theme/tokens';
-import { useStripeRedirectHandler, type StripeRedirectResult } from '../services/stripe';
+import {
+  useStripeRedirectHandler,
+  type StripeRedirectResult,
+} from '../services/stripe';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
 const TOKEN_PACKS: TokenPack[] = [
@@ -133,7 +142,10 @@ export default function TokenShopScreen() {
 
   return (
     <ThemedScreen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.title}>Token Shop</Text>
         <Text style={styles.subtitle}>
           Choose a pack and keep matching without interruptions.

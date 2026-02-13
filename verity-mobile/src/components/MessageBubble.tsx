@@ -9,14 +9,25 @@ type MessageBubbleProps = {
   timestamp?: string;
 };
 
-export default function MessageBubble({ text, isMine, timestamp }: MessageBubbleProps) {
+export default function MessageBubble({
+  text,
+  isMine,
+  timestamp,
+}: MessageBubbleProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={[styles.row, isMine ? styles.rowMine : styles.rowTheirs]}>
-      <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-        <Text style={[styles.text, isMine ? styles.textMine : styles.textTheirs]}>
+      <View
+        style={[
+          styles.bubble,
+          isMine ? styles.bubbleMine : styles.bubbleTheirs,
+        ]}
+      >
+        <Text
+          style={[styles.text, isMine ? styles.textMine : styles.textTheirs]}
+        >
           {text}
         </Text>
       </View>

@@ -83,7 +83,9 @@ export function useMatchRevealQuery(
       if (!matchId) {
         throw new Error('Missing match ID');
       }
-      const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal`);
+      const response = await apiJson<MatchRevealPayload>(
+        `/matches/${matchId}/reveal`,
+      );
       if (response.status === 401) {
         await logout();
         throw new Error('UNAUTHORIZED');
@@ -106,10 +108,13 @@ export function useSendMessageMutation(matchId?: string) {
       if (!matchId) {
         throw new Error('Missing match ID');
       }
-      const response = await apiJson<ChatMessage>(`/matches/${matchId}/messages`, {
-        method: 'POST',
-        body: JSON.stringify({ text }),
-      });
+      const response = await apiJson<ChatMessage>(
+        `/matches/${matchId}/messages`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ text }),
+        },
+      );
 
       if (response.status === 401) {
         await logout();
@@ -196,9 +201,12 @@ export function useAcknowledgeRevealMutation(matchId?: string) {
       if (!matchId) {
         throw new Error('Missing match ID');
       }
-      const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal-ack`, {
-        method: 'POST',
-      });
+      const response = await apiJson<MatchRevealPayload>(
+        `/matches/${matchId}/reveal-ack`,
+        {
+          method: 'POST',
+        },
+      );
       if (!response.ok || !response.data) {
         throw new Error('REVEAL_ACK_FAILED');
       }
@@ -208,7 +216,10 @@ export function useAcknowledgeRevealMutation(matchId?: string) {
       if (!matchId) {
         return;
       }
-      queryClient.setQueryData<MatchRevealPayload>(['match-reveal', matchId], payload);
+      queryClient.setQueryData<MatchRevealPayload>(
+        ['match-reveal', matchId],
+        payload,
+      );
     },
   });
 }

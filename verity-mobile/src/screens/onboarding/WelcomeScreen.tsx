@@ -16,12 +16,15 @@ export default function WelcomeScreen() {
       <View style={styles.hero}>
         <Text style={styles.title}>Welcome to Verity</Text>
         <Text style={styles.subtitle}>
-          Meet someone through short, honest video conversations before you ever see a profile.
+          Meet someone through short, honest video conversations before you ever
+          see a profile.
         </Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.bullet}>• Blind video dating, no profiles first</Text>
+        <Text style={styles.bullet}>
+          • Blind video dating, no profiles first
+        </Text>
         <Text style={styles.bullet}>• Mutual reveal only after both match</Text>
         <Text style={styles.bullet}>• Use tokens to go live instantly</Text>
       </View>
@@ -37,7 +40,12 @@ export default function WelcomeScreen() {
   );
 }
 
-const createStyles = (colors: { text: string; muted: string; border: string; card: string }) =>
+const createStyles = (colors: {
+  text: string;
+  muted: string;
+  border: string;
+  card: string;
+}) =>
   StyleSheet.create({
     hero: {
       marginTop: spacing.xl,

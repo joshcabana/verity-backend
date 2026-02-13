@@ -38,17 +38,27 @@ export default function MainTabNavigator() {
       <Tab.Screen
         name="Home"
         component={HomeScreen as React.ComponentType}
-        options={{ tabBarLabel: ({ color }) => <TabLabel label="Home" color={color} /> }}
+        options={{
+          tabBarLabel: ({ color }) => <TabLabel label="Home" color={color} />,
+        }}
       />
       <Tab.Screen
         name="Matches"
         component={MatchesListScreen as React.ComponentType}
-        options={{ tabBarLabel: ({ color }) => <TabLabel label="Matches" color={color} /> }}
+        options={{
+          tabBarLabel: ({ color }) => (
+            <TabLabel label="Matches" color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ tabBarLabel: ({ color }) => <TabLabel label="Settings" color={color} /> }}
+        options={{
+          tabBarLabel: ({ color }) => (
+            <TabLabel label="Settings" color={color} />
+          ),
+        }}
       />
     </Tab.Navigator>
   );

@@ -142,7 +142,9 @@ export default function ChatScreen() {
     return (
       <ThemedScreen center>
         <Text style={styles.title}>Chat unavailable</Text>
-        <Text style={styles.subtitle}>We could not load this match right now.</Text>
+        <Text style={styles.subtitle}>
+          We could not load this match right now.
+        </Text>
       </ThemedScreen>
     );
   }
@@ -181,7 +183,9 @@ export default function ChatScreen() {
           onEndReachedThreshold={0.2}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No messages yet. Start the conversation!</Text>
+              <Text style={styles.emptyText}>
+                No messages yet. Start the conversation!
+              </Text>
             </View>
           }
         />
@@ -197,7 +201,12 @@ export default function ChatScreen() {
   );
 }
 
-const createStyles = (colors: { background: string; text: string; muted: string; border: string }) =>
+const createStyles = (colors: {
+  background: string;
+  text: string;
+  muted: string;
+  border: string;
+}) =>
   StyleSheet.create({
     container: {
       flex: 1,

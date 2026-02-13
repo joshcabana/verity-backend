@@ -46,10 +46,17 @@ export default function ThemedButton({
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled}
-      style={[styles.base, variantStyles.container, disabled && styles.disabled, style]}
+      style={[
+        styles.base,
+        variantStyles.container,
+        disabled && styles.disabled,
+        style,
+      ]}
       testID={testID}
     >
-      <Text style={[styles.textBase, variantStyles.text, textStyle]}>{label}</Text>
+      <Text style={[styles.textBase, variantStyles.text, textStyle]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }

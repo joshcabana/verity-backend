@@ -149,8 +149,8 @@ export default function ProfileEditScreen() {
 
       <ThemedCard style={styles.helperCard} padding={12}>
         <Text style={styles.helperText}>
-          Photos are managed during onboarding. Full profile visibility only unlocks after a
-          mutual match.
+          Photos are managed during onboarding. Full profile visibility only
+          unlocks after a mutual match.
         </Text>
       </ThemedCard>
 
@@ -163,7 +163,11 @@ export default function ProfileEditScreen() {
   );
 }
 
-const createStyles = (colors: { background: string; text: string; muted: string }) =>
+const createStyles = (colors: {
+  background: string;
+  text: string;
+  muted: string;
+}) =>
   StyleSheet.create({
     container: {
       padding: spacing.xl,

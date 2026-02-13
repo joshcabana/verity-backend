@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AUTH_TOKEN_KEY } from '../hooks/useAuth';
 
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? process.env.API_URL ?? 'http://localhost:3000';
+  process.env.EXPO_PUBLIC_API_URL ??
+  process.env.API_URL ??
+  'http://localhost:3000';
 
 type ApiFetchOptions = RequestInit & {
   tokenOverride?: string | null;

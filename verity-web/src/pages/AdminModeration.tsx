@@ -107,7 +107,11 @@ export const AdminModeration: React.FC = () => {
             <option value="BANNED">BANNED</option>
           </select>
         </label>
-        <button className="button" onClick={() => void fetchReports()} disabled={loading}>
+        <button
+          className="button"
+          onClick={() => void fetchReports()}
+          disabled={loading}
+        >
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>

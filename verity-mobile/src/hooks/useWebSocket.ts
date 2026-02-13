@@ -62,7 +62,10 @@ export function useWebSocket() {
   const lastMessage = useChatEventStore((state) => state.lastMessage);
   const lastSessionStart = useChatEventStore((state) => state.lastSessionStart);
 
-  const setLastMessage = useMemo(() => useChatEventStore.getState().setLastMessage, []);
+  const setLastMessage = useMemo(
+    () => useChatEventStore.getState().setLastMessage,
+    [],
+  );
   const setLastSessionStart = useMemo(
     () => useChatEventStore.getState().setLastSessionStart,
     [],
@@ -145,9 +148,12 @@ export function useWebSocket() {
     }
 
     if (videoSocketSingleton && !videoListenerAttached) {
-      videoSocketSingleton.on('session:start', (payload: SessionStartPayload) => {
-        setLastSessionStart(payload);
-      });
+      videoSocketSingleton.on(
+        'session:start',
+        (payload: SessionStartPayload) => {
+          setLastSessionStart(payload);
+        },
+      );
       videoListenerAttached = true;
     }
 
@@ -156,9 +162,12 @@ export function useWebSocket() {
     }
 
     if (chatSocketSingleton && !chatListenerAttached) {
-      chatSocketSingleton.on('message:new', (payload: Omit<ChatMessagePayload, 'receivedAt'>) => {
-        setLastMessage({ ...payload, receivedAt: Date.now() });
-      });
+      chatSocketSingleton.on(
+        'message:new',
+        (payload: Omit<ChatMessagePayload, 'receivedAt'>) => {
+          setLastMessage({ ...payload, receivedAt: Date.now() });
+        },
+      );
       chatSocketSingleton.on('connect', () => setChatConnected(true));
       chatSocketSingleton.on('disconnect', () => setChatConnected(false));
       chatListenerAttached = true;

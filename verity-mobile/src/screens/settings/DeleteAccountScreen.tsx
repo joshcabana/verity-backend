@@ -17,7 +17,6 @@ import { apiJson } from '../../services/api';
 import { useTheme } from '../../theme/ThemeProvider';
 import { lineHeights, spacing, typography } from '../../theme/tokens';
 
-
 export default function DeleteAccountScreen() {
   const navigation = useNavigation();
   const { token, logout } = useAuth();
@@ -32,7 +31,10 @@ export default function DeleteAccountScreen() {
 
   const handleDelete = async () => {
     if (!canDelete) {
-      Alert.alert('Type DELETE', 'Please type DELETE to confirm account deletion.');
+      Alert.alert(
+        'Type DELETE',
+        'Please type DELETE to confirm account deletion.',
+      );
       return;
     }
     if (!token) {
@@ -81,11 +83,14 @@ export default function DeleteAccountScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Delete Account</Text>
         <Text style={styles.subtitle}>
-          This action permanently deletes your account, history, and balance. This cannot be
-          undone.
+          This action permanently deletes your account, history, and balance.
+          This cannot be undone.
         </Text>
 
         <ThemedCard style={styles.card} padding={16}>
@@ -119,7 +124,11 @@ export default function DeleteAccountScreen() {
   );
 }
 
-const createStyles = (colors: { background: string; text: string; muted: string }) =>
+const createStyles = (colors: {
+  background: string;
+  text: string;
+  muted: string;
+}) =>
   StyleSheet.create({
     container: {
       flex: 1,

@@ -27,9 +27,7 @@ export function useDecision(sessionId?: string): UseDecisionState {
   const { videoSocket } = useWebSocket();
   const [choice, setChoice] = useState<DecisionChoice | null>(null);
   const [status, setStatus] = useState<UseDecisionState['status']>('idle');
-  const [result, setResult] = useState<DecisionResult | null>(
-    null,
-  );
+  const [result, setResult] = useState<DecisionResult | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submittedRef = useRef(false);
 

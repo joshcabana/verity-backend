@@ -47,7 +47,11 @@ export default function TokenBalanceDisplay({
   );
 }
 
-const createStyles = (colors: { text: string; muted: string; primary: string }) =>
+const createStyles = (colors: {
+  text: string;
+  muted: string;
+  primary: string;
+}) =>
   StyleSheet.create({
     label: {
       fontSize: typography.xs,

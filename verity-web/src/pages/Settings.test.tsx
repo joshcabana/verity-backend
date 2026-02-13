@@ -30,6 +30,7 @@ describe('Settings', () => {
   it('lists blocked users and unblocks one', async () => {
     apiJsonMock.mockImplementation(
       async (path: string, options?: { method?: string }) => {
+        await Promise.resolve();
         if (
           path === '/moderation/blocks' &&
           (!options || options.method === undefined)
