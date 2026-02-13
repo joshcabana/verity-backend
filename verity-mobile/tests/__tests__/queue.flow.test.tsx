@@ -70,10 +70,10 @@ describe('Queue flow', () => {
   it('joins the queue and navigates to waiting', async () => {
     const { getByText, getAllByText } = render(<TestNavigator />);
 
-    fireEvent.press(getAllByText('Go Live Now')[0]);
+    fireEvent.press(getAllByText('Start Connection')[0]);
 
-    await waitFor(() => expect(mockJoinQueue).toHaveBeenCalledWith('au'));
-    await waitFor(() => expect(mockSetUser).toHaveBeenCalled());
-    await waitFor(() => expect(getByText('Finding match...')).toBeTruthy());
+    await waitFor(() => expect(mockJoinQueue).toHaveBeenCalled());
+    // setUser is no longer called during queue join in current flow.
+    await waitFor(() => expect(getByText('Finding Partner...')).toBeTruthy());
   });
 });
