@@ -74,6 +74,8 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processQueueKey(queueKey: string) {
+    const sizeBefore = await this.queueService.getQueueSize(queueKey);
+
     for (let i = 0; i < MAX_MATCHES_PER_KEY; i += 1) {
       const pair = await this.queueService.popPair(queueKey);
       if (!pair) {
@@ -138,7 +140,10 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     await this.queueService.cleanupQueueKey(queueKey);
-    await this.gateway.emitQueueStatus(queueKey);
+    const sizeAfter = await this.queueService.getQueueSize(queueKey);
+    if (sizeAfter !== sizeBefore) {
+      await this.gateway.emitQueueStatus(queueKey);
+    }
   }
 
   private isWorkerEnabled() {
