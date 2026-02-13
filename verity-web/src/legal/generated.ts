@@ -16,141 +16,264 @@ export type LegalDoc = {
 export const legalDocs = {
   "privacy": {
     "title": "Verity Privacy Policy (Draft)",
-    "updated": "February 4, 2026",
+    "updated": "February 14, 2026",
     "sections": [
+      {
+        "heading": "Scope",
+        "body": [
+          "This policy explains how Verity handles personal information for the web beta."
+        ]
+      },
       {
         "heading": "Data We Collect",
         "body": [
-          "Anonymous account ID",
-          "Post-match profile details (name, photos, bio)",
-          "Messages and token transactions",
-          "Security logs (device, IP, user agent)",
-          "We do not collect pre-match personal identifiers."
+          "Account and authentication data (anonymous account ID, access tokens)",
+          "Onboarding data (date of birth and consent confirmations when provided)",
+          "Profile and communication data after matching (name, photos, bio, chat messages)",
+          "Usage and diagnostics data (device metadata, IP address, user agent, security logs)",
+          "Payment and purchase metadata related to token purchases (processed by Stripe)"
         ]
       },
       {
         "heading": "How We Use Data",
         "body": [
-          "Provide matching, video sessions, and mutual reveal",
-          "Prevent abuse and respond to safety reports",
-          "Operate payments and fraud prevention"
+          "Provide core app functionality (matching, sessions, mutual reveal, messaging)",
+          "Enforce safety systems, moderation, fraud checks, and abuse prevention",
+          "Process purchases, maintain service reliability, and troubleshoot incidents",
+          "Comply with legal obligations and respond to lawful requests"
         ]
       },
       {
-        "heading": "Retention",
+        "heading": "Legal Bases (where applicable)",
         "body": [
-          "Non-match sessions are removed after 24 hours",
-          "Matches are deleted on request via account deletion"
+          "Performance of our contract with you (providing the service)",
+          "Legitimate interests (safety, fraud prevention, service improvement)",
+          "Consent (where required, including specific notices)",
+          "Legal compliance obligations"
         ]
       },
       {
-        "heading": "Third-Party Providers",
+        "heading": "Sharing and Processors",
         "body": [
-          "We rely on:",
-          "Agora for video",
-          "Hive for live moderation",
-          "Stripe for payments"
+          "We use service providers to operate Verity, including:",
+          "Agora (video)",
+          "Hive (live moderation)",
+          "Stripe (payments)",
+          "We share only what is reasonably necessary for those services."
+        ]
+      },
+      {
+        "heading": "Data Retention",
+        "body": [
+          "Queue/session operational data is retained only as long as needed for matching and safety operations",
+          "Non-match session records are targeted for short retention (currently up to 24 hours unless required longer for security/legal reasons)",
+          "Account and transaction records may be retained for compliance, fraud prevention, and dispute handling",
+          "You can request deletion; we will delete or de-identify data unless we must keep it by law"
+        ]
+      },
+      {
+        "heading": "International Transfers",
+        "body": [
+          "Some providers may process data outside Australia. We use contractual and technical safeguards appropriate to risk."
         ]
       },
       {
         "heading": "Your Rights",
         "body": [
-          "You can request access or deletion of your data at any time."
+          "Depending on applicable law, you may request:",
+          "Access to personal information",
+          "Correction of inaccurate information",
+          "Deletion of eligible personal information",
+          "Information about how your data is used"
+        ]
+      },
+      {
+        "heading": "Children",
+        "body": [
+          "Verity is for adults (18+) only."
+        ]
+      },
+      {
+        "heading": "Security",
+        "body": [
+          "We use layered technical and organisational controls designed to protect personal information, but no system is perfectly secure."
         ]
       },
       {
         "heading": "Contact",
-        "body": []
+        "body": [
+          "For privacy requests or complaints: support@verity.app"
+        ]
       }
     ]
   },
   "terms": {
     "title": "Verity Terms of Service (Draft)",
-    "updated": "February 4, 2026",
+    "updated": "February 14, 2026",
     "sections": [
       {
         "heading": "Eligibility",
         "body": [
-          "You must be 18+ to use Verity."
+          "You must be at least 18 years old to use Verity.",
+          "You must provide truthful onboarding information and keep account details accurate."
         ]
       },
       {
-        "heading": "Conduct",
+        "heading": "Service Description",
         "body": [
-          "No harassment, hate speech, or illegal activity",
-          "No nudity or sexual content",
-          "No recording of video sessions"
+          "Verity provides short live video matching sessions, mutual reveal features, and in-app messaging after a match."
         ]
       },
       {
-        "heading": "Tokens & Payments",
+        "heading": "Acceptable Use",
         "body": [
-          "Tokens are non-refundable except where required by law. Tokens grant access to the queue and 45-second video sessions."
+          "You agree not to:",
+          "Harass, threaten, stalk, or abuse others",
+          "Post or transmit illegal, exploitative, or hateful content",
+          "Share another person’s personal information without consent",
+          "Record, stream, or redistribute live sessions without explicit consent",
+          "Attempt to bypass safety systems, moderation, or platform controls"
         ]
       },
       {
-        "heading": "Disputes",
+        "heading": "Safety and Enforcement",
         "body": [
-          "Governing law is Australia."
+          "We may investigate reports and enforce these Terms through warnings, suspensions, feature restrictions, or account termination."
+        ]
+      },
+      {
+        "heading": "Tokens and Payments",
+        "body": [
+          "Tokens are digital access credits for queue/session features.",
+          "Pricing and pack details are shown at purchase.",
+          "Tokens are generally non-refundable except where required by law.",
+          "Payments are processed by third-party providers (e.g., Stripe), subject to their terms."
+        ]
+      },
+      {
+        "heading": "Intellectual Property",
+        "body": [
+          "All platform software, branding, and content (excluding user content) belong to Verity or its licensors."
+        ]
+      },
+      {
+        "heading": "Disclaimers",
+        "body": [
+          "The service is provided on an \"as is\" and \"as available\" basis to the maximum extent permitted by law."
+        ]
+      },
+      {
+        "heading": "Limitation of Liability",
+        "body": [
+          "To the maximum extent permitted by law, Verity is not liable for indirect, incidental, special, consequential, or punitive damages."
+        ]
+      },
+      {
+        "heading": "Governing Law",
+        "body": [
+          "These Terms are governed by the laws of Australia, unless mandatory local law applies otherwise."
+        ]
+      },
+      {
+        "heading": "Changes to Terms",
+        "body": [
+          "We may update these Terms from time to time. Continued use after updates indicates acceptance of the revised Terms."
         ]
       },
       {
         "heading": "Contact",
-        "body": []
+        "body": [
+          "For support and legal notices: support@verity.app"
+        ]
       }
     ]
   },
   "community": {
     "title": "Verity Community Guidelines (Draft)",
-    "updated": "February 4, 2026",
+    "updated": "February 14, 2026",
     "sections": [
       {
-        "heading": "Respect & Safety",
+        "heading": "Respect and Consent",
         "body": [
-          "Treat others with respect",
-          "No harassment, threats, or hate speech",
-          "No sharing of personal info without consent"
+          "Treat people with respect and basic decency.",
+          "Respect boundaries and consent at all times.",
+          "Do not pressure others to share personal information."
         ]
       },
       {
-        "heading": "Moderation",
+        "heading": "Prohibited Behavior",
         "body": [
-          "Reports are reviewed and may lead to warnings or bans",
-          "Serious violations can result in immediate termination",
-          "Appeals can be requested via support@verity.app"
+          "Harassment, threats, intimidation, or hate speech",
+          "Sexual exploitation, coercive conduct, or non-consensual content",
+          "Impersonation, scams, or fraud",
+          "Doxxing or sharing personal data without permission",
+          "Recording or redistributing live sessions without consent"
+        ]
+      },
+      {
+        "heading": "Safety Signals and Moderation",
+        "body": [
+          "Real-time and report-based moderation may review activity for safety.",
+          "Violations can lead to warnings, temporary suspensions, or permanent bans.",
+          "Serious violations may result in immediate account termination."
         ]
       },
       {
         "heading": "Reporting",
         "body": [
-          "Use the in-app report flow to flag misconduct."
+          "Use the in-app report flow to flag misconduct. Include details so the team can review quickly."
+        ]
+      },
+      {
+        "heading": "Appeals",
+        "body": [
+          "If you believe an enforcement action was incorrect, contact support to request a review."
         ]
       },
       {
         "heading": "Contact",
-        "body": []
+        "body": [
+          "Safety and support: support@verity.app"
+        ]
       }
     ]
   },
   "cookies": {
     "title": "Verity Cookie & Tracking Notice (Draft)",
-    "updated": "February 4, 2026",
+    "updated": "February 14, 2026",
     "sections": [
       {
-        "heading": "Essential Cookies",
+        "heading": "What We Use",
         "body": [
-          "We use cookies to keep you signed in and to protect your account."
+          "Essential cookies and local storage for sign-in state and core app security",
+          "Functional storage to support app reliability and session continuity",
+          "Limited diagnostics/analytics signals to understand app stability and performance"
         ]
       },
       {
-        "heading": "Analytics",
+        "heading": "What We Do Not Use (Beta)",
         "body": [
-          "We do not use advertising cookies in the beta."
+          "No third-party advertising cookies",
+          "No cross-site ad retargeting identifiers in beta"
+        ]
+      },
+      {
+        "heading": "Your Choices",
+        "body": [
+          "Most browsers allow you to block or clear cookies and storage. Some features may stop working if essential cookies are disabled."
+        ]
+      },
+      {
+        "heading": "Changes",
+        "body": [
+          "We may update this notice as product and legal requirements evolve."
         ]
       },
       {
         "heading": "Contact",
-        "body": []
+        "body": [
+          "Questions: support@verity.app"
+        ]
       }
     ]
   }
