@@ -1,7 +1,14 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const WS_URL = import.meta.env.VITE_WS_URL ?? API_URL;
+function normalizeBaseUrl(raw: unknown, fallback: string): string {
+  const candidate = typeof raw === 'string' ? raw.trim() : '';
+  const base = candidate.length > 0 ? candidate : fallback;
+  return base.replace(/\/$/, '');
+}
+
+const API_URL = normalizeBaseUrl(
+  import.meta.env.VITE_API_URL,
+  'http://localhost:3000',
+);
+const WS_URL = normalizeBaseUrl(import.meta.env.VITE_WS_URL, API_URL);
 
 const TOKEN_KEY = 'verity_access_token';
 
@@ -17,7 +24,7 @@ export function setAccessToken(token: string | null) {
   }
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   const response = await fetch(`${API_URL}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',

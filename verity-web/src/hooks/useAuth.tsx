@@ -10,6 +10,7 @@ import {
   apiJson,
   decodeToken,
   getAccessToken,
+  refreshAccessToken,
   setAccessToken,
 } from '../api/client';
 import { trackEvent } from '../analytics/events';
@@ -73,6 +74,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setAccessToken(next);
     setTokenState(next);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (token || import.meta.env.MODE === 'test') {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const nextToken = await refreshAccessToken();
+        if (!cancelled && nextToken) {
+          setToken(nextToken);
+        }
+      } catch {
+        // no-op: bootstrap refresh is best-effort
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setToken, token]);
 
   const signUp = useCallback(
     async (input?: SignUpInput) => {
