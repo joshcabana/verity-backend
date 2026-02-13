@@ -53,10 +53,12 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('../api/client', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   apiJson: (...args: unknown[]) => apiJsonMock(...args),
 }));
 
 vi.mock('../analytics/events', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   trackEvent: (...args: unknown[]) => trackEventMock(...args),
 }));
 
@@ -82,6 +84,7 @@ describe('Home and Waiting queue flow', () => {
 
   it('joins queue after balance load', async () => {
     apiJsonMock.mockImplementation(async (path: string) => {
+      await Promise.resolve();
       if (path === '/tokens/balance') {
         return { ok: true, status: 200, data: { tokenBalance: 2 } };
       }
@@ -207,6 +210,7 @@ describe('Home and Waiting queue flow', () => {
         'queue_timeout_shown',
         expect.objectContaining({
           queueKey: '',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           elapsedSeconds: expect.any(Number),
         }),
       );
@@ -229,6 +233,7 @@ describe('Home and Waiting queue flow', () => {
         'queue_timeout_continue',
         expect.objectContaining({
           queueKey: '',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           elapsedSeconds: expect.any(Number),
         }),
       );
@@ -262,6 +267,7 @@ describe('Home and Waiting queue flow', () => {
         'queue_timeout_leave',
         expect.objectContaining({
           queueKey: 'queue-1',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           elapsedSeconds: expect.any(Number),
           refunded: true,
         }),

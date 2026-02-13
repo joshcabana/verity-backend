@@ -66,8 +66,7 @@ export const AdminModeration: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchReports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void fetchReports();
   }, [statusFilter]);
 
   const handleKeySave = () => {

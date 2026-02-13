@@ -7,6 +7,7 @@ import { renderWithProviders } from '../test/testUtils';
 const apiJsonMock = vi.fn();
 
 vi.mock('../api/client', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   apiJson: (...args: unknown[]) => apiJsonMock(...args),
 }));
 

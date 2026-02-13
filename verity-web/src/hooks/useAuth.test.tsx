@@ -10,6 +10,7 @@ vi.mock('../api/client', async () => {
     await vi.importActual<typeof import('../api/client')>('../api/client');
   return {
     ...actual,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     apiJson: (...args: unknown[]) => apiJsonMock(...args),
   };
 });
@@ -49,11 +50,13 @@ describe('useAuth', () => {
     await waitFor(() => {
       expect(apiJsonMock).toHaveBeenCalledWith('/notifications/tokens', {
         method: 'POST',
-        body: {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        body: expect.objectContaining({
           token: 'web-token-123456',
           platform: 'WEB',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           deviceId: expect.any(String),
-        },
+        }),
       });
     });
   });

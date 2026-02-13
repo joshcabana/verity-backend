@@ -1,4 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const WS_URL = import.meta.env.VITE_WS_URL ?? API_URL;
 
 const TOKEN_KEY = 'verity_access_token';

@@ -142,7 +142,7 @@ export const Session: React.FC = () => {
         }
 
         await client.publish(tracks);
-      } catch (err) {
+      } catch {
         if (!mounted) {
           return;
         }

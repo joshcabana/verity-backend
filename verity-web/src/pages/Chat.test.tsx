@@ -36,6 +36,7 @@ function emitSocket(event: string, payload: unknown) {
 }
 
 vi.mock('../analytics/events', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   trackEvent: (...args: unknown[]) => trackEventMock(...args),
 }));
 
