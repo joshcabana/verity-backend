@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap');
 
 :root {
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Playfair Display', serif;
+  --font-display: 'Space Grotesk', sans-serif;
   
   --color-bg: #000000;
   --color-ink: #FFFFFF;
@@ -14,6 +14,7 @@
   
   --gradient-gold: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 50%, #D4AF37 100%);
   --shadow-gold: 0 0 20px rgba(212, 175, 55, 0.15);
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.2);
   
   --spacing-base: 8px;
 }
@@ -26,11 +27,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display);
-  font-weight: 400;
-  color: var(--color-ink);
-  margin-top: 0;
+h1, h2, h3, h4, h5, h6.brand {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  letter-spacing: -0.02em;
+  color: var(--color-ink); /* Added to maintain color */
+  margin-top: 0; /* Added to maintain margin */
 }
 
 a {
@@ -49,6 +52,19 @@ a {
 .text-white { color: var(--color-ink); }
 .text-secondary { color: var(--color-secondary); }
 
+.home-top-rail {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--color-border); /* Changed from --border to --color-border */
+  border-radius: 16px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.62);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
 .bg-card {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
@@ -61,15 +77,17 @@ a {
 }
 
 .btn {
-  background: var(--gradient-gold);
-  color: #000;
+  background: rgba(0, 0, 0, 0.86);
+  color: var(--color-ink); /* Changed from #000 to var(--color-ink) */
   border: none;
   padding: 12px 24px;
   border-radius: 50px;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: var(--shadow-gold);
+  box-shadow: var(--shadow-soft); /* Changed from var(--shadow-gold) to var(--shadow-soft) */
+  -webkit-backdrop-filter: blur(10px); /* Moved from inside .home-top-rail */
+  backdrop-filter: blur(10px); /* Moved from inside .home-top-rail */
 }
 
 .btn:hover {
