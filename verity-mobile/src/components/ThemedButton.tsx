@@ -15,7 +15,8 @@ export type ThemedButtonVariant =
   | 'secondary'
   | 'danger'
   | 'outline'
-  | 'dangerOutline';
+  | 'dangerOutline'
+  | 'ghost';
 
 type ThemedButtonProps = {
   label: string;
@@ -138,6 +139,18 @@ const createVariantStyles = (colors: {
     },
     text: {
       color: colors.dangerSoft,
+    },
+  },
+  ghost: {
+    container: {
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      elevation: 0,
+    },
+    text: {
+      color: colors.text,
+      fontFamily: fontFamilies.bodySemibold,
+      opacity: 0.6,
     },
   },
 });

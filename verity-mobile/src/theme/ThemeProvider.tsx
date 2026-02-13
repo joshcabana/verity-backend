@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { palette } from './tokens';
 import React, {
   createContext,
   useCallback,
@@ -11,8 +10,6 @@ import React, {
 
 export type ThemeMode = 'light' | 'dark';
 
-import { colors as tokens } from './tokens';
-
 export type ThemeColors = {
   background: string;
   card: string;
@@ -22,24 +19,7 @@ export type ThemeColors = {
   primary: string;
   danger: string;
   dangerSoft: string;
-  success: string;
 };
-
-/* Enforce luxury dark theme for both modes */
-const luxuryTheme: ThemeColors = {
-  background: tokens.voidBlack,
-  card: tokens.darkGrey,
-  text: tokens.pureWhite,
-  muted: tokens.midGrey,
-  border: tokens.border,
-  primary: tokens.luxGold,
-  danger: tokens.danger,
-  dangerSoft: '#3E1F1F', // Darker soft danger for dark mode
-  success: tokens.success,
-};
-
-const darkColors = luxuryTheme;
-const lightColors = luxuryTheme;
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -49,6 +29,28 @@ type ThemeContextValue = {
 };
 
 const THEME_KEY = 'theme_preference';
+
+const darkColors: ThemeColors = {
+  background: '#000000',
+  card: '#151515',
+  text: '#FFFFFF',
+  muted: '#D9D9D9',
+  border: '#262626',
+  primary: '#D4AF37',
+  danger: '#C74A4A',
+  dangerSoft: '#F4C2C2',
+};
+
+const lightColors: ThemeColors = {
+  background: '#0B0B0B',
+  card: '#151515',
+  text: '#FFFFFF',
+  muted: '#D9D9D9',
+  border: '#262626',
+  primary: '#D4AF37',
+  danger: '#C74A4A',
+  dangerSoft: '#F4C2C2',
+};
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 

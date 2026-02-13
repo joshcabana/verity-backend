@@ -4,25 +4,24 @@ import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 import { trackEvent } from '../analytics/events';
 
-/* Replaced existing types with minimal necessary ones for the new design */
-type BalanceResponse = { tokenBalance: number };
-type PurchaseResponse = { url?: string };
-type JoinResponse = { queueKey?: string; position?: number };
-
 const CITY_OPTIONS = [
+  { value: 'canberra', label: 'Canberra' },
   { value: 'sydney', label: 'Sydney' },
   { value: 'melbourne', label: 'Melbourne' },
   { value: 'brisbane', label: 'Brisbane' },
   { value: 'perth', label: 'Perth' },
   { value: 'adelaide', label: 'Adelaide' },
-  { value: 'canberra', label: 'Canberra' },
 ] as const;
+
+type BalanceResponse = { tokenBalance: number };
+type PurchaseResponse = { url?: string };
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [city, setCity] = useState('sydney');
+  const [city, setCity] = useState('canberra');
   const [joining, setJoining] = useState(false);
 
+  // Fetch token balance
   const balanceQuery = useQuery({
     queryKey: ['token-balance'],
     queryFn: async () => {
@@ -37,309 +36,213 @@ export const Home: React.FC = () => {
   const tokenBalance = balanceQuery.data ?? 0;
   const canJoin = tokenBalance > 0 && !joining;
 
+  // Handle joining queue
   const handleJoin = async () => {
     if (!canJoin) return;
-    setJoining(true);
-    trackEvent('queue_join_requested', { city });
     
-    try {
-      const response = await apiJson<JoinResponse>('/queue/join', {
+    trackEvent('queue_join_requested', { city });
+    setJoining(true);
+    
+    const response = await apiJson<{ queueKey?: string; position?: number }>(
+      '/queue/join',
+      {
         method: 'POST',
         body: { city, preferences: {} },
-      });
-
-      if (!response.ok) {
-        alert('Unable to join queue. Please check your connection.');
-        return;
-      }
-
-      trackEvent('queue_joined', {
-        city,
-        queueKey: response.data?.queueKey ?? '',
-        position: response.data?.position ?? -1,
-      });
-      navigate('/waiting');
-    } catch {
-      alert('Error joining queue.');
-    } finally {
-      setJoining(false);
+      },
+    );
+    
+    setJoining(false);
+    
+    if (!response.ok) {
+      alert('Unable to join queue. Check your token balance.');
+      return;
     }
+    
+    trackEvent('queue_joined', {
+      city,
+      queueKey: response.data?.queueKey ?? '',
+      position: response.data?.position ?? -1,
+    });
+    
+    navigate('/waiting');
+  };
+
+  // Handle purchasing tokens
+  const handlePurchase = async (packId: string) => {
+    trackEvent('token_purchase_started', { packId });
+    const response = await apiJson<PurchaseResponse>('/tokens/purchase', {
+      method: 'POST',
+      body: { packId },
+    });
+    
+    if (response.ok && response.data?.url) {
+      window.location.href = response.data.url;
+      return;
+    }
+    
+    alert('Stripe checkout is not configured yet.');
   };
 
   return (
-    <div className="home-layout">
-      {/* 1. Sidebar Navigation (Left) */}
-      <aside className="sidebar">
-        <div className="logo">Verity</div>
-        <nav className="nav-menu">
-          <a href="#" className="nav-item active">Home</a>
-          <a href="#" className="nav-item">Matches</a>
-          <a href="#" className="nav-item">Shop</a>
-          <a href="#" className="nav-item">Settings</a>
-        </nav>
-        <div className="user-profile">
-          <div className="avatar-placeholder" />
-          <div className="user-info">
-            <span className="username">You</span>
-            <span className="tokens text-gold">{tokenBalance} Tokens</span>
-          </div>
-        </div>
-      </aside>
-
-      {/* 2. Hero Stage (Right / Main) */}
-      <main className="hero-stage">
-        {/* Abstract Portal Visual */}
-        <div className="portal-visual">
-          <div className="pulse-ring"></div>
-          <div className="core-glow"></div>
-        </div>
-
-        <div className="hero-content fade-in">
+    <>
+      {/* Hero Section */}
+      <section className="hero-split">
+        <div className="hero-content">
           <h1 className="hero-title">
-            No profiles.<br />
-            Just chemistry.
+            No Profiles.<br />
+            Just Chemistry.
           </h1>
-          <p className="hero-subhead text-secondary">
-            45 seconds to decide.
+          <p className="body-large">
+            45-second live video dates. Mutual reveal only.<br />
+            Instant connection, zero swipe fatigue.
           </p>
-
-          <div className="action-area">
-            <div className="city-picker">
-              <span className="text-secondary">Live in </span>
-              <select 
-                className="minimal-select"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              >
-                {CITY_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+          
+          <div className="card" style={{ maxWidth: '400px', padding: '24px' }}>
+            <div className="flex-center" style={{ justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span className="caption">Select City</span>
+              <span className="caption" style={{ color: 'var(--lux-gold)' }}>
+                {tokenBalance} Tokens Available
+              </span>
             </div>
-
+            
+            <select
+              className="input mb-md"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            >
+              {CITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            
             <button 
-              className="btn btn-primary btn-large"
+              className="btn btn-primary animate-pulse" 
+              style={{ width: '100%' }}
               onClick={handleJoin}
               disabled={!canJoin}
             >
               {joining ? 'Connecting...' : 'Go Live'}
             </button>
             
-            {!canJoin && (
-              <p className="error-text text-secondary mt-2">
-                {tokenBalance === 0 ? 'Top up tokens to join.' : ''}
-              </p>
+            {tokenBalance === 0 && (
+              <div className="text-center mt-lg">
+                <button 
+                  className="btn btn-ghost"
+                  onClick={() => handlePurchase('starter')}
+                >
+                  Get Tokens
+                </button>
+              </div>
             )}
           </div>
-        </div>
-
-        {/* 3. Queue Ticker */}
-        <div className="queue-ticker">
-          <div className="ticker-track">
-            • 124 Online • Matching in ~10s • Sydney • 85 Online • Matching in ~5s • Melbourne • 40 Online •
+          
+          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
+            <span className="caption">10k+ matches today</span>
           </div>
         </div>
-      </main>
-
-      {/* Scoped Styles for Home Layout */}
-      <style>{`
-        .home-layout {
-          display: flex;
-          min-height: 100vh;
-          background: #000;
-          color: #fff;
-          overflow: hidden;
-        }
-
-        /* Sidebar */
-        .sidebar {
-          width: 260px;
-          border-right: 1px solid #222;
-          padding: 40px 24px;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          background: #000;
-          z-index: 10;
-        }
-
-        .logo {
-          font-family: 'Playfair Display', serif;
-          font-size: 32px;
-          color: #fff;
-          margin-bottom: 60px;
-        }
-
-        .nav-menu {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-          flex: 1;
-        }
-
-        .nav-item {
-          color: #666;
-          font-size: 18px;
-          transition: color 0.2s;
-        }
-
-        .nav-item:hover, .nav-item.active {
-          color: #fff;
-        }
-
-        .user-profile {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding-top: 24px;
-          border-top: 1px solid #222;
-        }
-
-        .avatar-placeholder {
-          width: 40px;
-          height: 40px;
-          background: #1A1A1A;
-          border-radius: 50%;
-          border: 1px solid #333;
-        }
-
-        .user-info {
-          display: flex;
-          flex-direction: column;
-          font-size: 14px;
-        }
-
-        /* Hero Stage */
-        .hero-stage {
-          flex: 1;
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          background: radial-gradient(circle at center, #111 0%, #000 70%);
-        }
-
-        .hero-content {
-          text-align: center;
-          z-index: 5;
-          margin-top: -60px;
-        }
-
-        .hero-title {
-          font-size: 72px;
-          line-height: 1.1;
-          margin-bottom: 16px;
-          font-weight: 300;
-        }
-
-        .hero-subhead {
-          font-size: 20px;
-          margin-bottom: 48px;
-          font-weight: 300;
-        }
-
-        .action-area {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 24px;
-        }
         
-        .minimal-select {
-          background: transparent;
-          border: none;
-          color: #fff;
-          font-family: inherit;
-          font-size: 16px;
-          border-bottom: 1px solid #333;
-          padding-bottom: 2px;
-          cursor: pointer;
-        }
+        <div className="hero-visual">
+          {/* Abstract Connection Visual */}
+          <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="150" cy="150" r="100" stroke="var(--lux-gold)" strokeWidth="2" opacity="0.5">
+              <animate attributeName="r" values="100;120;100" dur="4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.5;0.2;0.5" dur="4s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="150" cy="150" r="70" stroke="var(--paper-white)" strokeWidth="1" opacity="0.8">
+              <animate attributeName="r" values="70;80;70" dur="3s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="150" cy="150" r="10" fill="var(--lux-gold)">
+              <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
+            </circle>
+            <path d="M150 50 L150 250" stroke="var(--charcoal)" strokeDasharray="4 4" />
+            <path d="M50 150 L250 150" stroke="var(--charcoal)" strokeDasharray="4 4" />
+          </svg>
+        </div>
+      </section>
 
-        .btn-large {
-          padding: 18px 60px;
-          font-size: 20px;
-          letter-spacing: 0.5px;
-        }
+      {/* How It Works */}
+      <section className="mt-lg mb-md">
+        <h2 className="section-title text-center">How It Works</h2>
+        <div className="grid-3">
+          <div className="card text-center">
+            <div className="flex-center mb-md">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 22h14" />
+                <path d="M5 2h14" />
+                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
+              </svg>
+            </div>
+            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>Join The Queue</h3>
+            <p className="body-standard mt-md">
+              Enter the live waiting room for your city. No browsing, just join.
+            </p>
+          </div>
+          
+          <div className="card text-center">
+             <div className="flex-center mb-md">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 7l-7 5 7 5V7z" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+            </div>
+            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>45s Date</h3>
+            <p className="body-standard mt-md">
+              Connect instantly via video. Audio on. No filters. Pure chemistry.
+            </p>
+          </div>
+          
+          <div className="card text-center">
+             <div className="flex-center mb-md">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </div>
+            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>Decide</h3>
+            <p className="body-standard mt-md">
+              Private decision. Only a mutual match reveals identities and unlocks chat.
+            </p>
+          </div>
+        </div>
+      </section>
 
-        /* Portal Visual (Abstract) */
-        .portal-visual {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 600px;
-          height: 600px;
-          pointer-events: none;
-        }
-
-        .core-glow {
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 60%);
-          animation: pulse 4s ease-in-out infinite;
-        }
-
-        .pulse-ring {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 300px;
-          height: 300px;
-          border: 1px solid rgba(212, 175, 55, 0.1);
-          border-radius: 50%;
-          animation: ripple 3s linear infinite;
-        }
-
-        /* Queue Ticker */
-        .queue-ticker {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 60px;
-          background: #111;
-          display: flex;
-          align-items: center;
-          overflow: hidden;
-          border-top: 1px solid #222;
-        }
-
-        .ticker-track {
-          white-space: nowrap;
-          color: #666;
-          font-size: 14px;
-          font-family: 'Space Mono', monospace; /* Fallback to monospace for digital feel */
-          animation: marquee 20s linear infinite;
-          padding-left: 100%;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 0.5; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.1); }
-        }
-
-        @keyframes ripple {
-          0% { width: 300px; height: 300px; opacity: 0.5; border-width: 1px; }
-          100% { width: 500px; height: 500px; opacity: 0; border-width: 0px; }
-        }
-
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-100%); }
-        }
-
-        @media (max-width: 768px) {
-          .home-layout { flex-direction: column; }
-          .sidebar { display: none; } /* Hide sidebar on mobile for now - simplified */
-          .hero-title { font-size: 40px; }
-          .hero-subhead { font-size: 18px; }
-          .portal-visual { width: 300px; height: 300px; }
-          .btn-large { width: 100%; max-width: 300px; }
-        }
-      `}</style>
-    </div>
+      {/* Safety Section */}
+      <section className="card mb-md mt-lg" style={{ background: 'var(--charcoal)', border: '1px solid var(--asphalt)' }}>
+        <div className="grid-3" style={{ alignItems: 'center' }}>
+          <div>
+            <h2 className="section-title">Unrecorded.<br/>Private.<br/>Safe.</h2>
+            <div className="flex-center" style={{ justifyContent: 'flex-start', marginTop: '16px' }}>
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+          </div>
+          <div style={{ gridColumn: 'span 2' }}>
+            <p className="body-large mb-md">
+              Safety is built into the core. Video calls are never recorded.
+              Real-time AI moderation detects and blocks unsafe behavior instantly.
+            </p>
+            <p className="body-standard">
+              You are always in control. Report or block any user with a single tap.
+              Your location is never shared.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      {/* Footer */}
+      <footer className="text-center mt-lg mb-md">
+        <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', marginBottom: '16px' }}>
+          <a href="#" className="caption" style={{ textDecoration: 'none' }}>Support</a>
+          <a href="#" className="caption" style={{ textDecoration: 'none' }}>Privacy</a>
+          <a href="#" className="caption" style={{ textDecoration: 'none' }}>Terms</a>
+        </div>
+        <div className="caption" style={{ color: 'var(--asphalt)' }}>
+          © 2026 Verity Inc.
+        </div>
+      </footer>
+    </>
   );
 };
