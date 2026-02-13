@@ -46,120 +46,145 @@ export const Onboarding: React.FC = () => {
   };
 
   return (
-    <section className="grid two">
-      <div className="card">
-        <div className="inline">
-          <span className="badge">Australia-first</span>
-          <span className="pill success">Privacy-first beta</span>
-          {flags.onboardingVariant !== 'control' && (
-            <span className="badge">Variant {flags.onboardingVariant}</span>
-          )}
-        </div>
-        <h1 className="hero-title">
-          Real-time matches, {flags.sessionDurationSeconds}-second video, and
-          instant decisions.
-        </h1>
-        <p className="subtle">
-          Verity pairs you in a live queue, drops you into a short video call,
-          and reveals identities only after a mutual match.
-        </p>
-        <div className="callout safety">
-          <strong>Safety by design</strong>
-          <p className="subtle">
-            Calls are not recorded. Real-time AI moderation keeps the experience
-            safe.
+    <>
+      <section className="hero-split">
+        <div className="hero-content">
+          <h1 className="hero-title">
+            No Profiles.<br />
+            Just Chemistry.
+          </h1>
+          <p className="body-large">
+            Verity eliminates swipe fatigue. Meet in a live, 45-second video call. 
+            Mutual reveal only. Instant connection.
+          </p>
+
+          <div className="card" style={{ maxWidth: '440px' }}>
+            <h2 className="section-title" style={{ fontSize: '1.5rem', marginBottom: '16px' }}>Start Anonymously</h2>
+            
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <label className="body-standard flex-center" style={{ justifyContent: 'space-between' }}>
+                <span className="caption">Date of Birth (18+)</span>
+                <input
+                  className="input"
+                  style={{ width: 'auto' }}
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(event) => setDateOfBirth(event.target.value)}
+                />
+              </label>
+
+              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  checked={ageConfirmed}
+                  onChange={(event) => setAgeConfirmed(event.target.checked)}
+                />
+                I am 18 years or older
+              </label>
+
+              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  checked={videoConsent}
+                  onChange={(event) => setVideoConsent(event.target.checked)}
+                />
+                I consent to 45s video calls (unrecorded)
+              </label>
+
+              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  checked={aiConsent}
+                  onChange={(event) => setAiConsent(event.target.checked)}
+                />
+                I consent to real-time AI moderation
+              </label>
+              
+              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  checked={termsAccepted}
+                  onChange={(event) => setTermsAccepted(event.target.checked)}
+                />
+                <span>I agree to the <Link to="/legal/terms" style={{ color: 'var(--lux-gold)' }}>Terms</Link> & <Link to="/legal/privacy" style={{ color: 'var(--lux-gold)' }}>Privacy</Link></span>
+              </label>
+            </div>
+
+            <button
+              className="btn btn-primary animate-pulse mt-lg"
+              style={{ width: '100%' }}
+              onClick={() => void handleStart()}
+              disabled={loading || !ready}
+            >
+              {loading ? 'Creating Profile...' : 'Go Live'}
+            </button>
+          </div>
+          
+           <p className="caption mt-md">
+            By continuing you acknowledge our <Link to="/legal/cookies" style={{ color: 'var(--silver)', textDecoration: 'underline' }}>Cookie Notice</Link> and <Link to="/legal/community" style={{ color: 'var(--silver)', textDecoration: 'underline' }}>Community Guidelines</Link>.
           </p>
         </div>
-        <div className="input-stack">
-          <label className="subtle">
-            Date of birth (18+)
-            <input
-              className="input"
-              type="date"
-              value={dateOfBirth}
-              onChange={(event) => setDateOfBirth(event.target.value)}
-            />
-          </label>
-          <label className="subtle">
-            <input
-              type="checkbox"
-              checked={ageConfirmed}
-              onChange={(event) => setAgeConfirmed(event.target.checked)}
-            />
-            I confirm I am 18 or older.
-          </label>
-          <label className="subtle">
-            <input
-              type="checkbox"
-              checked={videoConsent}
-              onChange={(event) => setVideoConsent(event.target.checked)}
-            />
-            I consent to 45-second video calls (not recorded).
-          </label>
-          <label className="subtle">
-            <input
-              type="checkbox"
-              checked={aiConsent}
-              onChange={(event) => setAiConsent(event.target.checked)}
-            />
-            I consent to real-time AI moderation for safety.
-          </label>
-          <label className="subtle">
-            <input
-              type="checkbox"
-              checked={termsAccepted}
-              onChange={(event) => setTermsAccepted(event.target.checked)}
-            />
-            I agree to the <Link to="/legal/terms">Terms</Link> and{' '}
-            <Link to="/legal/privacy">Privacy Policy</Link>.
-          </label>
+
+        <div className="hero-visual">
+          <svg width="300" height="300" viewBox="0 0 300 300" fill="none">
+             <defs>
+              <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="var(--lux-gold)" />
+                <stop offset="100%" stopColor="#F2D06B" />
+              </linearGradient>
+            </defs>
+            <circle cx="150" cy="150" r="120" stroke="url(#goldGrad)" strokeWidth="1" opacity="0.3">
+               <animate attributeName="r" values="120;130;120" dur="6s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="150" cy="150" r="90" stroke="var(--paper-white)" strokeWidth="0.5" opacity="0.6">
+               <animate attributeName="r" values="90;100;90" dur="4s" repeatCount="indefinite" />
+            </circle>
+             <path d="M150 100 L150 200" stroke="var(--lux-gold)" strokeWidth="2" strokeLinecap="round">
+               <animate attributeName="d" values="M150 100 L150 200; M150 120 L150 180; M150 100 L150 200" dur="3s" repeatCount="indefinite" />
+             </path>
+             <path d="M100 150 L200 150" stroke="var(--lux-gold)" strokeWidth="2" strokeLinecap="round">
+                <animate attributeName="d" values="M100 150 L200 150; M120 150 L180 150; M100 150 L200 150" dur="3s" repeatCount="indefinite" />
+             </path>
+          </svg>
         </div>
-        <button
-          className="button"
-          onClick={() => void handleStart()}
-          disabled={loading || !ready}
-        >
-          {loading ? 'Creating profile...' : 'Start anonymously'}
-        </button>
-        <p className="subtle">
-          By continuing you acknowledge our{' '}
-          <Link to="/legal/cookies">Cookie Notice</Link> and{' '}
-          <Link to="/legal/community">Community Guidelines</Link>.
-        </p>
-      </div>
-      <div className="card">
-        <h2 className="section-title">What happens next</h2>
-        <ul className="steps">
-          <li>
-            <span>1</span>
-            <div>
-              <strong>Join the queue</strong>
-              <p className="subtle">Spend one token to enter the live queue.</p>
-            </div>
-          </li>
-          <li>
-            <span>2</span>
-            <div>
-              <strong>{flags.sessionDurationSeconds}-second session</strong>
-              <p className="subtle">Meet in a short, moderated video call.</p>
-            </div>
-          </li>
-          <li>
-            <span>3</span>
-            <div>
-              <strong>Mutual decision</strong>
-              <p className="subtle">Choose MATCH or PASS after the call.</p>
-            </div>
-          </li>
-          <li>
-            <span>4</span>
-            <div>
-              <strong>Chat instantly</strong>
-              <p className="subtle">Mutual matches unlock secure messaging.</p>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </section>
+      </section>
+
+      {/* How It Works */}
+      <section className="mt-lg mb-md">
+        <h2 className="section-title text-center">How It Works</h2>
+        <div className="grid-3">
+          <div className="card text-center">
+             <h3 className="body-large" style={{ color: 'var(--paper-white)', fontWeight: 600 }}>1. Join The Queue</h3>
+             <p className="body-standard mt-md">Enter the live waiting room. No browsing, just join.</p>
+          </div>
+          <div className="card text-center">
+             <h3 className="body-large" style={{ color: 'var(--paper-white)', fontWeight: 600 }}>2. {flags.sessionDurationSeconds}s Date</h3>
+             <p className="body-standard mt-md">Connect instantly via video. Audio on. No filters.</p>
+          </div>
+           <div className="card text-center">
+             <h3 className="body-large" style={{ color: 'var(--paper-white)', fontWeight: 600 }}>3. Decide</h3>
+             <p className="body-standard mt-md">Private decision. Mutual match reveals identities.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Safety */}
+       <section className="card mb-md mt-lg" style={{ background: 'var(--charcoal)', border: '1px solid var(--asphalt)' }}>
+        <div className="grid-3" style={{ alignItems: 'center' }}>
+          <div>
+            <h2 className="section-title">Safety by Design</h2>
+          </div>
+          <div style={{ gridColumn: 'span 2' }}>
+            <p className="body-large mb-md">
+              Calls are never recorded. Real-time AI moderation detects and blocks unsafe behavior instantly.
+            </p>
+          </div>
+        </div>
+      </section>
+    </>
   );
 };
