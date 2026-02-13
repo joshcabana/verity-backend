@@ -59,16 +59,28 @@ export async function apiFetch(
   return response;
 }
 
+type ApiJsonOptions = Omit<RequestInit, 'body'> & {
+  body?: BodyInit | Record<string, unknown> | null;
+};
+
 export async function apiJson<T>(
   path: string,
-  options: RequestInit = {},
+  options: ApiJsonOptions = {},
 ): Promise<{ ok: boolean; status: number; data: T | null }> {
   const headers = new Headers(options.headers ?? undefined);
-  let body = options.body;
+  let body: BodyInit | null | undefined;
 
-  if (body && typeof body !== 'string') {
+  if (
+    options.body &&
+    typeof options.body !== 'string' &&
+    !(options.body instanceof Blob) &&
+    !(options.body instanceof FormData) &&
+    !(options.body instanceof URLSearchParams)
+  ) {
     headers.set('Content-Type', 'application/json');
-    body = JSON.stringify(body);
+    body = JSON.stringify(options.body);
+  } else {
+    body = options.body as BodyInit | null | undefined;
   }
 
   const response = await apiFetch(path, { ...options, headers, body });
