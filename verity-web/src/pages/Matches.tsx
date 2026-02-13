@@ -3,21 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 
-type PartnerReveal = {
-  id: string;
-  displayName: string | null;
-  primaryPhotoUrl: string | null;
-  age: number | null;
-  bio: string | null;
-};
-
-type Match = {
-  matchId: string;
-  partnerRevealVersion: number;
-  revealAcknowledged: boolean;
-  revealAcknowledgedAt: string | null;
-  partnerReveal: PartnerReveal | null;
-};
+type PartnerReveal = { id: string; displayName: string | null; primaryPhotoUrl: string | null; age: number | null; bio: string | null };
+type Match = { matchId: string; revealAcknowledged: boolean; partnerReveal: PartnerReveal | null };
 
 export const Matches: React.FC = () => {
   const navigate = useNavigate();
@@ -27,36 +14,18 @@ export const Matches: React.FC = () => {
     queryKey: ['matches'],
     queryFn: async () => {
       const response = await apiJson<Match[]>('/matches');
-      if (!response.ok || !response.data) {
-        throw new Error('Failed to load matches');
-      }
+      if (!response.ok || !response.data) throw new Error('Failed to load matches');
       return response.data;
     },
   });
 
-  if (matchesQuery.isLoading) {
-    return <section className="card">Loading matches…</section>;
-  }
-
+  if (matchesQuery.isLoading) return <section className="card">Loading matches…</section>;
   if (matchesQuery.isError) {
     return (
-      <section className="card">
+      <section className="card space-y-3">
         <h2 className="section-title">Your matches</h2>
-        <div className="callout" style={{ marginTop: '12px' }}>
-          <strong>Unable to load matches</strong>
-          <p className="subtle">
-            {offline
-              ? 'You appear to be offline. Reconnect and try again.'
-              : 'Check your connection and try again.'}
-          </p>
-        </div>
-        <button
-          className="button secondary"
-          style={{ marginTop: '12px' }}
-          onClick={() => void matchesQuery.refetch()}
-        >
-          Retry
-        </button>
+        <p className="subtle">{offline ? 'You appear to be offline. Reconnect and try again.' : 'Unable to load matches.'}</p>
+        <button className="btn-ghost" onClick={() => void matchesQuery.refetch()}>Retry</button>
       </section>
     );
   }
@@ -64,56 +33,25 @@ export const Matches: React.FC = () => {
   const matches = matchesQuery.data ?? [];
 
   return (
-    <section className="grid">
-      <div className="card">
-        <div className="inline" style={{ justifyContent: 'space-between' }}>
-          <h2 className="section-title">Your matches</h2>
-          <span className="pill">{matches.length} total</span>
-        </div>
-        {matches.length === 0 ? (
-          <div className="callout" style={{ marginTop: '12px' }}>
-            <strong>No matches yet</strong>
-            <p className="subtle">Join the queue to get paired.</p>
-          </div>
-        ) : (
-          <div className="grid" style={{ gap: '12px', marginTop: '12px' }}>
-            {matches.map((match) => (
-              <div key={match.matchId} className="card soft">
-                <div
-                  className="inline"
-                  style={{ justifyContent: 'space-between' }}
-                >
-                  <h3 style={{ margin: 0 }}>
-                    {match.partnerReveal?.displayName ?? 'New match'}
-                  </h3>
-                  <span className="pill">
-                    {match.revealAcknowledged
-                      ? 'Reveal complete'
-                      : 'Reveal required'}
-                  </span>
-                </div>
-                {match.partnerReveal?.bio && match.revealAcknowledged && (
-                  <p className="subtle" style={{ marginTop: '8px' }}>
-                    {match.partnerReveal.bio}
-                  </p>
-                )}
-                {!match.revealAcknowledged && (
-                  <p className="subtle" style={{ marginTop: '8px' }}>
-                    Open this match to view the profile reveal.
-                  </p>
-                )}
-                <button
-                  className="button secondary"
-                  style={{ marginTop: '12px' }}
-                  onClick={() => navigate(`/chat/${match.matchId}`)}
-                >
-                  Open chat
-                </button>
+    <section className="card space-y-4">
+      <div className="flex items-center justify-between"><h2 className="section-title">Your matches</h2><span className="pill">{matches.length} total</span></div>
+      {matches.length === 0 ? (
+        <p className="subtle">No matches yet</p>
+      ) : (
+        <div className="grid gap-3">
+          {matches.map((match) => (
+            <article key={match.matchId} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <h3 className="font-semibold">{match.partnerReveal?.displayName ?? 'New match'}</h3>
+              {match.partnerReveal?.bio && match.revealAcknowledged && <p className="subtle mt-1">{match.partnerReveal.bio}</p>}
+              {!match.revealAcknowledged && <p className="subtle mt-1">Open this match to view the profile reveal.</p>}
+              <div className="mt-3 flex items-center justify-between">
+                <span className="subtle">{match.revealAcknowledged ? 'Reveal complete' : 'Reveal required'}</span>
+                <button className="btn-ghost px-4 py-2" onClick={() => navigate(`/chat/${match.matchId}`)}>Open chat</button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

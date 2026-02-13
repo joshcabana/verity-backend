@@ -48,10 +48,7 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const RouteFallback: React.FC = () => (
   <section className="card">
-    <div className="inline">
-      <div className="spinner" />
-      <p className="subtle">Loading...</p>
-    </div>
+    <p className="subtle">Loading…</p>
   </section>
 );
 
