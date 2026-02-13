@@ -159,10 +159,10 @@ export const Home: React.FC = () => {
       </section>
 
       {/* How It Works */}
-      <section className="mt-lg mb-md">
+      <section className="mt-lg mb-md home-how">
         <h2 className="section-title text-center">How It Works</h2>
         <div className="grid-3">
-          <div className="card text-center">
+          <div className="card text-center home-feature-card">
             <div className="flex-center mb-md">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 22h14" />
@@ -177,7 +177,7 @@ export const Home: React.FC = () => {
             </p>
           </div>
           
-          <div className="card text-center">
+          <div className="card text-center home-feature-card">
              <div className="flex-center mb-md">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 7l-7 5 7 5V7z" />
@@ -190,7 +190,7 @@ export const Home: React.FC = () => {
             </p>
           </div>
           
-          <div className="card text-center">
+          <div className="card text-center home-feature-card">
              <div className="flex-center mb-md">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -205,7 +205,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Safety Section */}
-      <section className="card mb-md mt-lg" style={{ background: 'var(--charcoal)', border: '1px solid var(--asphalt)' }}>
+      <section className="card mb-md mt-lg home-safety" style={{ background: 'var(--charcoal)', border: '1px solid var(--asphalt)' }}>
         <div className="grid-3" style={{ alignItems: 'center' }}>
           <div>
             <h2 className="section-title">Unrecorded.<br/>Private.<br/>Safe.</h2>
@@ -229,7 +229,7 @@ export const Home: React.FC = () => {
       </section>
       
       {/* Footer */}
-      <footer className="text-center mt-lg mb-md">
+      <footer className="text-center mt-lg mb-md home-footer">
         <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', marginBottom: '16px' }}>
           <a href="#" className="caption" style={{ textDecoration: 'none' }}>Support</a>
           <a href="#" className="caption" style={{ textDecoration: 'none' }}>Privacy</a>

@@ -228,6 +228,48 @@ header {
   box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.15);
 }
 
+.home-how {
+  margin-top: 40px;
+}
+
+.home-feature-card {
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.home-feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(212, 175, 55, 0.1);
+}
+
+.home-safety {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-safety::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(120deg, rgba(124, 137, 255, 0.14), transparent 35%, rgba(212, 175, 55, 0.16));
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.home-safety > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-footer a {
+  color: var(--silver);
+  transition: color 0.2s ease;
+}
+
+.home-footer a:hover {
+  color: var(--paper-white);
+}
+
 .hero-visual {
   flex: 1;
   background: radial-gradient(circle at 35% 35%, rgba(124, 137, 255, 0.2), transparent 55%),
