@@ -4,44 +4,24 @@ import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 import { trackEvent } from '../analytics/events';
 
-const PACKS = [
-  { id: 'starter', label: 'Starter', tokens: 5 },
-  { id: 'plus', label: 'Plus', tokens: 15 },
-  { id: 'pro', label: 'Pro', tokens: 30 },
-] as const;
-
-const DEFAULT_CITY = 'canberra';
-
+/* Replaced existing types with minimal necessary ones for the new design */
 type BalanceResponse = { tokenBalance: number };
-
 type PurchaseResponse = { url?: string };
+type JoinResponse = { queueKey?: string; position?: number };
 
-const TRUST_ITEMS = [
-  'Unrecorded Calls',
-  'Mutual Reveal Only',
-  'Report in One Tap',
-  'Avg wait in Canberra: < 30s',
-] as const;
-
-const HOW_IT_WORKS = [
-  {
-    title: '1 — Go Live',
-    body: 'Join instantly. No browsing profiles.',
-  },
-  {
-    title: '2 — 45-Second Call',
-    body: 'Talk face-to-face in a timed live intro.',
-  },
-  {
-    title: '3 — Match or Pass',
-    body: 'Only mutual matches reveal identity and unlock chat.',
-  },
+const CITY_OPTIONS = [
+  { value: 'sydney', label: 'Sydney' },
+  { value: 'melbourne', label: 'Melbourne' },
+  { value: 'brisbane', label: 'Brisbane' },
+  { value: 'perth', label: 'Perth' },
+  { value: 'adelaide', label: 'Adelaide' },
+  { value: 'canberra', label: 'Canberra' },
 ] as const;
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [city, setCity] = useState('sydney');
   const [joining, setJoining] = useState(false);
-  const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
 
   const balanceQuery = useQuery({
     queryKey: ['token-balance'],
@@ -58,256 +38,308 @@ export const Home: React.FC = () => {
   const canJoin = tokenBalance > 0 && !joining;
 
   const handleJoin = async () => {
-    if (!canJoin) {
-      return;
-    }
-    trackEvent('queue_join_requested', {
-      city: DEFAULT_CITY,
-    });
+    if (!canJoin) return;
     setJoining(true);
-    const response = await apiJson<{ queueKey?: string; position?: number }>(
-      '/queue/join',
-      {
+    trackEvent('queue_join_requested', { city });
+    
+    try {
+      const response = await apiJson<JoinResponse>('/queue/join', {
         method: 'POST',
-        body: { city: DEFAULT_CITY, preferences: {} },
-      },
-    );
-    setJoining(false);
-    if (!response.ok) {
-      alert('Unable to join queue. Check your token balance.');
-      return;
-    }
-    trackEvent('queue_joined', {
-      city: DEFAULT_CITY,
-      queueKey: response.data?.queueKey ?? '',
-      position: response.data?.position ?? -1,
-    });
-    navigate('/waiting', {
-      state: {
-        queueKey: response.data?.queueKey ?? null,
-      },
-    });
-  };
+        body: { city, preferences: {} },
+      });
 
-  const handlePurchase = async (packId: string) => {
-    setBuyingPackId(packId);
-    trackEvent('token_purchase_started', { packId });
-    const response = await apiJson<PurchaseResponse>('/tokens/purchase', {
-      method: 'POST',
-      body: { packId },
-    });
-    setBuyingPackId(null);
-    if (response.ok && response.data?.url) {
-      window.location.href = response.data.url;
-      return;
-    }
-    alert('Stripe checkout is not configured yet.');
-  };
+      if (!response.ok) {
+        alert('Unable to join queue. Please check your connection.');
+        return;
+      }
 
-  const balanceLabel = useMemo(() => {
-    if (balanceQuery.isLoading) {
-      return 'Loading balance...';
+      trackEvent('queue_joined', {
+        city,
+        queueKey: response.data?.queueKey ?? '',
+        position: response.data?.position ?? -1,
+      });
+      navigate('/waiting');
+    } catch {
+      alert('Error joining queue.');
+    } finally {
+      setJoining(false);
     }
-    if (balanceQuery.isError) {
-      return 'Unable to load balance';
-    }
-    return `${tokenBalance} tokens`;
-  }, [balanceQuery.isLoading, balanceQuery.isError, tokenBalance]);
-
-  const scrollToHow = () => {
-    document.getElementById('home-how-it-works')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
   };
 
   return (
-    <section className="home-shell">
-      <div className="home-top-rail">
-        <span className="home-wordmark">VERITY</span>
-        <button
-          className="home-rail-action"
-          onClick={() => (canJoin ? void handleJoin() : scrollToHow())}
-          type="button"
-        >
-          {balanceQuery.isLoading ? 'How it works' : `Tokens: ${tokenBalance}`}
-        </button>
-      </div>
-
-      <section className="home-hero">
-        <div className="home-hero-copy">
-          <p className="home-eyebrow">LIVE INTROS. ZERO SWIPE FATIGUE.</p>
-          <h1 className="home-hero-title">Meet first. Reveal later.</h1>
-          <p className="home-hero-subtitle">
-            Verity matches you into a 45-second live video intro. Mutual match
-            unlocks identity and chat.
-          </p>
-          <div className="home-hero-actions">
-            <button
-              className="button home-primary-cta"
-              onClick={() => void handleJoin()}
-              disabled={!canJoin}
-            >
-              {joining ? 'Joining...' : 'Go Live Now'}
-            </button>
-            <button
-              className="button secondary"
-              onClick={scrollToHow}
-              type="button"
-            >
-              See How It Works
-            </button>
+    <div className="home-layout">
+      {/* 1. Sidebar Navigation (Left) */}
+      <aside className="sidebar">
+        <div className="logo">Verity</div>
+        <nav className="nav-menu">
+          <a href="#" className="nav-item active">Home</a>
+          <a href="#" className="nav-item">Matches</a>
+          <a href="#" className="nav-item">Shop</a>
+          <a href="#" className="nav-item">Settings</a>
+        </nav>
+        <div className="user-profile">
+          <div className="avatar-placeholder" />
+          <div className="user-info">
+            <span className="username">You</span>
+            <span className="tokens text-gold">{tokenBalance} Tokens</span>
           </div>
         </div>
-        <div className="home-hero-visual" aria-hidden="true">
-          <div className="signal-ring ring-1" />
-          <div className="signal-ring ring-2" />
-          <div className="signal-pulse" />
+      </aside>
+
+      {/* 2. Hero Stage (Right / Main) */}
+      <main className="hero-stage">
+        {/* Abstract Portal Visual */}
+        <div className="portal-visual">
+          <div className="pulse-ring"></div>
+          <div className="core-glow"></div>
         </div>
-      </section>
 
-      <section className="home-card-grid">
-        <article className="card home-primary-card" id="home-primary-live">
-          <div className="inline spread">
-            <h2 className="section-title">Ready for your next 45 seconds?</h2>
-            <span className="pill">Live in Canberra</span>
-          </div>
-          <p className="subtle">
-            1 token starts a live intro. If no match forms, your token is
-            returned.
+        <div className="hero-content fade-in">
+          <h1 className="hero-title">
+            No profiles.<br />
+            Just chemistry.
+          </h1>
+          <p className="hero-subhead text-secondary">
+            45 seconds to decide.
           </p>
-          <div className="home-balance-line">
-            <span className="subtle">Current balance</span>
-            <strong>{balanceLabel}</strong>
-          </div>
-          <div className="home-card-actions">
-            <button
-              className="button home-primary-cta"
-              onClick={() => void handleJoin()}
-              disabled={!canJoin}
-            >
-              {joining ? 'Joining...' : 'Go Live Now'}
-            </button>
-            <button
-              className="button ghost"
-              onClick={scrollToHow}
-              type="button"
-            >
-              How Matching Works
-            </button>
-          </div>
-          {tokenBalance === 0 && (
-            <p className="subtle">
-              You need at least 1 token to start a live intro.
-            </p>
-          )}
-        </article>
 
-        <article className="card home-token-card">
-          <h3 className="section-title">Stay in the flow.</h3>
-          <p className="subtle">
-            Top up tokens anytime. Start calls in one tap.
-          </p>
-          <div className="stack tight">
-            {PACKS.map((pack) => (
-              <button
-                key={pack.id}
-                className="button secondary"
-                onClick={() => void handlePurchase(pack.id)}
-                disabled={Boolean(buyingPackId)}
+          <div className="action-area">
+            <div className="city-picker">
+              <span className="text-secondary">Live in </span>
+              <select 
+                className="minimal-select"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
               >
-                {buyingPackId === pack.id
-                  ? 'Starting checkout...'
-                  : `View ${pack.label} · ${pack.tokens} tokens`}
-              </button>
-            ))}
-          </div>
-        </article>
-      </section>
+                {CITY_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
 
-      <section className="home-trust-strip">
-        {TRUST_ITEMS.map((item) => (
-          <div key={item} className="home-trust-chip">
-            <span className="home-chip-dot" aria-hidden="true" />
-            {item}
-          </div>
-        ))}
-      </section>
-
-      <section className="card home-how-it-works" id="home-how-it-works">
-        <h2 className="section-title">How it works</h2>
-        <div className="home-step-grid">
-          {HOW_IT_WORKS.map((step) => (
-            <article key={step.title} className="home-step-card">
-              <h3>{step.title}</h3>
-              <p>{step.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="home-duo-grid" id="home-safety">
-        <article className="card">
-          <h2 className="section-title">Built for confident conversations.</h2>
-          <ul className="list subtle">
-            <li>Block instantly</li>
-            <li>Report in one tap</li>
-            <li>No profile reveal before mutual match.</li>
-          </ul>
-          <p className="subtle home-support-link">Safety Standards</p>
-        </article>
-        <article className="card">
-          <h2 className="section-title">Private by design.</h2>
-          <p className="subtle">
-            No profile reveal before the call. No replay culture.
-          </p>
-          <div className="home-quick-actions">
-            <button className="button ghost" type="button">
-              Block
+            <button 
+              className="btn btn-primary btn-large"
+              onClick={handleJoin}
+              disabled={!canJoin}
+            >
+              {joining ? 'Connecting...' : 'Go Live'}
             </button>
-            <button className="button ghost" type="button">
-              Report
-            </button>
+            
+            {!canJoin && (
+              <p className="error-text text-secondary mt-2">
+                {tokenBalance === 0 ? 'Top up tokens to join.' : ''}
+              </p>
+            )}
           </div>
-        </article>
-      </section>
-
-      <section className="home-footer-band" id="home-pricing">
-        <h2>Your next real intro is 45 seconds away.</h2>
-        <div className="inline">
-          <button
-            className="button home-primary-cta"
-            onClick={() => void handleJoin()}
-            disabled={!canJoin}
-          >
-            {joining ? 'Joining...' : 'Get Started'}
-          </button>
-          <button
-            className="button secondary"
-            type="button"
-            onClick={scrollToHow}
-          >
-            Learn More
-          </button>
         </div>
-      </section>
 
-      <div className="home-sticky-dock">
-        <button
-          className="button home-primary-cta"
-          onClick={() => void handleJoin()}
-          disabled={!canJoin}
-        >
-          {joining ? 'Joining...' : 'Go Live Now'}
-        </button>
-        <button
-          className="button ghost home-sticky-link"
-          type="button"
-          onClick={scrollToHow}
-        >
-          How it works
-        </button>
-      </div>
-    </section>
+        {/* 3. Queue Ticker */}
+        <div className="queue-ticker">
+          <div className="ticker-track">
+            • 124 Online • Matching in ~10s • Sydney • 85 Online • Matching in ~5s • Melbourne • 40 Online •
+          </div>
+        </div>
+      </main>
+
+      {/* Scoped Styles for Home Layout */}
+      <style>{`
+        .home-layout {
+          display: flex;
+          min-height: 100vh;
+          background: #000;
+          color: #fff;
+          overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+          width: 260px;
+          border-right: 1px solid #222;
+          padding: 40px 24px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          background: #000;
+          z-index: 10;
+        }
+
+        .logo {
+          font-family: 'Playfair Display', serif;
+          font-size: 32px;
+          color: #fff;
+          margin-bottom: 60px;
+        }
+
+        .nav-menu {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          flex: 1;
+        }
+
+        .nav-item {
+          color: #666;
+          font-size: 18px;
+          transition: color 0.2s;
+        }
+
+        .nav-item:hover, .nav-item.active {
+          color: #fff;
+        }
+
+        .user-profile {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding-top: 24px;
+          border-top: 1px solid #222;
+        }
+
+        .avatar-placeholder {
+          width: 40px;
+          height: 40px;
+          background: #1A1A1A;
+          border-radius: 50%;
+          border: 1px solid #333;
+        }
+
+        .user-info {
+          display: flex;
+          flex-direction: column;
+          font-size: 14px;
+        }
+
+        /* Hero Stage */
+        .hero-stage {
+          flex: 1;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: radial-gradient(circle at center, #111 0%, #000 70%);
+        }
+
+        .hero-content {
+          text-align: center;
+          z-index: 5;
+          margin-top: -60px;
+        }
+
+        .hero-title {
+          font-size: 72px;
+          line-height: 1.1;
+          margin-bottom: 16px;
+          font-weight: 300;
+        }
+
+        .hero-subhead {
+          font-size: 20px;
+          margin-bottom: 48px;
+          font-weight: 300;
+        }
+
+        .action-area {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
+        }
+        
+        .minimal-select {
+          background: transparent;
+          border: none;
+          color: #fff;
+          font-family: inherit;
+          font-size: 16px;
+          border-bottom: 1px solid #333;
+          padding-bottom: 2px;
+          cursor: pointer;
+        }
+
+        .btn-large {
+          padding: 18px 60px;
+          font-size: 20px;
+          letter-spacing: 0.5px;
+        }
+
+        /* Portal Visual (Abstract) */
+        .portal-visual {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 600px;
+          height: 600px;
+          pointer-events: none;
+        }
+
+        .core-glow {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 60%);
+          animation: pulse 4s ease-in-out infinite;
+        }
+
+        .pulse-ring {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 300px;
+          height: 300px;
+          border: 1px solid rgba(212, 175, 55, 0.1);
+          border-radius: 50%;
+          animation: ripple 3s linear infinite;
+        }
+
+        /* Queue Ticker */
+        .queue-ticker {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 60px;
+          background: #111;
+          display: flex;
+          align-items: center;
+          overflow: hidden;
+          border-top: 1px solid #222;
+        }
+
+        .ticker-track {
+          white-space: nowrap;
+          color: #666;
+          font-size: 14px;
+          font-family: 'Space Mono', monospace; /* Fallback to monospace for digital feel */
+          animation: marquee 20s linear infinite;
+          padding-left: 100%;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.1); }
+        }
+
+        @keyframes ripple {
+          0% { width: 300px; height: 300px; opacity: 0.5; border-width: 1px; }
+          100% { width: 500px; height: 500px; opacity: 0; border-width: 0px; }
+        }
+
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+
+        @media (max-width: 768px) {
+          .home-layout { flex-direction: column; }
+          .sidebar { display: none; } /* Hide sidebar on mobile for now - simplified */
+          .hero-title { font-size: 40px; }
+          .hero-subhead { font-size: 18px; }
+          .portal-visual { width: 300px; height: 300px; }
+          .btn-large { width: 100%; max-width: 300px; }
+        }
+      `}</style>
+    </div>
   );
 };
