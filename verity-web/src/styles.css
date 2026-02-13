@@ -170,6 +170,64 @@ header {
   padding: var(--space-xl) 0;
 }
 
+.home-hero .hero-content {
+  max-width: 560px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--paper-white);
+  border: 1px solid rgba(124, 137, 255, 0.35);
+  background: rgba(124, 137, 255, 0.12);
+}
+
+.home-subtitle {
+  max-width: 48ch;
+}
+
+.queue-card {
+  max-width: 430px;
+  padding: 28px;
+  border-color: rgba(124, 137, 255, 0.2);
+}
+
+.queue-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.token-count {
+  color: var(--lux-gold);
+}
+
+.queue-cta {
+  width: 100%;
+}
+
+.social-proof {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--success);
+  box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.15);
+}
+
 .hero-visual {
   flex: 1;
   background: radial-gradient(circle at 35% 35%, rgba(124, 137, 255, 0.2), transparent 55%),

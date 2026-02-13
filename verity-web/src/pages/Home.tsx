@@ -86,25 +86,24 @@ export const Home: React.FC = () => {
   return (
     <>
       {/* Hero Section */}
-      <section className="hero-split">
+      <section className="hero-split home-hero">
         <div className="hero-content">
+          <span className="pill">Live. Private. Human.</span>
           <h1 className="hero-title">
             No Profiles.<br />
             Just Chemistry.
           </h1>
-          <p className="body-large">
+          <p className="body-large home-subtitle">
             45-second live video dates. Mutual reveal only.<br />
             Instant connection, zero swipe fatigue.
           </p>
-          
-          <div className="card" style={{ maxWidth: '400px', padding: '24px' }}>
-            <div className="flex-center" style={{ justifyContent: 'space-between', marginBottom: '16px' }}>
+
+          <div className="card queue-card">
+            <div className="queue-card-top">
               <span className="caption">Select City</span>
-              <span className="caption" style={{ color: 'var(--lux-gold)' }}>
-                {tokenBalance} Tokens Available
-              </span>
+              <span className="caption token-count">{tokenBalance} Tokens Available</span>
             </div>
-            
+
             <select
               className="input mb-md"
               value={city}
@@ -116,33 +115,30 @@ export const Home: React.FC = () => {
                 </option>
               ))}
             </select>
-            
-            <button 
-              className="btn btn-primary animate-pulse" 
-              style={{ width: '100%' }}
+
+            <button
+              className="btn btn-primary animate-pulse queue-cta"
               onClick={handleJoin}
               disabled={!canJoin}
             >
               {joining ? 'Connecting...' : 'Go Live'}
             </button>
-            
+
             {tokenBalance === 0 && (
               <div className="text-center mt-lg">
-                <button 
-                  className="btn btn-ghost"
-                  onClick={() => handlePurchase('starter')}
-                >
+                <button className="btn btn-ghost" onClick={() => handlePurchase('starter')}>
                   Get Tokens
                 </button>
               </div>
             )}
           </div>
-          
-          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
+
+          <div className="social-proof">
+            <span className="status-dot" aria-hidden="true" />
             <span className="caption">10k+ matches today</span>
           </div>
         </div>
-        
+
         <div className="hero-visual">
           {/* Abstract Connection Visual */}
           <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
