@@ -32,7 +32,7 @@ export const AdminModeration: React.FC = () => {
     try {
       const response = await apiJson<Report[]>(`/moderation/reports${query}`, {
         method: 'GET',
-        headers,
+        headers: headers as HeadersInit,
       });
       if (response.ok && response.data) {
         setReports(response.data);
@@ -50,7 +50,7 @@ export const AdminModeration: React.FC = () => {
     try {
       const response = await apiJson(`/moderation/reports/${id}/resolve`, {
         method: 'POST',
-        headers,
+        headers: headers as HeadersInit,
         body: { action },
       });
       if (!response.ok) {

@@ -154,7 +154,7 @@ describe('Chat', () => {
   });
 
   it('sends a message, applies optimistic UI, and clears the input', async () => {
-    let releaseSend: (() => void) | null = null;
+    let releaseSend: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
       releaseSend = resolve;
     });
@@ -192,7 +192,7 @@ describe('Chat', () => {
       expect(screen.getByText('Hey!')).toBeInTheDocument();
     });
 
-    releaseSend?.();
+    releaseSend();
 
     await waitFor(() => {
       expect(trackEventMock).toHaveBeenCalledWith('message_sent', {
