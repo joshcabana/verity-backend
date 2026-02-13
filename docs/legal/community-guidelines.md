@@ -15,7 +15,7 @@ This is a draft community guidelines document for Verity and not legal advice.
 - Sexual exploitation, coercive conduct, or non-consensual content
 - Impersonation, scams, or fraud
 - Doxxing or sharing personal data without permission
-- Recording or redistributing live sessions without consent
+- Recording, screen-capturing, or redistributing live sessions without explicit consent from all participants and where lawful
 
 ## Safety Signals and Moderation
 - Real-time and report-based moderation may review activity for safety.

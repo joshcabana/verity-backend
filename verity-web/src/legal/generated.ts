@@ -27,7 +27,7 @@ export const legalDocs = {
       {
         "heading": "Data We Collect",
         "body": [
-          "Account and authentication data (anonymous account ID, access tokens)",
+          "Account and authentication data (anonymous account ID, access/session tokens)",
           "Onboarding data (date of birth and consent confirmations when provided)",
           "Profile and communication data after matching (name, photos, bio, chat messages)",
           "Usage and diagnostics data (device metadata, IP address, user agent, security logs)",
@@ -44,59 +44,63 @@ export const legalDocs = {
         ]
       },
       {
-        "heading": "Legal Bases (where applicable)",
+        "heading": "Privacy Act and APP Alignment (Australia)",
         "body": [
-          "Performance of our contract with you (providing the service)",
-          "Legitimate interests (safety, fraud prevention, service improvement)",
-          "Consent (where required, including specific notices)",
-          "Legal compliance obligations"
+          "Where the Privacy Act 1988 (Cth) applies, we aim to handle personal information consistently with the Australian Privacy Principles (APPs), including:",
+          "APP 1 (open and transparent management)",
+          "APP 6 (use and disclosure)",
+          "APP 8 (cross-border disclosure)",
+          "APP 11 (security)",
+          "APP 12 and APP 13 (access and correction)"
         ]
       },
       {
         "heading": "Sharing and Processors",
         "body": [
           "We use service providers to operate Verity, including:",
-          "Agora (video)",
-          "Hive (live moderation)",
+          "Agora (video infrastructure)",
+          "Hive (real-time moderation tooling)",
           "Stripe (payments)",
-          "We share only what is reasonably necessary for those services."
+          "We share only information reasonably necessary for those services."
+        ]
+      },
+      {
+        "heading": "Cross-Border Disclosure and Transfers",
+        "body": [
+          "Some providers may process personal information outside Australia.",
+          "Before disclosing personal information to overseas recipients, we seek to take reasonable steps in the circumstances so recipients handle information in a manner consistent with applicable APP requirements (including APP 8 where applicable). Depending on circumstances, we may remain accountable for overseas handling under Australian law.",
+          "Safeguards may include contractual controls, vendor due diligence, and technical security measures."
         ]
       },
       {
         "heading": "Data Retention",
         "body": [
           "Queue/session operational data is retained only as long as needed for matching and safety operations",
-          "Non-match session records are targeted for short retention (currently up to 24 hours unless required longer for security/legal reasons)",
+          "Non-match session records are targeted for short retention (currently up to 24 hours unless longer retention is required for security, incident response, legal, or regulatory reasons)",
           "Account and transaction records may be retained for compliance, fraud prevention, and dispute handling",
-          "You can request deletion; we will delete or de-identify data unless we must keep it by law"
-        ]
-      },
-      {
-        "heading": "International Transfers",
-        "body": [
-          "Some providers may process data outside Australia. We use contractual and technical safeguards appropriate to risk."
+          "On valid deletion requests, we delete or de-identify personal information unless retention is required or authorised by law"
         ]
       },
       {
         "heading": "Your Rights",
         "body": [
           "Depending on applicable law, you may request:",
-          "Access to personal information",
-          "Correction of inaccurate information",
+          "Access to personal information we hold about you",
+          "Correction of inaccurate or out-of-date information",
           "Deletion of eligible personal information",
-          "Information about how your data is used"
+          "Information about how personal information is handled"
+        ]
+      },
+      {
+        "heading": "Security",
+        "body": [
+          "We apply layered technical and organisational safeguards designed to protect personal information. No method of storage or transmission is completely secure."
         ]
       },
       {
         "heading": "Children",
         "body": [
           "Verity is for adults (18+) only."
-        ]
-      },
-      {
-        "heading": "Security",
-        "body": [
-          "We use layered technical and organisational controls designed to protect personal information, but no system is perfectly secure."
         ]
       },
       {
@@ -115,7 +119,7 @@ export const legalDocs = {
         "heading": "Eligibility",
         "body": [
           "You must be at least 18 years old to use Verity.",
-          "You must provide truthful onboarding information and keep account details accurate."
+          "You must provide truthful onboarding information and keep account details reasonably accurate."
         ]
       },
       {
@@ -125,13 +129,22 @@ export const legalDocs = {
         ]
       },
       {
+        "heading": "Consent to Live Video, Moderation and Recording Rules",
+        "body": [
+          "By using Verity, you acknowledge and agree that:",
+          "Sessions are designed to be live and unrecorded by Verity as a product feature.",
+          "Safety tooling and moderation systems may process session signals/content in real time for trust and safety purposes.",
+          "You must not record, screen-capture, stream, or redistribute sessions without explicit consent from all participants and where permitted by applicable law.",
+          "Additional consent requirements may apply under state/territory surveillance or listening-device laws; you are responsible for complying with those laws."
+        ]
+      },
+      {
         "heading": "Acceptable Use",
         "body": [
           "You agree not to:",
           "Harass, threaten, stalk, or abuse others",
           "Post or transmit illegal, exploitative, or hateful content",
           "Share another person’s personal information without consent",
-          "Record, stream, or redistribute live sessions without explicit consent",
           "Attempt to bypass safety systems, moderation, or platform controls"
         ]
       },
@@ -146,8 +159,15 @@ export const legalDocs = {
         "body": [
           "Tokens are digital access credits for queue/session features.",
           "Pricing and pack details are shown at purchase.",
-          "Tokens are generally non-refundable except where required by law.",
           "Payments are processed by third-party providers (e.g., Stripe), subject to their terms."
+        ]
+      },
+      {
+        "heading": "Refunds and Australian Consumer Law",
+        "body": [
+          "Nothing in these Terms excludes, restricts, or modifies non-excludable rights under the Australian Consumer Law (ACL).",
+          "Where required by law, including ACL consumer guarantees, remedies such as repair, replacement, refund, or cancellation may apply.",
+          "Outside mandatory legal rights, tokens are generally non-refundable."
         ]
       },
       {
@@ -207,7 +227,7 @@ export const legalDocs = {
           "Sexual exploitation, coercive conduct, or non-consensual content",
           "Impersonation, scams, or fraud",
           "Doxxing or sharing personal data without permission",
-          "Recording or redistributing live sessions without consent"
+          "Recording, screen-capturing, or redistributing live sessions without explicit consent from all participants and where lawful"
         ]
       },
       {
