@@ -53,7 +53,7 @@ export const Matches: React.FC = () => {
         <button
           className="button secondary"
           style={{ marginTop: '12px' }}
-          onClick={() => matchesQuery.refetch()}
+          onClick={() => void matchesQuery.refetch()}
         >
           Retry
         </button>
@@ -79,12 +79,17 @@ export const Matches: React.FC = () => {
           <div className="grid" style={{ gap: '12px', marginTop: '12px' }}>
             {matches.map((match) => (
               <div key={match.matchId} className="card soft">
-                <div className="inline" style={{ justifyContent: 'space-between' }}>
+                <div
+                  className="inline"
+                  style={{ justifyContent: 'space-between' }}
+                >
                   <h3 style={{ margin: 0 }}>
                     {match.partnerReveal?.displayName ?? 'New match'}
                   </h3>
                   <span className="pill">
-                    {match.revealAcknowledged ? 'Reveal complete' : 'Reveal required'}
+                    {match.revealAcknowledged
+                      ? 'Reveal complete'
+                      : 'Reveal required'}
                   </span>
                 </div>
                 {match.partnerReveal?.bio && match.revealAcknowledged && (

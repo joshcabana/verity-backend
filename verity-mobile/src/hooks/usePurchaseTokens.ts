@@ -101,9 +101,14 @@ export function usePurchaseTokens() {
         }
 
         await openCheckoutSession(checkoutUrl);
-        return { ok: true, checkoutUrl, sessionId: response.data.sessionId ?? null };
+        return {
+          ok: true,
+          checkoutUrl,
+          sessionId: response.data.sessionId ?? null,
+        };
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to start checkout.';
+        const message =
+          err instanceof Error ? err.message : 'Unable to start checkout.';
         setError(message);
         Alert.alert('Checkout failed', message);
         return { ok: false, error: message };

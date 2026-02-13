@@ -16,7 +16,8 @@ export default function ExplainScreenOne() {
       <View style={styles.hero}>
         <Text style={styles.title}>Blind, honest first impressions</Text>
         <Text style={styles.subtitle}>
-          You start with a short video conversation. Profiles stay hidden so the vibe comes first.
+          You start with a short video conversation. Profiles stay hidden so the
+          vibe comes first.
         </Text>
       </View>
 
@@ -44,7 +45,12 @@ export default function ExplainScreenOne() {
   );
 }
 
-const createStyles = (colors: { text: string; muted: string; border: string; card: string }) =>
+const createStyles = (colors: {
+  text: string;
+  muted: string;
+  border: string;
+  card: string;
+}) =>
   StyleSheet.create({
     hero: {
       marginTop: spacing.xl,

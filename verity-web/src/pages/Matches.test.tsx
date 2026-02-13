@@ -89,4 +89,3 @@ describe('Matches page', () => {
     expect(screen.getByText('Reveal complete')).toBeInTheDocument();
   });
 });
-

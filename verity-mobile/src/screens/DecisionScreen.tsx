@@ -20,7 +20,8 @@ export default function DecisionScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const { status, result, submitChoice, startAutoPass } = useDecision(sessionId);
+  const { status, result, submitChoice, startAutoPass } =
+    useDecision(sessionId);
 
   useEffect(() => {
     startAutoPass();
@@ -83,7 +84,12 @@ export default function DecisionScreen() {
             onPress={() =>
               navigation.reset({
                 index: 0,
-                routes: [{ name: 'Main' as never, params: { screen: 'Home' } as never }],
+                routes: [
+                  {
+                    name: 'Main' as never,
+                    params: { screen: 'Home' } as never,
+                  },
+                ],
               })
             }
           />
@@ -96,12 +102,15 @@ export default function DecisionScreen() {
     <ThemedScreen>
       <Text style={styles.title}>Would you like to match?</Text>
       <Text style={styles.subtitle}>
-        Choose within 60 seconds. If only one person chooses Match, nothing is revealed.
+        Choose within 60 seconds. If only one person chooses Match, nothing is
+        revealed.
       </Text>
 
       <View style={styles.card}>
         <Text style={styles.label}>
-          {status === 'waiting' ? 'Waiting for their choice...' : 'Make your choice'}
+          {status === 'waiting'
+            ? 'Waiting for their choice...'
+            : 'Make your choice'}
         </Text>
       </View>
 
@@ -115,7 +124,12 @@ export default function DecisionScreen() {
   );
 }
 
-const createStyles = (colors: { text: string; muted: string; card: string; border: string }) =>
+const createStyles = (colors: {
+  text: string;
+  muted: string;
+  card: string;
+  border: string;
+}) =>
   StyleSheet.create({
     title: {
       fontSize: typography.xl,

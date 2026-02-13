@@ -94,14 +94,26 @@ export const Settings: React.FC = () => {
           Download a copy of your data or permanently delete your account.
         </p>
         <div className="stack tight" style={{ marginTop: '16px' }}>
-          <button className="button secondary" onClick={handleExport} disabled={exporting}>
+          <button
+            className="button secondary"
+            onClick={() => void handleExport()}
+            disabled={exporting}
+          >
             {exporting ? 'Preparing download...' : 'Download my data'}
           </button>
-          <button className="button danger" onClick={handleDelete} disabled={deleting}>
+          <button
+            className="button danger"
+            onClick={() => void handleDelete()}
+            disabled={deleting}
+          >
             {deleting ? 'Deleting...' : 'Delete account'}
           </button>
         </div>
-        {error && <p className="subtle" style={{ color: '#dc2626' }}>{error}</p>}
+        {error && (
+          <p className="subtle" style={{ color: '#dc2626' }}>
+            {error}
+          </p>
+        )}
       </div>
       <div className="card">
         <h2 className="section-title">Safety</h2>
@@ -119,14 +131,18 @@ export const Settings: React.FC = () => {
               <div key={entry.id} className="block-item">
                 <div className="subtle">
                   <strong>{entry.blockedUserId}</strong>
-                  <div>Blocked on {new Date(entry.createdAt).toLocaleDateString()}</div>
+                  <div>
+                    Blocked on {new Date(entry.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
                 <button
                   className="button secondary"
-                  onClick={() => handleUnblock(entry.blockedUserId)}
+                  onClick={() => void handleUnblock(entry.blockedUserId)}
                   disabled={unblockingId === entry.blockedUserId}
                 >
-                  {unblockingId === entry.blockedUserId ? 'Unblocking…' : 'Unblock'}
+                  {unblockingId === entry.blockedUserId
+                    ? 'Unblocking…'
+                    : 'Unblock'}
                 </button>
               </div>
             ))}

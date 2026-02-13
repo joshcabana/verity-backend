@@ -174,7 +174,12 @@ export function useQueue() {
       queueSocket.off('queue:status', handleStatus);
       queueSocket.off('disconnect', handleQueueDisconnect);
     };
-  }, [queueSocket, queue.setEstimated, queue.setMatch, queue.setUsersSearching]);
+  }, [
+    queueSocket,
+    queue.setEstimated,
+    queue.setMatch,
+    queue.setUsersSearching,
+  ]);
 
   return queue;
 }

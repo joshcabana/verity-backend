@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import PhotoCarousel from '../../components/PhotoCarousel';
@@ -31,7 +38,8 @@ export default function MatchProfileView() {
     enabled: Boolean(matchId),
   });
   const acknowledgeRevealMutation = useAcknowledgeRevealMutation(matchId);
-  const partnerReveal = revealQuery.data?.partnerReveal ?? params?.partnerReveal ?? null;
+  const partnerReveal =
+    revealQuery.data?.partnerReveal ?? params?.partnerReveal ?? null;
 
   if (!matchId) {
     return (
@@ -81,18 +89,28 @@ export default function MatchProfileView() {
       <PhotoCarousel photos={photos} />
 
       <View style={styles.headerRow}>
-        <Text style={styles.name}>{partnerReveal.displayName ?? 'Anonymous'}</Text>
-        {partnerReveal.age ? <Text style={styles.age}>{partnerReveal.age}</Text> : null}
+        <Text style={styles.name}>
+          {partnerReveal.displayName ?? 'Anonymous'}
+        </Text>
+        {partnerReveal.age ? (
+          <Text style={styles.age}>{partnerReveal.age}</Text>
+        ) : null}
       </View>
 
-      {partnerReveal.bio ? <Text style={styles.bio}>{partnerReveal.bio}</Text> : null}
+      {partnerReveal.bio ? (
+        <Text style={styles.bio}>{partnerReveal.bio}</Text>
+      ) : null}
 
       <Text style={styles.subtitle}>
         Acknowledge this profile reveal before messaging.
       </Text>
 
       <ThemedButton
-        label={acknowledgeRevealMutation.isPending ? 'Starting chat...' : 'Start chat'}
+        label={
+          acknowledgeRevealMutation.isPending
+            ? 'Starting chat...'
+            : 'Start chat'
+        }
         variant="primary"
         onPress={handleStartChat}
         disabled={acknowledgeRevealMutation.isPending}

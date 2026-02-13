@@ -12,7 +12,11 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.container}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.container}
+    >
       {photos.map((uri, index) => (
         <Image key={`${uri}-${index}`} source={{ uri }} style={styles.image} />
       ))}

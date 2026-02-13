@@ -16,7 +16,8 @@ export default function ExplainScreenTwo() {
       <View style={styles.hero}>
         <Text style={styles.title}>Tokens keep things fair</Text>
         <Text style={styles.subtitle}>
-          Each time you go live, one token is used. If no match is found, you get it back.
+          Each time you go live, one token is used. If no match is found, you
+          get it back.
         </Text>
       </View>
 
@@ -44,7 +45,12 @@ export default function ExplainScreenTwo() {
   );
 }
 
-const createStyles = (colors: { text: string; muted: string; border: string; card: string }) =>
+const createStyles = (colors: {
+  text: string;
+  muted: string;
+  border: string;
+  card: string;
+}) =>
   StyleSheet.create({
     hero: {
       marginTop: spacing.xl,

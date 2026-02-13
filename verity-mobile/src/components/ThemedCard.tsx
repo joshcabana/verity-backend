@@ -9,7 +9,11 @@ type ThemedCardProps = {
   padding?: number;
 };
 
-export default function ThemedCard({ children, style, padding }: ThemedCardProps) {
+export default function ThemedCard({
+  children,
+  style,
+  padding,
+}: ThemedCardProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 

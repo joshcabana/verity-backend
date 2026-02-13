@@ -83,10 +83,11 @@ export const Chat: React.FC = () => {
   const [acknowledgingReveal, setAcknowledgingReveal] = useState(false);
   const [locallyBlocked, setLocallyBlocked] = useState(false);
   const [liveMessages, setLiveMessages] = useState<Message[]>([]);
-  const [hydratedPartnerReveal, setHydratedPartnerReveal] = useState<PartnerReveal | null>(() => {
-    const state = location.state as ChatLocationState | null;
-    return state?.partnerReveal ?? null;
-  });
+  const [hydratedPartnerReveal, setHydratedPartnerReveal] =
+    useState<PartnerReveal | null>(() => {
+      const state = location.state as ChatLocationState | null;
+      return state?.partnerReveal ?? null;
+    });
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const offline = typeof navigator !== 'undefined' && !navigator.onLine;
 
@@ -96,7 +97,9 @@ export const Chat: React.FC = () => {
       if (!matchId) {
         throw new Error('Missing match');
       }
-      const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal`);
+      const response = await apiJson<MatchRevealPayload>(
+        `/matches/${matchId}/reveal`,
+      );
       if (!response.ok || !response.data) {
         throw new Error('Failed to load reveal');
       }
@@ -108,8 +111,7 @@ export const Chat: React.FC = () => {
 
   const revealAcknowledged = Boolean(revealQuery.data?.revealAcknowledged);
   const partnerReveal =
-    revealQuery.data?.partnerReveal ??
-    hydratedPartnerReveal;
+    revealQuery.data?.partnerReveal ?? hydratedPartnerReveal;
 
   const messagesQuery = useQuery({
     queryKey: ['messages', matchId],
@@ -223,7 +225,9 @@ export const Chat: React.FC = () => {
             (message) => message.id !== optimisticId,
           );
           if (
-            withoutOptimistic.some((message) => message.id === response.data?.id)
+            withoutOptimistic.some(
+              (message) => message.id === response.data?.id,
+            )
           ) {
             return withoutOptimistic;
           }
@@ -240,7 +244,9 @@ export const Chat: React.FC = () => {
           setLiveMessages((prev) =>
             prev.filter((message) => message.id !== optimisticId),
           );
-          setSendError('Acknowledge the profile reveal before sending messages.');
+          setSendError(
+            'Acknowledge the profile reveal before sending messages.',
+          );
           void revealQuery.refetch();
           return;
         }
@@ -248,7 +254,9 @@ export const Chat: React.FC = () => {
           prev.filter((message) => message.id !== optimisticId),
         );
         setLocallyBlocked(true);
-        setSendError('Chat is unavailable because one of you has blocked the other.');
+        setSendError(
+          'Chat is unavailable because one of you has blocked the other.',
+        );
         return;
       }
       setLiveMessages((prev) =>
@@ -275,9 +283,12 @@ export const Chat: React.FC = () => {
     }
     setAcknowledgingReveal(true);
     setRevealError(null);
-    const response = await apiJson<MatchRevealPayload>(`/matches/${matchId}/reveal-ack`, {
-      method: 'POST',
-    });
+    const response = await apiJson<MatchRevealPayload>(
+      `/matches/${matchId}/reveal-ack`,
+      {
+        method: 'POST',
+      },
+    );
     setAcknowledgingReveal(false);
     if (!response.ok || !response.data) {
       setRevealError('Unable to unlock chat right now. Try again.');
@@ -299,14 +310,18 @@ export const Chat: React.FC = () => {
     return <section className="card">Loading messages…</section>;
   }
 
-  const messageError = messagesQuery.error as Error | null;
+  const messageError = messagesQuery.error;
   const blockedByServer = messageError?.message === 'BLOCKED';
   const revealRequiredByServer =
     messageError?.message === REVEAL_ACK_REQUIRED_CODE;
   const blocked = blockedByServer || locallyBlocked;
 
   if (revealRequiredByServer) {
-    return <section className="card">Profile reveal acknowledgement required.</section>;
+    return (
+      <section className="card">
+        Profile reveal acknowledgement required.
+      </section>
+    );
   }
 
   if (messagesQuery.isError && !blockedByServer && revealAcknowledged) {
@@ -317,7 +332,8 @@ export const Chat: React.FC = () => {
     partnerReveal?.displayName ??
     matchQuery.data?.partnerReveal?.displayName ??
     'Your match';
-  const partnerId = partnerReveal?.id ?? matchQuery.data?.partnerReveal?.id ?? null;
+  const partnerId =
+    partnerReveal?.id ?? matchQuery.data?.partnerReveal?.id ?? null;
   const chatLocked = !revealAcknowledged;
   const matchWarning = matchQuery.isError
     ? offline
@@ -364,7 +380,7 @@ export const Chat: React.FC = () => {
           <div className="inline">
             <button
               className="button ghost"
-              onClick={handleBlock}
+              onClick={() => void handleBlock()}
               disabled={!partnerId || blocking || blocked}
             >
               {blocking ? 'Blocking…' : blocked ? 'Blocked' : 'Block'}
@@ -400,13 +416,16 @@ export const Chat: React.FC = () => {
             <button
               className="button"
               style={{ marginTop: '12px' }}
-              onClick={acknowledgeReveal}
+              onClick={() => void acknowledgeReveal()}
               disabled={acknowledgingReveal}
             >
               {acknowledgingReveal ? 'Continuing…' : 'Continue to chat'}
             </button>
             {revealError && (
-              <p className="subtle" style={{ color: '#dc2626', marginTop: '8px' }}>
+              <p
+                className="subtle"
+                style={{ color: '#dc2626', marginTop: '8px' }}
+              >
                 {revealError}
               </p>
             )}
@@ -456,8 +475,10 @@ export const Chat: React.FC = () => {
           />
           <button
             className="button"
-            onClick={sendMessage}
-            disabled={!draft.trim() || blocked || chatLocked || acknowledgingReveal}
+            onClick={() => void sendMessage()}
+            disabled={
+              !draft.trim() || blocked || chatLocked || acknowledgingReveal
+            }
           >
             Send
           </button>
@@ -470,7 +491,8 @@ export const Chat: React.FC = () => {
         <div className="callout safety" style={{ marginTop: '16px' }}>
           <strong>Stay respectful</strong>
           <p className="subtle">
-            If you receive anything unsafe, use the report button and we will review it.
+            If you receive anything unsafe, use the report button and we will
+            review it.
           </p>
         </div>
       </div>

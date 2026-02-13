@@ -24,7 +24,9 @@ const socketMock = {
       socketHandlers.delete(event);
       return;
     }
-    const next = (socketHandlers.get(event) ?? []).filter((fn) => fn !== handler);
+    const next = (socketHandlers.get(event) ?? []).filter(
+      (fn) => fn !== handler,
+    );
     if (next.length > 0) {
       socketHandlers.set(event, next);
       return;
@@ -40,9 +42,10 @@ const emitSocket = (event: string, payload: unknown) => {
 };
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>(
-    'react-router-dom',
-  );
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>(
+      'react-router-dom',
+    );
   return {
     ...actual,
     useNavigate: () => navigateMock,
@@ -50,10 +53,12 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('../api/client', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   apiJson: (...args: unknown[]) => apiJsonMock(...args),
 }));
 
 vi.mock('../analytics/events', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   trackEvent: (...args: unknown[]) => trackEventMock(...args),
 }));
 
@@ -79,6 +84,7 @@ describe('Home and Waiting queue flow', () => {
 
   it('joins queue after balance load', async () => {
     apiJsonMock.mockImplementation(async (path: string) => {
+      await Promise.resolve();
       if (path === '/tokens/balance') {
         return { ok: true, status: 200, data: { tokenBalance: 2 } };
       }
@@ -90,17 +96,15 @@ describe('Home and Waiting queue flow', () => {
 
     renderWithProviders(<Home />, { route: '/home', path: '/home' });
 
-    await screen.findByText('2 tokens');
-    fireEvent.click(screen.getAllByRole('button', { name: /go live now/i })[0]);
+    await screen.findByText(/2\s*tokens available/i);
+    fireEvent.click(screen.getByRole('button', { name: /go live/i }));
 
     await waitFor(() => {
       expect(apiJsonMock).toHaveBeenCalledWith('/queue/join', {
         method: 'POST',
         body: { city: 'canberra', preferences: {} },
       });
-      expect(navigateMock).toHaveBeenCalledWith('/waiting', {
-        state: { queueKey: 'q1' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith('/waiting');
     });
   });
 
@@ -113,7 +117,7 @@ describe('Home and Waiting queue flow', () => {
 
     renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
 
-    fireEvent.click(screen.getByRole('button', { name: /leave queue/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
     await waitFor(() => {
       expect(apiJsonMock).toHaveBeenCalledWith('/queue/leave', {
@@ -126,16 +130,19 @@ describe('Home and Waiting queue flow', () => {
   it('shows live queue status from queue:status events', async () => {
     renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
 
-    expect(screen.getByText(/hang tight - matching fast\./i)).toBeInTheDocument();
+    expect(screen.getByText(/matching fast\.\.\./i)).toBeInTheDocument();
 
     await waitFor(() =>
-      expect(socketMock.on).toHaveBeenCalledWith('queue:status', expect.any(Function)),
+      expect(socketMock.on).toHaveBeenCalledWith(
+        'queue:status',
+        expect.any(Function),
+      ),
     );
 
     emitSocket('queue:status', { usersSearching: 11 });
 
     await waitFor(() =>
-      expect(screen.getByText(/11 users currently searching/i)).toBeTruthy(),
+      expect(screen.getByText(/11 online/i)).toBeTruthy(),
     );
   });
 
@@ -143,13 +150,16 @@ describe('Home and Waiting queue flow', () => {
     renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
 
     await waitFor(() =>
-      expect(socketMock.on).toHaveBeenCalledWith('queue:estimate', expect.any(Function)),
+      expect(socketMock.on).toHaveBeenCalledWith(
+        'queue:estimate',
+        expect.any(Function),
+      ),
     );
 
     emitSocket('queue:estimate', { estimatedSeconds: 18 });
 
     await waitFor(() =>
-      expect(screen.getByText(/estimated wait: 18s/i)).toBeTruthy(),
+      expect(screen.getByText(/<\s*18s wait/i)).toBeTruthy(),
     );
   });
 
@@ -176,9 +186,8 @@ describe('Home and Waiting queue flow', () => {
       }),
     );
     expect(
-      navigateMock.mock.calls.filter(
-        (call) => call[0] === '/session/session-1',
-      ).length,
+      navigateMock.mock.calls.filter((call) => call[0] === '/session/session-1')
+        .length,
     ).toBe(1);
     expect(trackEventMock).toHaveBeenCalledTimes(1);
   });
@@ -192,11 +201,12 @@ describe('Home and Waiting queue flow', () => {
         await vi.advanceTimersByTimeAsync(46_000);
       });
 
-      expect(screen.getByText(/no one nearby yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/still looking\.\.\./i)).toBeInTheDocument();
       expect(trackEventMock).toHaveBeenCalledWith(
         'queue_timeout_shown',
         expect.objectContaining({
           queueKey: '',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           elapsedSeconds: expect.any(Number),
         }),
       );
@@ -213,16 +223,17 @@ describe('Home and Waiting queue flow', () => {
         await vi.advanceTimersByTimeAsync(46_000);
       });
 
-      fireEvent.click(screen.getByRole('button', { name: /keep searching/i }));
+      fireEvent.click(screen.getByRole('button', { name: /wait/i }));
 
       expect(trackEventMock).toHaveBeenCalledWith(
         'queue_timeout_continue',
         expect.objectContaining({
           queueKey: '',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           elapsedSeconds: expect.any(Number),
         }),
       );
-      expect(screen.queryByText(/no one nearby yet/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/still looking\.\.\./i)).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -241,7 +252,7 @@ describe('Home and Waiting queue flow', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(46_000);
       });
-      fireEvent.click(screen.getAllByRole('button', { name: /leave queue/i })[0]);
+      fireEvent.click(screen.getByRole('button', { name: /leave/i }));
 
       await Promise.resolve();
       await Promise.resolve();
@@ -250,6 +261,7 @@ describe('Home and Waiting queue flow', () => {
         'queue_timeout_leave',
         expect.objectContaining({
           queueKey: 'queue-1',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           elapsedSeconds: expect.any(Number),
           refunded: true,
         }),

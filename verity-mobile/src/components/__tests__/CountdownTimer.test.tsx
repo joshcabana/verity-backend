@@ -37,7 +37,11 @@ jest.mock('../../theme/ThemeProvider', () => ({
 describe('CountdownTimer', () => {
   it('renders a snapshot', () => {
     const tree = render(
-      <CountdownTimer durationSeconds={3} isActive={false} onComplete={jest.fn()} />,
+      <CountdownTimer
+        durationSeconds={3}
+        isActive={false}
+        onComplete={jest.fn()}
+      />,
     ).toJSON();
 
     expect(tree).toMatchSnapshot();
@@ -67,7 +71,11 @@ describe('CountdownTimer', () => {
   it('waits to start until activated', () => {
     const onComplete = jest.fn();
     const { getByText, rerender } = render(
-      <CountdownTimer durationSeconds={2} isActive={false} onComplete={onComplete} />,
+      <CountdownTimer
+        durationSeconds={2}
+        isActive={false}
+        onComplete={onComplete}
+      />,
     );
 
     act(() => {
@@ -77,7 +85,9 @@ describe('CountdownTimer', () => {
     expect(getByText('2s')).toBeTruthy();
     expect(onComplete).not.toHaveBeenCalled();
 
-    rerender(<CountdownTimer durationSeconds={2} isActive onComplete={onComplete} />);
+    rerender(
+      <CountdownTimer durationSeconds={2} isActive onComplete={onComplete} />,
+    );
 
     act(() => {
       jest.advanceTimersByTime(2000);

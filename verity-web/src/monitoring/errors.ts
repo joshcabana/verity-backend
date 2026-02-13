@@ -24,7 +24,7 @@ export function startGlobalErrorTracking() {
       source: event.filename,
       line: event.lineno,
       column: event.colno,
-      stack: event.error?.stack,
+      stack: event.error instanceof Error ? event.error.stack : undefined,
       path: window.location.pathname,
       timestamp: Date.now(),
     });

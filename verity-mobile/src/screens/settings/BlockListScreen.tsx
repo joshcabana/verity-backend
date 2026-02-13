@@ -79,9 +79,7 @@ export default function BlockListScreen() {
 
                 if (response.ok) {
                   setBlocks((prev) =>
-                    prev.filter(
-                      (b) => b.blockedUserId !== blockedUserId,
-                    ),
+                    prev.filter((b) => b.blockedUserId !== blockedUserId),
                   );
                 } else {
                   Alert.alert('Error', 'Unable to unblock user.');

@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme/ThemeProvider';
 import { spacing, typography } from '../theme/tokens';
@@ -27,9 +34,13 @@ export default function ImagePickerComponent({
 
     setPicking(true);
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permission required', 'Please allow photo access to continue.');
+        Alert.alert(
+          'Permission required',
+          'Please allow photo access to continue.',
+        );
         return;
       }
 
@@ -61,14 +72,21 @@ export default function ImagePickerComponent({
         {images.map((uri) => (
           <View key={uri} style={styles.imageWrapper}>
             <Image source={{ uri }} style={styles.image} />
-            <TouchableOpacity style={styles.remove} onPress={() => handleRemove(uri)}>
+            <TouchableOpacity
+              style={styles.remove}
+              onPress={() => handleRemove(uri)}
+            >
               <Text style={styles.removeText}>×</Text>
             </TouchableOpacity>
           </View>
         ))}
 
         {images.length < max && (
-          <TouchableOpacity style={styles.addTile} onPress={handleAdd} disabled={picking}>
+          <TouchableOpacity
+            style={styles.addTile}
+            onPress={handleAdd}
+            disabled={picking}
+          >
             <Text style={styles.addText}>{picking ? '...' : '+'}</Text>
             <Text style={styles.addLabel}>Add photo</Text>
           </TouchableOpacity>

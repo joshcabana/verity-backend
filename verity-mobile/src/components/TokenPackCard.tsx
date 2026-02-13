@@ -42,7 +42,9 @@ export default function TokenPackCard({
       </View>
       <Text style={styles.tokens}>{pack.tokens} tokens</Text>
       <Text style={styles.price}>{pack.price}</Text>
-      {pack.description ? <Text style={styles.description}>{pack.description}</Text> : null}
+      {pack.description ? (
+        <Text style={styles.description}>{pack.description}</Text>
+      ) : null}
       <ThemedButton
         label={loading ? 'Starting checkout...' : `Buy ${pack.tokens} tokens`}
         onPress={() => onPurchase(pack)}

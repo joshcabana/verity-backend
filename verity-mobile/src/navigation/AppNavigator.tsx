@@ -24,7 +24,9 @@ import MatchProfileView from '../screens/matches/MatchProfileView';
 import ChatScreen from '../screens/chat/ChatScreen';
 import TokenShopScreen from '../screens/TokenShopScreen';
 import { PendingRoute, useAuth } from '../hooks/useAuth';
-import OnboardingStack, { type OnboardingStackParamList } from './OnboardingStack';
+import OnboardingStack, {
+  type OnboardingStackParamList,
+} from './OnboardingStack';
 import { useTheme } from '../theme/ThemeProvider';
 import { spacing } from '../theme/tokens';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -80,7 +82,9 @@ const AuthGate = ({ component: Component }: AuthGateProps) => {
     }
     const pending: PendingRoute = {
       name: route.name,
-      params: (route.params ?? undefined) as Record<string, unknown> | undefined,
+      params: (route.params ?? undefined) as
+        | Record<string, unknown>
+        | undefined,
     };
     void setPendingRoute(pending);
     navigation.reset({
@@ -98,7 +102,9 @@ const AuthGate = ({ component: Component }: AuthGateProps) => {
 
 const ProtectedMain = () => <AuthGate component={MainTabNavigator} />;
 const ProtectedProfileEdit = () => <AuthGate component={ProfileEditScreen} />;
-const ProtectedDeleteAccount = () => <AuthGate component={DeleteAccountScreen} />;
+const ProtectedDeleteAccount = () => (
+  <AuthGate component={DeleteAccountScreen} />
+);
 const ProtectedWaiting = () => <AuthGate component={WaitingScreen} />;
 const ProtectedVideoCall = () => <AuthGate component={VideoCallScreen} />;
 const ProtectedDecision = () => <AuthGate component={DecisionScreen} />;
@@ -145,8 +151,12 @@ export type AppNavigatorProps = {
   linkingOverride?: LinkingOptions<RootStackParamList>;
 };
 
-export default function AppNavigator({ initialState, linkingOverride }: AppNavigatorProps = {}) {
-  const { token, hydrated, hydrate, pendingRoute, clearPendingRoute } = useAuth();
+export default function AppNavigator({
+  initialState,
+  linkingOverride,
+}: AppNavigatorProps = {}) {
+  const { token, hydrated, hydrate, pendingRoute, clearPendingRoute } =
+    useAuth();
   const { mode, colors } = useTheme();
   const splashStyles = useMemo(() => createSplashStyles(colors), [colors]);
   const navigationRef = useNavigationContainerRef<RootStackParamList>();

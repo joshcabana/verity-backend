@@ -32,12 +32,17 @@ let mockLastSessionStartPayload: SessionStartPayload | null = {
   durationSeconds: 45,
 };
 
-const socketHandlers: Record<string, (payload?: { sessionId?: string }) => void> = {};
+const socketHandlers: Record<
+  string,
+  (payload?: { sessionId?: string }) => void
+> = {};
 
 const mockSocket = {
-  on: jest.fn((event: string, handler: (payload?: { sessionId?: string }) => void) => {
-    socketHandlers[event] = handler;
-  }),
+  on: jest.fn(
+    (event: string, handler: (payload?: { sessionId?: string }) => void) => {
+      socketHandlers[event] = handler;
+    },
+  ),
   off: jest.fn((event: string) => {
     delete socketHandlers[event];
   }),
@@ -77,7 +82,9 @@ jest.mock('../../components/CountdownTimer', () => {
   }) {
     return (
       <Text testID={props.testID || 'countdown'}>
-        {props.isActive ? `active-${props.durationSeconds}` : `inactive-${props.durationSeconds}`}
+        {props.isActive
+          ? `active-${props.durationSeconds}`
+          : `inactive-${props.durationSeconds}`}
       </Text>
     );
   };
@@ -96,7 +103,9 @@ jest.mock('../../components/RemoteVideoView', () => {
   const { Text } = require('react-native');
   return function MockRemoteVideoView({ uid }: { uid: number | null }) {
     return (
-      <Text testID="remote-video">{uid ? `remote-${uid}` : 'remote-waiting'}</Text>
+      <Text testID="remote-video">
+        {uid ? `remote-${uid}` : 'remote-waiting'}
+      </Text>
     );
   };
 });
@@ -136,21 +145,23 @@ describe('VideoCallScreen', () => {
     };
     Object.keys(socketHandlers).forEach((key) => delete socketHandlers[key]);
 
-    (setupAgoraEngine as jest.Mock).mockImplementation((options?: {
-      onJoinSuccess?: () => void;
-      onUserJoined?: (uid: number) => void;
-    }) => {
-      if (options?.onJoinSuccess) {
-        options.onJoinSuccess();
-      }
-      if (options?.onUserJoined) {
-        options.onUserJoined(42);
-      }
-      return Promise.resolve({
-        muteLocalAudioStream: mockMuteLocalAudioStream,
-        switchCamera: mockSwitchCamera,
-      });
-    });
+    (setupAgoraEngine as jest.Mock).mockImplementation(
+      (options?: {
+        onJoinSuccess?: () => void;
+        onUserJoined?: (uid: number) => void;
+      }) => {
+        if (options?.onJoinSuccess) {
+          options.onJoinSuccess();
+        }
+        if (options?.onUserJoined) {
+          options.onUserJoined(42);
+        }
+        return Promise.resolve({
+          muteLocalAudioStream: mockMuteLocalAudioStream,
+          switchCamera: mockSwitchCamera,
+        });
+      },
+    );
   });
 
   afterEach(() => {
@@ -183,7 +194,9 @@ describe('VideoCallScreen', () => {
     await waitFor(() => expect(getByText('Live now')).toBeTruthy());
 
     fireEvent.press(getByText('Mute'));
-    await waitFor(() => expect(mockMuteLocalAudioStream).toHaveBeenCalledWith(true));
+    await waitFor(() =>
+      expect(mockMuteLocalAudioStream).toHaveBeenCalledWith(true),
+    );
     expect(getByText('Unmute')).toBeTruthy();
 
     fireEvent.press(getByText('Rear cam'));

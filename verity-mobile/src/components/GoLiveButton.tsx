@@ -7,7 +7,11 @@ type GoLiveButtonProps = {
   loading?: boolean;
 };
 
-export default function GoLiveButton({ onPress, disabled = false, loading = false }: GoLiveButtonProps) {
+export default function GoLiveButton({
+  onPress,
+  disabled = false,
+  loading = false,
+}: GoLiveButtonProps) {
   return (
     <ThemedButton
       label={loading ? 'Joining...' : 'Go Live Now'}

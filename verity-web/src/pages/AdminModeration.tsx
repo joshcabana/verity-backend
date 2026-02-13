@@ -28,11 +28,13 @@ export const AdminModeration: React.FC = () => {
   const fetchReports = async () => {
     setLoading(true);
     setError(null);
-    const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
+    const query = statusFilter
+      ? `?status=${encodeURIComponent(statusFilter)}`
+      : '';
     try {
       const response = await apiJson<Report[]>(`/moderation/reports${query}`, {
         method: 'GET',
-        headers,
+        headers: headers as HeadersInit,
       });
       if (response.ok && response.data) {
         setReports(response.data);
@@ -50,7 +52,7 @@ export const AdminModeration: React.FC = () => {
     try {
       const response = await apiJson(`/moderation/reports/${id}/resolve`, {
         method: 'POST',
-        headers,
+        headers: headers as HeadersInit,
         body: { action },
       });
       if (!response.ok) {
@@ -64,8 +66,7 @@ export const AdminModeration: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchReports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void fetchReports();
   }, [statusFilter]);
 
   const handleKeySave = () => {
@@ -105,12 +106,20 @@ export const AdminModeration: React.FC = () => {
             <option value="BANNED">BANNED</option>
           </select>
         </label>
-        <button className="button" onClick={fetchReports} disabled={loading}>
+        <button
+          className="button"
+          onClick={() => void fetchReports()}
+          disabled={loading}
+        >
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
-      {error && <p className="subtle" style={{ color: '#dc2626' }}>{error}</p>}
+      {error && (
+        <p className="subtle" style={{ color: '#dc2626' }}>
+          {error}
+        </p>
+      )}
 
       {reports.length === 0 ? (
         <p className="subtle">No reports found.</p>
@@ -120,22 +129,27 @@ export const AdminModeration: React.FC = () => {
             <div key={report.id} className="report-card">
               <div className="report-meta">
                 <strong>{report.reason}</strong>
-                <span className="subtle">{new Date(report.createdAt).toLocaleString()}</span>
+                <span className="subtle">
+                  {new Date(report.createdAt).toLocaleString()}
+                </span>
               </div>
               <p className="subtle">
-                Reporter: {report.reporterId} · Reported: {report.reportedUserId}
+                Reporter: {report.reporterId} · Reported:{' '}
+                {report.reportedUserId}
               </p>
-              {report.details && <p className="subtle">Details: {report.details}</p>}
+              {report.details && (
+                <p className="subtle">Details: {report.details}</p>
+              )}
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                 <button
                   className="button secondary"
-                  onClick={() => resolveReport(report.id, 'warn')}
+                  onClick={() => void resolveReport(report.id, 'warn')}
                 >
                   Warn
                 </button>
                 <button
                   className="button danger"
-                  onClick={() => resolveReport(report.id, 'ban')}
+                  onClick={() => void resolveReport(report.id, 'ban')}
                 >
                   Ban
                 </button>

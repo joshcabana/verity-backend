@@ -113,7 +113,12 @@ describe('DecisionScreen', () => {
     await waitFor(() =>
       expect(mockReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'MatchProfile', params: { matchId: 'match-1', partnerReveal: undefined } }],
+        routes: [
+          {
+            name: 'MatchProfile',
+            params: { matchId: 'match-1', partnerReveal: undefined },
+          },
+        ],
       }),
     );
   });
@@ -151,7 +156,10 @@ describe('TokenShopScreen', () => {
       rest.post(`${API_URL}/tokens/purchase`, (_req: any, res: any, ctx: any) =>
         res(
           ctx.status(200),
-          ctx.json({ checkoutUrl: 'https://checkout.example.com', sessionId: 'sess-1' }),
+          ctx.json({
+            checkoutUrl: 'https://checkout.example.com',
+            sessionId: 'sess-1',
+          }),
         ),
       ),
     );
@@ -165,7 +173,9 @@ describe('TokenShopScreen', () => {
     fireEvent.press(getByTestId('token-pack-buy-starter'));
 
     await waitFor(() =>
-      expect(openCheckoutSession).toHaveBeenCalledWith('https://checkout.example.com'),
+      expect(openCheckoutSession).toHaveBeenCalledWith(
+        'https://checkout.example.com',
+      ),
     );
     await waitFor(() =>
       expect(getByText('Waiting for payment confirmation...')).toBeTruthy(),
@@ -186,7 +196,9 @@ describe('TokenShopScreen', () => {
     fireEvent.press(getByTestId('token-pack-buy-starter'));
 
     await waitFor(() =>
-      expect(openCheckoutSession).toHaveBeenCalledWith('https://checkout.example.com'),
+      expect(openCheckoutSession).toHaveBeenCalledWith(
+        'https://checkout.example.com',
+      ),
     );
 
     act(() => {

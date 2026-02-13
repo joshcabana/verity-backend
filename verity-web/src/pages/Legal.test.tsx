@@ -15,6 +15,8 @@ describe('Legal', () => {
     expect(
       screen.getByRole('heading', { name: legalDocs.privacy.title }),
     ).toBeInTheDocument();
-    expect(screen.getByText(legalDocs.privacy.sections[0].heading)).toBeInTheDocument();
+    expect(
+      screen.getByText(legalDocs.privacy.sections[0].heading),
+    ).toBeInTheDocument();
   });
 });

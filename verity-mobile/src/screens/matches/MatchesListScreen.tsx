@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -51,7 +57,9 @@ export default function MatchesListScreen() {
     <ThemedScreen>
       <Text style={styles.title}>Matches</Text>
       <Text style={styles.subtitle}>
-        {isFetching ? 'Refreshing matches...' : 'Your mutual matches appear here.'}
+        {isFetching
+          ? 'Refreshing matches...'
+          : 'Your mutual matches appear here.'}
       </Text>
 
       <FlatList
@@ -59,7 +67,9 @@ export default function MatchesListScreen() {
         keyExtractor={(item) => item.matchId}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => navigation.navigate('MatchProfile', { matchId: item.matchId })}
+            onPress={() =>
+              navigation.navigate('MatchProfile', { matchId: item.matchId })
+            }
           >
             <MatchCard match={item} />
           </TouchableOpacity>

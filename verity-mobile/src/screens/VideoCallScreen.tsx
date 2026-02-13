@@ -52,14 +52,18 @@ export default function VideoCallScreen() {
   const [cameraFront, setCameraFront] = useState(true);
   const [remoteUid, setRemoteUid] = useState<number | null>(null);
   const [joined, setJoined] = useState(false);
-  const [statusText, setStatusText] = useState('Waiting for session to start...');
+  const [statusText, setStatusText] = useState(
+    'Waiting for session to start...',
+  );
 
   const endSession = useCallback(() => {
     leaveAgoraChannel();
     if (!sessionId) {
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Main' as never, params: { screen: 'Home' } as never }],
+        routes: [
+          { name: 'Main' as never, params: { screen: 'Home' } as never },
+        ],
       });
       return;
     }
@@ -161,7 +165,10 @@ export default function VideoCallScreen() {
       <View style={styles.center}>
         <Text style={styles.title}>Unable to start call</Text>
         <Text style={styles.subtitle}>Missing session details.</Text>
-        <ThemedButton label="Back to Home" onPress={() => navigation.goBack()} />
+        <ThemedButton
+          label="Back to Home"
+          onPress={() => navigation.goBack()}
+        />
       </View>
     );
   }
@@ -186,15 +193,24 @@ export default function VideoCallScreen() {
       </View>
 
       <View style={styles.controls}>
-        <TouchableOpacity style={styles.controlButton} onPress={handleToggleMute}>
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={handleToggleMute}
+        >
           <Text style={styles.controlText}>{muted ? 'Unmute' : 'Mute'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.controlButton} onPress={handleFlipCamera}>
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={handleFlipCamera}
+        >
           <Text style={styles.controlText}>
             {cameraFront ? 'Rear cam' : 'Front cam'}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.controlButton, styles.hangup]} onPress={endSession}>
+        <TouchableOpacity
+          style={[styles.controlButton, styles.hangup]}
+          onPress={endSession}
+        >
           <Text style={styles.controlText}>End</Text>
         </TouchableOpacity>
       </View>
@@ -202,7 +218,11 @@ export default function VideoCallScreen() {
   );
 }
 
-const createStyles = (colors: { text: string; muted: string; background: string }) =>
+const createStyles = (colors: {
+  text: string;
+  muted: string;
+  background: string;
+}) =>
   StyleSheet.create({
     container: {
       flex: 1,

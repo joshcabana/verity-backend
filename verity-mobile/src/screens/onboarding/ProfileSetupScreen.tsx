@@ -86,7 +86,10 @@ export default function ProfileSetupScreen() {
       const accessToken = signup.data?.accessToken;
       const userId = signup.data?.user?.id ?? signup.data?.userId;
       if (!signup.ok || !accessToken || !userId) {
-        Alert.alert('Signup failed', 'Unable to create your account. Please try again.');
+        Alert.alert(
+          'Signup failed',
+          'Unable to create your account. Please try again.',
+        );
         return;
       }
 
@@ -134,17 +137,24 @@ export default function ProfileSetupScreen() {
         routes: [{ name: 'Main' as never }],
       });
     } catch {
-      Alert.alert('Network error', 'Unable to complete onboarding. Please try again.');
+      Alert.alert(
+        'Network error',
+        'Unable to complete onboarding. Please try again.',
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Set up your profile</Text>
       <Text style={styles.subtitle}>
-        Your profile stays private until a mutual match. Share just enough to stand out.
+        Your profile stays private until a mutual match. Share just enough to
+        stand out.
       </Text>
 
       <Text style={styles.label}>Display name</Text>
@@ -212,7 +222,11 @@ export default function ProfileSetupScreen() {
   );
 }
 
-const createStyles = (colors: { text: string; muted: string; background: string }) =>
+const createStyles = (colors: {
+  text: string;
+  muted: string;
+  background: string;
+}) =>
   StyleSheet.create({
     container: {
       padding: spacing.xl,

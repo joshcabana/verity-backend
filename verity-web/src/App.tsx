@@ -4,7 +4,9 @@ import { Layout } from './components/Layout';
 import { useAuth } from './hooks/useAuth';
 
 const Onboarding = React.lazy(() =>
-  import('./pages/Onboarding').then((module) => ({ default: module.Onboarding })),
+  import('./pages/Onboarding').then((module) => ({
+    default: module.Onboarding,
+  })),
 );
 const Home = React.lazy(() =>
   import('./pages/Home').then((module) => ({ default: module.Home })),

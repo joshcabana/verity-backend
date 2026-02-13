@@ -26,7 +26,9 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
   const modalRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState(REASONS[0].value);
+  const [reason, setReason] = useState<(typeof REASONS)[number]['value']>(
+    REASONS[0].value,
+  );
   const [details, setDetails] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>(
     'idle',
@@ -181,7 +183,9 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 Close
               </button>
             </div>
-            <p className="subtle" id="report-dialog-context">{contextLabel}</p>
+            <p className="subtle" id="report-dialog-context">
+              {contextLabel}
+            </p>
             <label className="subtle">
               Reason
               <select
@@ -189,7 +193,9 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 className="input"
                 value={reason}
                 onChange={(event) =>
-                  setReason(event.target.value as (typeof REASONS)[number]['value'])
+                  setReason(
+                    event.target.value as (typeof REASONS)[number]['value'],
+                  )
                 }
               >
                 {REASONS.map((item) => (
@@ -222,15 +228,12 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
               </p>
             )}
             <div className="modal-actions">
-              <button
-                className="button secondary"
-                onClick={handleClose}
-              >
+              <button className="button secondary" onClick={handleClose}>
                 Cancel
               </button>
               <button
                 className="button danger"
-                onClick={handleSubmit}
+                onClick={() => void handleSubmit()}
                 disabled={!canSubmit}
               >
                 {status === 'sending' ? 'Sending...' : 'Submit report'}

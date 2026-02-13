@@ -18,13 +18,14 @@ import { apiJson } from '../../services/api';
 import { useTheme } from '../../theme/ThemeProvider';
 import { spacing, typography } from '../../theme/tokens';
 
-
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { user, token, logout, setUser } = useAuth();
   const { colors, mode, toggleMode } = useTheme();
 
-  const [tokenBalance, setTokenBalance] = useState<number | null>(user?.tokenBalance ?? null);
+  const [tokenBalance, setTokenBalance] = useState<number | null>(
+    user?.tokenBalance ?? null,
+  );
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [emailInput, setEmailInput] = useState(user?.email ?? '');
   const [phoneInput, setPhoneInput] = useState(user?.phone ?? '');
@@ -32,10 +33,10 @@ export default function SettingsScreen() {
   const [phoneCodeInput, setPhoneCodeInput] = useState('');
 
   const appVersion = useMemo(
-    () => Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '1.0.0',
+    () =>
+      Constants.expoConfig?.version ?? Constants.nativeAppVersion ?? '1.0.0',
     [],
   );
-
 
   const fetchBalance = useCallback(async () => {
     if (!token) {
@@ -43,7 +44,9 @@ export default function SettingsScreen() {
     }
     setLoadingBalance(true);
     try {
-      const response = await apiJson<{ tokenBalance?: number }>('/tokens/balance');
+      const response = await apiJson<{ tokenBalance?: number }>(
+        '/tokens/balance',
+      );
       if (response.status === 401 || response.status === 403) {
         Alert.alert('Session expired', 'Please log in again.');
         await logout();
@@ -56,7 +59,10 @@ export default function SettingsScreen() {
       setTokenBalance(balance);
       await setUser({ ...(user ?? { id: '' }), tokenBalance: balance });
     } catch (error) {
-      Alert.alert('Balance unavailable', 'Unable to refresh your token balance.');
+      Alert.alert(
+        'Balance unavailable',
+        'Unable to refresh your token balance.',
+      );
     } finally {
       setLoadingBalance(false);
     }
@@ -74,7 +80,10 @@ export default function SettingsScreen() {
       return;
     }
     if (!emailCodeInput.trim()) {
-      Alert.alert('Code required', 'Enter the verification code for your email.');
+      Alert.alert(
+        'Code required',
+        'Enter the verification code for your email.',
+      );
       return;
     }
     try {
@@ -98,7 +107,10 @@ export default function SettingsScreen() {
         return;
       }
       const updated = response.data;
-      await setUser({ ...(user ?? { id: updated?.id ?? '' }), email: updated?.email });
+      await setUser({
+        ...(user ?? { id: updated?.id ?? '' }),
+        email: updated?.email,
+      });
       Alert.alert('Email verified', 'Your email has been saved.');
     } catch {
       Alert.alert('Verification failed', 'Unable to verify email right now.');
@@ -111,7 +123,10 @@ export default function SettingsScreen() {
       return;
     }
     if (!phoneCodeInput.trim()) {
-      Alert.alert('Code required', 'Enter the verification code for your phone.');
+      Alert.alert(
+        'Code required',
+        'Enter the verification code for your phone.',
+      );
       return;
     }
     try {
@@ -135,7 +150,10 @@ export default function SettingsScreen() {
         return;
       }
       const updated = response.data;
-      await setUser({ ...(user ?? { id: updated?.id ?? '' }), phone: updated?.phone });
+      await setUser({
+        ...(user ?? { id: updated?.id ?? '' }),
+        phone: updated?.phone,
+      });
       Alert.alert('Phone verified', 'Your phone number has been saved.');
     } catch {
       Alert.alert('Verification failed', 'Unable to verify phone right now.');
@@ -226,7 +244,11 @@ export default function SettingsScreen() {
           placeholder="Phone verification code"
           placeholderTextColor={colors.muted}
         />
-        <ThemedButton label="Verify Phone" variant="secondary" onPress={handleVerifyPhone} />
+        <ThemedButton
+          label="Verify Phone"
+          variant="secondary"
+          onPress={handleVerifyPhone}
+        />
       </ThemedCard>
 
       <ThemedCard style={styles.cardSpacing}>
