@@ -121,7 +121,8 @@ Namespaces and key events:
 
 - **`/queue`**
   - `match` (server -> user room)
-  - payload includes `sessionId`, `partnerId`, `queueKey`, `matchedAt`
+  - payload includes `sessionId`, `partnerAnonymousId`, `queueKey`, `matchedAt`
+  - `queue:status` emits `{ usersSearching }` for the same queue key
 
 - **`/video`**
   - `session:start`

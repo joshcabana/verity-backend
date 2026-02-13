@@ -378,7 +378,8 @@ Security behavior:
 - `POST /queue/join` deducts one token and places the user into a Redis sorted set keyed by `region` + preferences.
 - `DELETE /queue/leave` removes the user and refunds the token if no match was made.
 - A background worker pops FIFO pairs from Redis and creates a `Session`.
-- Matches emit a `match` event over the `/queue` WebSocket namespace to each user room.
+- Matches emit a `match` event over the `/queue` WebSocket namespace to each user room with `{ sessionId, partnerAnonymousId, queueKey, matchedAt }`.
+- Queue status updates emit `queue:status` with `{ usersSearching }` to users currently queued for the same queue key.
 
 ## Video Call Flow & Timer
 

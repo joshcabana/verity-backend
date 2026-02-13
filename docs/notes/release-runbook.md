@@ -1,6 +1,6 @@
 # Release Operations Runbook
 
-> Companion to [`incident-runbook.md`](file:///Users/joshcabana/verity/docs/notes/incident-runbook.md) and [`deploy-staging.sh`](file:///Users/joshcabana/verity/scripts/deploy-staging.sh).
+> Companion to [`incident-runbook.md`](./incident-runbook.md) and [`deploy-staging.sh`](../../scripts/deploy-staging.sh).
 
 ---
 

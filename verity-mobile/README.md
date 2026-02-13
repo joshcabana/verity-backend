@@ -33,14 +33,14 @@
 
 - Home screen shows current token balance and a "Go Live" action.
 - Joining the queue calls `POST /queue/join` and navigates to the waiting screen.
-- Waiting screen listens for `match` and routes to the video call screen.
+- Waiting screen listens on `/queue` for `match` and `queue:status` updates, with a one-release compatibility fallback for `match:found`.
 - Cancelling calls `DELETE /queue/leave`; the response's `refunded` field determines whether the token balance is restored.
 
 ## Double Opt-In Decision UI
 
 - Decision screen posts `MATCH` or `PASS` to `POST /sessions/:id/choice`.
 - Auto-pass triggers after 60 seconds if no choice is made.
-- Mutual match navigates to Matches (chat unlocks in the next phase); rejection returns to Home.
+- Mutual match routes users into reveal-first flow (`GET /matches/:id/reveal` -> `POST /matches/:id/reveal-ack`) before chat is enabled; rejection returns to Home.
 
 ## Agora Video Integration & Timer
 
@@ -61,6 +61,7 @@
 - Chat screen loads history from `GET /matches/:id/messages`.
 - Sending uses `POST /matches/:id/messages` with optimistic UI updates.
 - Real-time delivery listens for `message:new` events over the `/chat` namespace.
+- Server-side reveal gating applies to REST and socket delivery (`REVEAL_ACK_REQUIRED` before acknowledgment).
 
 ## Token Purchase with Stripe
 

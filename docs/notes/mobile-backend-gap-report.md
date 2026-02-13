@@ -4,6 +4,9 @@ Date: 2026-02-08
 Scope: `/Users/joshcabana/verity/verity-mobile/src`, `/Users/joshcabana/verity/verity-mobile/tests`, `/Users/joshcabana/verity/src`, and `/Users/joshcabana/verity/verity-web/src`  
 Output mode: specification only (no code changes in this step)
 
+> Historical snapshot: this report captures the gap state on 2026-02-08.  
+> Current production queue contract uses `/queue` `match` payload `{ sessionId, partnerAnonymousId, queueKey, matchedAt }` and scoped `queue:status` updates.
+
 ## Executive Summary
 - Primary release risk is high because multiple P0 contract mismatches break onboarding, queue entry, session bootstrap, and decision resolution.
 - Severity counts:
@@ -45,7 +48,7 @@ Output mode: specification only (no code changes in this step)
 
 | Namespace | Event | Payload | Direction | Source |
 |---|---|---|---|---|
-| `/queue` | `match` | `{ sessionId, partnerId, queueKey, matchedAt }` | Server -> client | `/Users/joshcabana/verity/src/queue/queue.service.ts` |
+| `/queue` | `match` | `{ sessionId, partnerAnonymousId, queueKey, matchedAt }` | Server -> client | `/Users/joshcabana/verity/src/queue/queue.gateway.ts` |
 | `/video` | `session:start` | `{ sessionId, channelName, rtc, rtm, startAt, endAt, expiresAt, durationSeconds }` | Server -> client | `/Users/joshcabana/verity/src/video/video.gateway.ts` |
 | `/video` | `session:end` | `{ sessionId, reason, endedAt }` | Server -> client | `/Users/joshcabana/verity/src/video/video.gateway.ts` |
 | `/video` | `match:mutual` | `{ sessionId, matchId }` | Server -> client | `/Users/joshcabana/verity/src/session/session.service.ts` |
@@ -64,10 +67,8 @@ Output mode: specification only (no code changes in this step)
 
 ### Queue and waiting
 - `/queue/join` and `/queue/leave` called in `/Users/joshcabana/verity/verity-mobile/src/hooks/useQueue.ts`.
-- Queue listeners currently on root socket:
-  - `queue:estimate`
-  - `match:found`
-  - in `/Users/joshcabana/verity/verity-mobile/src/hooks/useQueue.ts`.
+- Historical note (resolved): queue listeners were on root socket (`queue:estimate`, `match:found`) at report time.
+- Current implementation listens on `/queue` for `match` and `queue:status`, while keeping `match:found` fallback compatibility for one release window.
 
 ### Session and decision
 - `session:end` listener currently attached to root socket in `/Users/joshcabana/verity/verity-mobile/src/screens/VideoCallScreen.tsx`.
