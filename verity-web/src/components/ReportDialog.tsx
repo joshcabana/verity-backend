@@ -183,7 +183,9 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 Close
               </button>
             </div>
-            <p className="subtle" id="report-dialog-context">{contextLabel}</p>
+            <p className="subtle" id="report-dialog-context">
+              {contextLabel}
+            </p>
             <label className="subtle">
               Reason
               <select
@@ -191,7 +193,9 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 className="input"
                 value={reason}
                 onChange={(event) =>
-                  setReason(event.target.value as (typeof REASONS)[number]['value'])
+                  setReason(
+                    event.target.value as (typeof REASONS)[number]['value'],
+                  )
                 }
               >
                 {REASONS.map((item) => (
@@ -224,10 +228,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
               </p>
             )}
             <div className="modal-actions">
-              <button
-                className="button secondary"
-                onClick={handleClose}
-              >
+              <button className="button secondary" onClick={handleClose}>
                 Cancel
               </button>
               <button

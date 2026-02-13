@@ -35,7 +35,9 @@ export const Waiting: React.FC = () => {
   const [estimatedSeconds, setEstimatedSeconds] = React.useState<number | null>(
     null,
   );
-  const [queueKey, setQueueKey] = React.useState<string | null>(initialQueueKey);
+  const [queueKey, setQueueKey] = React.useState<string | null>(
+    initialQueueKey,
+  );
   const [seconds, setSeconds] = React.useState(0);
   const [showTimeoutPrompt, setShowTimeoutPrompt] = React.useState(false);
 

@@ -6,9 +6,8 @@ import { AuthProvider, useAuth } from './useAuth';
 const apiJsonMock = vi.fn();
 
 vi.mock('../api/client', async () => {
-  const actual = await vi.importActual<typeof import('../api/client')>(
-    '../api/client',
-  );
+  const actual =
+    await vi.importActual<typeof import('../api/client')>('../api/client');
   return {
     ...actual,
     apiJson: (...args: unknown[]) => apiJsonMock(...args),

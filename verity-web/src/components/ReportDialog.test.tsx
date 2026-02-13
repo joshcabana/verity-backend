@@ -35,7 +35,9 @@ describe('ReportDialog', () => {
       });
     });
     expect(
-      await screen.findByText(/report submitted. thank you for helping keep verity safe/i),
+      await screen.findByText(
+        /report submitted. thank you for helping keep verity safe/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -47,7 +49,9 @@ describe('ReportDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /submit report/i }));
 
     expect(
-      await screen.findByText(/we could not submit the report. please try again/i),
+      await screen.findByText(
+        /we could not submit the report. please try again/i,
+      ),
     ).toBeInTheDocument();
   });
 

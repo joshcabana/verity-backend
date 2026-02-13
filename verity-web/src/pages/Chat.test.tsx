@@ -126,16 +126,19 @@ describe('Chat', () => {
           },
         ]),
       ),
-      http.post(`${API_URL}/matches/:matchId/messages`, async ({ request, params }) => {
-        const body = (await request.json()) as { text: string };
-        return HttpResponse.json({
-          id: 'msg-2',
-          matchId: String(params.matchId),
-          senderId: 'user-1',
-          text: body.text,
-          createdAt: '2025-01-01T00:00:05.000Z',
-        });
-      }),
+      http.post(
+        `${API_URL}/matches/:matchId/messages`,
+        async ({ request, params }) => {
+          const body = (await request.json()) as { text: string };
+          return HttpResponse.json({
+            id: 'msg-2',
+            matchId: String(params.matchId),
+            senderId: 'user-1',
+            text: body.text,
+            createdAt: '2025-01-01T00:00:05.000Z',
+          });
+        },
+      ),
       http.post(`${API_URL}/moderation/blocks`, () =>
         HttpResponse.json({ status: 'blocked' }),
       ),
@@ -160,17 +163,20 @@ describe('Chat', () => {
     });
 
     server.use(
-      http.post(`${API_URL}/matches/:matchId/messages`, async ({ request, params }) => {
-        const body = (await request.json()) as { text: string };
-        await gate;
-        return HttpResponse.json({
-          id: 'msg-2',
-          matchId: String(params.matchId),
-          senderId: 'user-1',
-          text: body.text,
-          createdAt: '2025-01-01T00:00:05.000Z',
-        });
-      }),
+      http.post(
+        `${API_URL}/matches/:matchId/messages`,
+        async ({ request, params }) => {
+          const body = (await request.json()) as { text: string };
+          await gate;
+          return HttpResponse.json({
+            id: 'msg-2',
+            matchId: String(params.matchId),
+            senderId: 'user-1',
+            text: body.text,
+            createdAt: '2025-01-01T00:00:05.000Z',
+          });
+        },
+      ),
     );
 
     renderWithProviders(<Chat />, {
@@ -205,7 +211,9 @@ describe('Chat', () => {
 
   it('adds incoming messages from the chat socket', async () => {
     server.use(
-      http.get(`${API_URL}/matches/:matchId/messages`, () => HttpResponse.json([])),
+      http.get(`${API_URL}/matches/:matchId/messages`, () =>
+        HttpResponse.json([]),
+      ),
     );
 
     renderWithProviders(<Chat />, {

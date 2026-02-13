@@ -28,7 +28,9 @@ export const AdminModeration: React.FC = () => {
   const fetchReports = async () => {
     setLoading(true);
     setError(null);
-    const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
+    const query = statusFilter
+      ? `?status=${encodeURIComponent(statusFilter)}`
+      : '';
     try {
       const response = await apiJson<Report[]>(`/moderation/reports${query}`, {
         method: 'GET',
@@ -110,7 +112,11 @@ export const AdminModeration: React.FC = () => {
         </button>
       </div>
 
-      {error && <p className="subtle" style={{ color: '#dc2626' }}>{error}</p>}
+      {error && (
+        <p className="subtle" style={{ color: '#dc2626' }}>
+          {error}
+        </p>
+      )}
 
       {reports.length === 0 ? (
         <p className="subtle">No reports found.</p>
@@ -120,12 +126,17 @@ export const AdminModeration: React.FC = () => {
             <div key={report.id} className="report-card">
               <div className="report-meta">
                 <strong>{report.reason}</strong>
-                <span className="subtle">{new Date(report.createdAt).toLocaleString()}</span>
+                <span className="subtle">
+                  {new Date(report.createdAt).toLocaleString()}
+                </span>
               </div>
               <p className="subtle">
-                Reporter: {report.reporterId} · Reported: {report.reportedUserId}
+                Reporter: {report.reporterId} · Reported:{' '}
+                {report.reportedUserId}
               </p>
-              {report.details && <p className="subtle">Details: {report.details}</p>}
+              {report.details && (
+                <p className="subtle">Details: {report.details}</p>
+              )}
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                 <button
                   className="button secondary"

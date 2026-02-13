@@ -11,7 +11,9 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/onboarding': () => import('../pages/Onboarding'),
 };
 
-export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const Layout: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { token, signOut } = useAuth();
   const location = useLocation();
   const showMarketingHomeNav = Boolean(token && location.pathname === '/home');

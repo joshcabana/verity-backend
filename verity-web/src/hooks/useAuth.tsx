@@ -6,7 +6,12 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { apiJson, decodeToken, getAccessToken, setAccessToken } from '../api/client';
+import {
+  apiJson,
+  decodeToken,
+  getAccessToken,
+  setAccessToken,
+} from '../api/client';
 import { trackEvent } from '../analytics/events';
 
 type AuthContextValue = {
@@ -51,7 +56,9 @@ function getOrCreatePushToken(): string {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [token, setTokenState] = useState<string | null>(() => getAccessToken());
+  const [token, setTokenState] = useState<string | null>(() =>
+    getAccessToken(),
+  );
   const [loading, setLoading] = useState(false);
 
   const userId = useMemo(() => {
@@ -67,31 +74,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setTokenState(next);
   }, []);
 
-  const signUp = useCallback(async (input?: SignUpInput) => {
-    if (loading) {
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await apiJson<{ accessToken?: string }>(
-        '/auth/signup-anonymous',
-        {
-          method: 'POST',
-          body: input,
-        },
-      );
-      if (response.ok && response.data?.accessToken) {
-        setToken(response.data.accessToken);
-        trackEvent('auth_signup_completed', {
-          hasDob: Boolean(input?.dateOfBirth),
-        });
-      } else {
-        throw new Error('Signup failed');
+  const signUp = useCallback(
+    async (input?: SignUpInput) => {
+      if (loading) {
+        return;
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, setToken]);
+      setLoading(true);
+      try {
+        const response = await apiJson<{ accessToken?: string }>(
+          '/auth/signup-anonymous',
+          {
+            method: 'POST',
+            body: input,
+          },
+        );
+        if (response.ok && response.data?.accessToken) {
+          setToken(response.data.accessToken);
+          trackEvent('auth_signup_completed', {
+            hasDob: Boolean(input?.dateOfBirth),
+          });
+        } else {
+          throw new Error('Signup failed');
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loading, setToken],
+  );
 
   const signOut = useCallback(() => {
     const pushToken = getStoredPushToken();

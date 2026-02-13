@@ -24,7 +24,9 @@ const socketMock = {
       socketHandlers.delete(event);
       return;
     }
-    const next = (socketHandlers.get(event) ?? []).filter((fn) => fn !== handler);
+    const next = (socketHandlers.get(event) ?? []).filter(
+      (fn) => fn !== handler,
+    );
     if (next.length > 0) {
       socketHandlers.set(event, next);
       return;
@@ -40,9 +42,10 @@ const emitSocket = (event: string, payload: unknown) => {
 };
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>(
-    'react-router-dom',
-  );
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>(
+      'react-router-dom',
+    );
   return {
     ...actual,
     useNavigate: () => navigateMock,
@@ -126,10 +129,15 @@ describe('Home and Waiting queue flow', () => {
   it('shows live queue status from queue:status events', async () => {
     renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
 
-    expect(screen.getByText(/hang tight - matching fast\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/hang tight - matching fast\./i),
+    ).toBeInTheDocument();
 
     await waitFor(() =>
-      expect(socketMock.on).toHaveBeenCalledWith('queue:status', expect.any(Function)),
+      expect(socketMock.on).toHaveBeenCalledWith(
+        'queue:status',
+        expect.any(Function),
+      ),
     );
 
     emitSocket('queue:status', { usersSearching: 11 });
@@ -143,7 +151,10 @@ describe('Home and Waiting queue flow', () => {
     renderWithProviders(<Waiting />, { route: '/waiting', path: '/waiting' });
 
     await waitFor(() =>
-      expect(socketMock.on).toHaveBeenCalledWith('queue:estimate', expect.any(Function)),
+      expect(socketMock.on).toHaveBeenCalledWith(
+        'queue:estimate',
+        expect.any(Function),
+      ),
     );
 
     emitSocket('queue:estimate', { estimatedSeconds: 18 });
@@ -176,9 +187,8 @@ describe('Home and Waiting queue flow', () => {
       }),
     );
     expect(
-      navigateMock.mock.calls.filter(
-        (call) => call[0] === '/session/session-1',
-      ).length,
+      navigateMock.mock.calls.filter((call) => call[0] === '/session/session-1')
+        .length,
     ).toBe(1);
     expect(trackEventMock).toHaveBeenCalledTimes(1);
   });
@@ -241,7 +251,9 @@ describe('Home and Waiting queue flow', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(46_000);
       });
-      fireEvent.click(screen.getAllByRole('button', { name: /leave queue/i })[0]);
+      fireEvent.click(
+        screen.getAllByRole('button', { name: /leave queue/i })[0],
+      );
 
       await Promise.resolve();
       await Promise.resolve();

@@ -19,7 +19,11 @@ export const Onboarding: React.FC = () => {
   const ready = useMemo(
     () =>
       Boolean(
-        dateOfBirth && ageConfirmed && videoConsent && aiConsent && termsAccepted,
+        dateOfBirth &&
+        ageConfirmed &&
+        videoConsent &&
+        aiConsent &&
+        termsAccepted,
       ),
     [dateOfBirth, ageConfirmed, videoConsent, aiConsent, termsAccepted],
   );
@@ -62,7 +66,8 @@ export const Onboarding: React.FC = () => {
         <div className="callout safety">
           <strong>Safety by design</strong>
           <p className="subtle">
-            Calls are not recorded. Real-time AI moderation keeps the experience safe.
+            Calls are not recorded. Real-time AI moderation keeps the experience
+            safe.
           </p>
         </div>
         <div className="input-stack">
@@ -105,8 +110,7 @@ export const Onboarding: React.FC = () => {
               checked={termsAccepted}
               onChange={(event) => setTermsAccepted(event.target.checked)}
             />
-            I agree to the{' '}
-            <Link to="/legal/terms">Terms</Link> and{' '}
+            I agree to the <Link to="/legal/terms">Terms</Link> and{' '}
             <Link to="/legal/privacy">Privacy Policy</Link>.
           </label>
         </div>

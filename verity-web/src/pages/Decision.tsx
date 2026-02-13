@@ -169,7 +169,8 @@ export const Decision: React.FC = () => {
         <div className="callout safety" style={{ marginTop: '16px' }}>
           <strong>Safety matters</strong>
           <p className="subtle">
-            If anything felt off, report the user from the session or chat screen.
+            If anything felt off, report the user from the session or chat
+            screen.
           </p>
         </div>
       </div>

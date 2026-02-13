@@ -139,14 +139,22 @@ export const Home: React.FC = () => {
           <p className="home-eyebrow">LIVE INTROS. ZERO SWIPE FATIGUE.</p>
           <h1 className="home-hero-title">Meet first. Reveal later.</h1>
           <p className="home-hero-subtitle">
-            Verity matches you into a 45-second live video intro. Mutual match unlocks identity
-            and chat.
+            Verity matches you into a 45-second live video intro. Mutual match
+            unlocks identity and chat.
           </p>
           <div className="home-hero-actions">
-            <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+            <button
+              className="button home-primary-cta"
+              onClick={handleJoin}
+              disabled={!canJoin}
+            >
               {joining ? 'Joining...' : 'Go Live Now'}
             </button>
-            <button className="button secondary" onClick={scrollToHow} type="button">
+            <button
+              className="button secondary"
+              onClick={scrollToHow}
+              type="button"
+            >
               See How It Works
             </button>
           </div>
@@ -165,28 +173,41 @@ export const Home: React.FC = () => {
             <span className="pill">Live in Canberra</span>
           </div>
           <p className="subtle">
-            1 token starts a live intro. If no match forms, your token is returned.
+            1 token starts a live intro. If no match forms, your token is
+            returned.
           </p>
           <div className="home-balance-line">
             <span className="subtle">Current balance</span>
             <strong>{balanceLabel}</strong>
           </div>
           <div className="home-card-actions">
-            <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+            <button
+              className="button home-primary-cta"
+              onClick={handleJoin}
+              disabled={!canJoin}
+            >
               {joining ? 'Joining...' : 'Go Live Now'}
             </button>
-            <button className="button ghost" onClick={scrollToHow} type="button">
+            <button
+              className="button ghost"
+              onClick={scrollToHow}
+              type="button"
+            >
               How Matching Works
             </button>
           </div>
           {tokenBalance === 0 && (
-            <p className="subtle">You need at least 1 token to start a live intro.</p>
+            <p className="subtle">
+              You need at least 1 token to start a live intro.
+            </p>
           )}
         </article>
 
         <article className="card home-token-card">
           <h3 className="section-title">Stay in the flow.</h3>
-          <p className="subtle">Top up tokens anytime. Start calls in one tap.</p>
+          <p className="subtle">
+            Top up tokens anytime. Start calls in one tap.
+          </p>
           <div className="stack tight">
             {PACKS.map((pack) => (
               <button
@@ -254,20 +275,36 @@ export const Home: React.FC = () => {
       <section className="home-footer-band" id="home-pricing">
         <h2>Your next real intro is 45 seconds away.</h2>
         <div className="inline">
-          <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+          <button
+            className="button home-primary-cta"
+            onClick={handleJoin}
+            disabled={!canJoin}
+          >
             {joining ? 'Joining...' : 'Get Started'}
           </button>
-          <button className="button secondary" type="button" onClick={scrollToHow}>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={scrollToHow}
+          >
             Learn More
           </button>
         </div>
       </section>
 
       <div className="home-sticky-dock">
-        <button className="button home-primary-cta" onClick={handleJoin} disabled={!canJoin}>
+        <button
+          className="button home-primary-cta"
+          onClick={handleJoin}
+          disabled={!canJoin}
+        >
           {joining ? 'Joining...' : 'Go Live Now'}
         </button>
-        <button className="button ghost home-sticky-link" type="button" onClick={scrollToHow}>
+        <button
+          className="button ghost home-sticky-link"
+          type="button"
+          onClick={scrollToHow}
+        >
           How it works
         </button>
       </div>
