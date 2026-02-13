@@ -122,6 +122,14 @@ export const legalDocs = ${serializedDocs} as const satisfies Record<string, Leg
 }
 
 function main() {
+  if (!fs.existsSync(legalDocsRoot)) {
+    console.log(
+      `Legal source directory not found (${legalDocsRoot}). ` +
+        'Using existing generated.ts (expected in Vercel builds).',
+    );
+    return;
+  }
+
   const docs = {};
   for (const { key, file } of docsConfig) {
     const inputPath = path.resolve(legalDocsRoot, file);
