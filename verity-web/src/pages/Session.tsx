@@ -109,14 +109,16 @@ export const Session: React.FC = () => {
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
         clientRef.current = client;
 
-        client.on('user-published', async (user, mediaType) => {
-          await client.subscribe(user, mediaType);
-          if (mediaType === 'video' && remoteVideoRef.current) {
-            user.videoTrack?.play(remoteVideoRef.current);
-          }
-          if (mediaType === 'audio') {
-            user.audioTrack?.play();
-          }
+        client.on('user-published', (user, mediaType) => {
+          void (async () => {
+            await client.subscribe(user, mediaType);
+            if (mediaType === 'video' && remoteVideoRef.current) {
+              user.videoTrack?.play(remoteVideoRef.current);
+            }
+            if (mediaType === 'audio') {
+              user.audioTrack?.play();
+            }
+          })();
         });
 
         client.on('user-unpublished', () => {

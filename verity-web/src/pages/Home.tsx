@@ -127,7 +127,7 @@ export const Home: React.FC = () => {
         <span className="home-wordmark">VERITY</span>
         <button
           className="home-rail-action"
-          onClick={() => (canJoin ? handleJoin() : scrollToHow())}
+          onClick={() => (canJoin ? void handleJoin() : scrollToHow())}
           type="button"
         >
           {balanceQuery.isLoading ? 'How it works' : `Tokens: ${tokenBalance}`}
@@ -145,7 +145,7 @@ export const Home: React.FC = () => {
           <div className="home-hero-actions">
             <button
               className="button home-primary-cta"
-              onClick={handleJoin}
+              onClick={() => void handleJoin()}
               disabled={!canJoin}
             >
               {joining ? 'Joining...' : 'Go Live Now'}
@@ -183,7 +183,7 @@ export const Home: React.FC = () => {
           <div className="home-card-actions">
             <button
               className="button home-primary-cta"
-              onClick={handleJoin}
+              onClick={() => void handleJoin()}
               disabled={!canJoin}
             >
               {joining ? 'Joining...' : 'Go Live Now'}
@@ -213,7 +213,7 @@ export const Home: React.FC = () => {
               <button
                 key={pack.id}
                 className="button secondary"
-                onClick={() => handlePurchase(pack.id)}
+                onClick={() => void handlePurchase(pack.id)}
                 disabled={Boolean(buyingPackId)}
               >
                 {buyingPackId === pack.id
@@ -277,7 +277,7 @@ export const Home: React.FC = () => {
         <div className="inline">
           <button
             className="button home-primary-cta"
-            onClick={handleJoin}
+            onClick={() => void handleJoin()}
             disabled={!canJoin}
           >
             {joining ? 'Joining...' : 'Get Started'}
@@ -295,7 +295,7 @@ export const Home: React.FC = () => {
       <div className="home-sticky-dock">
         <button
           className="button home-primary-cta"
-          onClick={handleJoin}
+          onClick={() => void handleJoin()}
           disabled={!canJoin}
         >
           {joining ? 'Joining...' : 'Go Live Now'}

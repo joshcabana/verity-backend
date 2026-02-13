@@ -380,7 +380,7 @@ export const Chat: React.FC = () => {
           <div className="inline">
             <button
               className="button ghost"
-              onClick={handleBlock}
+              onClick={() => void handleBlock()}
               disabled={!partnerId || blocking || blocked}
             >
               {blocking ? 'Blocking…' : blocked ? 'Blocked' : 'Block'}
@@ -416,7 +416,7 @@ export const Chat: React.FC = () => {
             <button
               className="button"
               style={{ marginTop: '12px' }}
-              onClick={acknowledgeReveal}
+              onClick={() => void acknowledgeReveal()}
               disabled={acknowledgingReveal}
             >
               {acknowledgingReveal ? 'Continuing…' : 'Continue to chat'}
@@ -475,7 +475,7 @@ export const Chat: React.FC = () => {
           />
           <button
             className="button"
-            onClick={sendMessage}
+            onClick={() => void sendMessage()}
             disabled={
               !draft.trim() || blocked || chatLocked || acknowledgingReveal
             }

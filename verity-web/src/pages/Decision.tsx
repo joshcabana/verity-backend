@@ -140,14 +140,14 @@ export const Decision: React.FC = () => {
         <div className="inline" style={{ marginTop: '16px' }}>
           <button
             className="button"
-            onClick={() => submitChoice('MATCH')}
+            onClick={() => void submitChoice('MATCH')}
             disabled={submitting}
           >
             Match
           </button>
           <button
             className="button secondary"
-            onClick={() => submitChoice('PASS')}
+            onClick={() => void submitChoice('PASS')}
             disabled={submitting}
           >
             Pass

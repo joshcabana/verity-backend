@@ -116,7 +116,7 @@ export const Onboarding: React.FC = () => {
         </div>
         <button
           className="button"
-          onClick={handleStart}
+          onClick={() => void handleStart()}
           disabled={loading || !ready}
         >
           {loading ? 'Creating profile...' : 'Start anonymously'}

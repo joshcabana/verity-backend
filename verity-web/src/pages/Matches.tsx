@@ -53,7 +53,7 @@ export const Matches: React.FC = () => {
         <button
           className="button secondary"
           style={{ marginTop: '12px' }}
-          onClick={() => matchesQuery.refetch()}
+          onClick={() => void matchesQuery.refetch()}
         >
           Retry
         </button>

@@ -233,7 +233,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
               </button>
               <button
                 className="button danger"
-                onClick={handleSubmit}
+                onClick={() => void handleSubmit()}
                 disabled={!canSubmit}
               >
                 {status === 'sending' ? 'Sending...' : 'Submit report'}

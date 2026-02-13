@@ -96,14 +96,14 @@ export const Settings: React.FC = () => {
         <div className="stack tight" style={{ marginTop: '16px' }}>
           <button
             className="button secondary"
-            onClick={handleExport}
+            onClick={() => void handleExport()}
             disabled={exporting}
           >
             {exporting ? 'Preparing download...' : 'Download my data'}
           </button>
           <button
             className="button danger"
-            onClick={handleDelete}
+            onClick={() => void handleDelete()}
             disabled={deleting}
           >
             {deleting ? 'Deleting...' : 'Delete account'}
@@ -137,7 +137,7 @@ export const Settings: React.FC = () => {
                 </div>
                 <button
                   className="button secondary"
-                  onClick={() => handleUnblock(entry.blockedUserId)}
+                  onClick={() => void handleUnblock(entry.blockedUserId)}
                   disabled={unblockingId === entry.blockedUserId}
                 >
                   {unblockingId === entry.blockedUserId

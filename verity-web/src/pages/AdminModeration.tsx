@@ -107,7 +107,7 @@ export const AdminModeration: React.FC = () => {
             <option value="BANNED">BANNED</option>
           </select>
         </label>
-        <button className="button" onClick={fetchReports} disabled={loading}>
+        <button className="button" onClick={() => void fetchReports()} disabled={loading}>
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
@@ -140,13 +140,13 @@ export const AdminModeration: React.FC = () => {
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                 <button
                   className="button secondary"
-                  onClick={() => resolveReport(report.id, 'warn')}
+                  onClick={() => void resolveReport(report.id, 'warn')}
                 >
                   Warn
                 </button>
                 <button
                   className="button danger"
-                  onClick={() => resolveReport(report.id, 'ban')}
+                  onClick={() => void resolveReport(report.id, 'ban')}
                 >
                   Ban
                 </button>
