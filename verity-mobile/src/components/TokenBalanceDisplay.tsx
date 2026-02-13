@@ -10,6 +10,8 @@ type TokenBalanceDisplayProps = {
   onRefresh?: () => void;
   refreshing?: boolean;
   refreshTestID?: string;
+  compact?: boolean;
+  onPress?: () => void;
 };
 
 export default function TokenBalanceDisplay({
@@ -18,9 +20,20 @@ export default function TokenBalanceDisplay({
   onRefresh,
   refreshing = false,
   refreshTestID = 'token-balance-refresh',
+  compact = false,
+  onPress,
 }: TokenBalanceDisplayProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  if (compact) {
+    return (
+      <TouchableOpacity onPress={onPress} disabled={!onPress} style={styles.compactContainer}>
+        <Text style={styles.compactValue}>{balance}</Text>
+        <Text style={styles.compactUnit}>TOKENS</Text>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <ThemedCard>
@@ -81,5 +94,24 @@ const createStyles = (colors: { text: string; muted: string; primary: string }) 
       fontSize: typography.xs,
       color: colors.primary,
       fontWeight: '600',
+    },
+    compactContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+      gap: 6,
+    },
+    compactValue: {
+      fontSize: typography.sm,
+      fontWeight: '700',
+      color: colors.primary, // Gold
+    },
+    compactUnit: {
+      fontSize: 10,
+      color: colors.muted,
+      letterSpacing: 1,
     },
   });
