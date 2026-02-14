@@ -2,11 +2,15 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Matches } from './Matches';
-import { HttpResponse, http, server } from '../test/setup';
 
-const API_URL = 'http://localhost:3000';
+const apiJsonMock = vi.fn();
+
+vi.mock('../api/client', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  apiJson: (...args: unknown[]) => apiJsonMock(...args),
+}));
 
 function ChatRouteProbe() {
   const { matchId } = useParams();
@@ -24,7 +28,13 @@ function renderMatches() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/matches']}>
+      <MemoryRouter
+        initialEntries={['/matches']}
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
           <Route path="/matches" element={<Matches />} />
           <Route path="/chat/:matchId" element={<ChatRouteProbe />} />
@@ -35,20 +45,24 @@ function renderMatches() {
 }
 
 describe('Matches page', () => {
+  beforeEach(() => {
+    apiJsonMock.mockReset();
+  });
+
   it('renders placeholder content when reveal is not acknowledged', async () => {
-    server.use(
-      http.get(`${API_URL}/matches`, () =>
-        HttpResponse.json([
-          {
-            matchId: 'match-1',
-            partnerRevealVersion: 1,
-            revealAcknowledged: false,
-            revealAcknowledgedAt: null,
-            partnerReveal: null,
-          },
-        ]),
-      ),
-    );
+    apiJsonMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: [
+        {
+          matchId: 'match-1',
+          partnerRevealVersion: 1,
+          revealAcknowledged: false,
+          revealAcknowledgedAt: null,
+          partnerReveal: null,
+        },
+      ],
+    });
 
     renderMatches();
 
@@ -62,25 +76,25 @@ describe('Matches page', () => {
   });
 
   it('renders reveal details when acknowledged', async () => {
-    server.use(
-      http.get(`${API_URL}/matches`, () =>
-        HttpResponse.json([
-          {
-            matchId: 'match-2',
-            partnerRevealVersion: 1,
-            revealAcknowledged: true,
-            revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
-            partnerReveal: {
-              id: 'user-2',
-              displayName: 'Alex',
-              primaryPhotoUrl: 'https://example.com/alex.jpg',
-              age: 28,
-              bio: 'Coffee and coastlines.',
-            },
+    apiJsonMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: [
+        {
+          matchId: 'match-2',
+          partnerRevealVersion: 1,
+          revealAcknowledged: true,
+          revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+          partnerReveal: {
+            id: 'user-2',
+            displayName: 'Alex',
+            primaryPhotoUrl: 'https://example.com/alex.jpg',
+            age: 28,
+            bio: 'Coffee and coastlines.',
           },
-        ]),
-      ),
-    );
+        },
+      ],
+    });
 
     renderMatches();
 
@@ -89,4 +103,3 @@ describe('Matches page', () => {
     expect(screen.getByText('Reveal complete')).toBeInTheDocument();
   });
 });
-

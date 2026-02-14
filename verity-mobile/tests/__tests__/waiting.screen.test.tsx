@@ -79,7 +79,7 @@ describe('WaitingScreen', () => {
 
     const { getByText } = render(<WaitingScreen />);
 
-    expect(getByText('9 users currently searching')).toBeTruthy();
+    expect(getByText('9 Online')).toBeTruthy();
   });
 
   it('falls back to estimated seconds when users searching is unavailable', () => {
@@ -89,7 +89,7 @@ describe('WaitingScreen', () => {
 
     const { getByText } = render(<WaitingScreen />);
 
-    expect(getByText('Estimated wait: 24s')).toBeTruthy();
+    expect(getByText('< 24s Wait')).toBeTruthy();
   });
 
   it('falls back to estimated seconds when usersSearching is undefined', () => {
@@ -99,7 +99,7 @@ describe('WaitingScreen', () => {
 
     const { getByText } = render(<WaitingScreen />);
 
-    expect(getByText('Estimated wait: 15s')).toBeTruthy();
+    expect(getByText('< 15s Wait')).toBeTruthy();
   });
 
   it('applies refund behavior from leaveQueue result on cancel', async () => {
@@ -107,7 +107,7 @@ describe('WaitingScreen', () => {
     mockQueueState.leaveQueue.mockResolvedValue(true);
 
     const { getByText } = render(<WaitingScreen />);
-    fireEvent.press(getByText('Leave queue'));
+    fireEvent.press(getByText('Cancel'));
 
     await waitFor(() => expect(mockQueueState.leaveQueue).toHaveBeenCalledTimes(1));
     await waitFor(() =>
@@ -141,7 +141,7 @@ describe('WaitingScreen', () => {
         jest.advanceTimersByTime(46_000);
       });
 
-      expect(getByText('No one nearby yet.')).toBeTruthy();
+      expect(getByText('Still looking...')).toBeTruthy();
       expect(mockTrackEvent).toHaveBeenCalledWith(
         'queue_timeout_shown',
         expect.objectContaining({
@@ -163,7 +163,7 @@ describe('WaitingScreen', () => {
       act(() => {
         jest.advanceTimersByTime(46_000);
       });
-      fireEvent.press(getByText('Keep searching'));
+      fireEvent.press(getByText('Wait'));
 
       expect(mockTrackEvent).toHaveBeenCalledWith(
         'queue_timeout_continue',
@@ -172,7 +172,7 @@ describe('WaitingScreen', () => {
           elapsedSeconds: expect.any(Number),
         }),
       );
-      expect(queryByText('No one nearby yet.')).toBeNull();
+      expect(queryByText('Still looking...')).toBeNull();
     } finally {
       jest.useRealTimers();
     }
@@ -188,7 +188,7 @@ describe('WaitingScreen', () => {
       act(() => {
         jest.advanceTimersByTime(46_000);
       });
-      fireEvent.press(getAllByText('Leave queue')[0]);
+      fireEvent.press(getAllByText('Leave')[0]);
 
       await waitFor(() =>
         expect(mockTrackEvent).toHaveBeenCalledWith(

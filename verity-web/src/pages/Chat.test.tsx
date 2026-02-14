@@ -3,12 +3,32 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Chat } from './Chat';
 import { renderWithProviders } from '../test/testUtils';
-import { HttpResponse, http, server } from '../test/setup';
 
-const API_URL = 'http://localhost:3000';
 const trackEventMock = vi.fn();
+const apiJsonMock = vi.fn();
 
 type SocketHandler = (payload: unknown) => void;
+
+type PartnerReveal = {
+  id: string;
+  displayName: string;
+  primaryPhotoUrl: string;
+  age: number;
+  bio: string;
+};
+
+type ChatApiOptions = {
+  revealAcknowledged?: boolean;
+  messages?: Array<{
+    id: string;
+    matchId: string;
+    senderId: string;
+    text: string;
+    createdAt: string;
+  }>;
+  onMessagesRequest?: () => void;
+  onPostMessage?: (text: string) => Promise<unknown>;
+};
 
 const socketHandlers = new Map<string, Set<SocketHandler>>();
 
@@ -35,8 +55,126 @@ function emitSocket(event: string, payload: unknown) {
   }
 }
 
+const defaultPartnerReveal: PartnerReveal = {
+  id: 'user-2',
+  displayName: 'Alex',
+  primaryPhotoUrl: 'https://example.com/alex.jpg',
+  age: 28,
+  bio: 'Coffee and coastlines.',
+};
+
+function mockChatApi({
+  revealAcknowledged = true,
+  messages = [
+    {
+      id: 'msg-1',
+      matchId: 'match-1',
+      senderId: 'user-2',
+      text: 'Hello there',
+      createdAt: '2025-01-01T00:00:00.000Z',
+    },
+  ],
+  onMessagesRequest,
+  onPostMessage,
+}: ChatApiOptions = {}) {
+  apiJsonMock.mockImplementation(
+    async (
+      path: string,
+      options?: { method?: string; body?: { text?: string } },
+    ) => {
+      const method = options?.method ?? 'GET';
+
+      if (path === '/matches/match-1/reveal' && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            matchId: 'match-1',
+            partnerRevealVersion: 1,
+            partnerReveal: defaultPartnerReveal,
+            revealAcknowledged,
+            revealAcknowledgedAt: revealAcknowledged
+              ? '2025-01-01T00:00:00.000Z'
+              : null,
+          },
+        };
+      }
+
+      if (path === '/matches/match-1/reveal-ack' && method === 'POST') {
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            matchId: 'match-1',
+            partnerRevealVersion: 1,
+            partnerReveal: defaultPartnerReveal,
+            revealAcknowledged: true,
+            revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+          },
+        };
+      }
+
+      if (path === '/matches/match-1/messages' && method === 'GET') {
+        onMessagesRequest?.();
+        return {
+          ok: true,
+          status: 200,
+          data: messages,
+        };
+      }
+
+      if (path === '/matches/match-1/messages' && method === 'POST') {
+        const text = options?.body?.text ?? '';
+        if (onPostMessage) {
+          const data = await onPostMessage(text);
+          return { ok: true, status: 200, data };
+        }
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            id: 'msg-2',
+            matchId: 'match-1',
+            senderId: 'user-1',
+            text,
+            createdAt: '2025-01-01T00:00:05.000Z',
+          },
+        };
+      }
+
+      if (path === '/matches' && method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          data: [
+            {
+              matchId: 'match-1',
+              partnerRevealVersion: 1,
+              revealAcknowledged: true,
+              revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
+              partnerReveal: defaultPartnerReveal,
+            },
+          ],
+        };
+      }
+
+      if (path === '/moderation/blocks' && method === 'POST') {
+        return { ok: true, status: 200, data: { status: 'blocked' } };
+      }
+
+      return { ok: false, status: 500, data: null };
+    },
+  );
+}
+
 vi.mock('../analytics/events', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   trackEvent: (...args: unknown[]) => trackEventMock(...args),
+}));
+
+vi.mock('../api/client', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  apiJson: (...args: unknown[]) => apiJsonMock(...args),
 }));
 
 vi.mock('../hooks/useAuth', () => ({
@@ -63,83 +201,11 @@ vi.mock('../hooks/useSocket', () => ({
 describe('Chat', () => {
   beforeEach(() => {
     trackEventMock.mockReset();
+    apiJsonMock.mockReset();
     socketMock.on.mockClear();
     socketMock.off.mockClear();
     socketHandlers.clear();
-
-    server.use(
-      http.get(`${API_URL}/matches/:matchId/reveal`, ({ params }) =>
-        HttpResponse.json({
-          matchId: String(params.matchId),
-          partnerRevealVersion: 1,
-          partnerReveal: {
-            id: 'user-2',
-            displayName: 'Alex',
-            primaryPhotoUrl: 'https://example.com/alex.jpg',
-            age: 28,
-            bio: 'Coffee and coastlines.',
-          },
-          revealAcknowledged: true,
-          revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
-        }),
-      ),
-      http.post(`${API_URL}/matches/:matchId/reveal-ack`, ({ params }) =>
-        HttpResponse.json({
-          matchId: String(params.matchId),
-          partnerRevealVersion: 1,
-          partnerReveal: {
-            id: 'user-2',
-            displayName: 'Alex',
-            primaryPhotoUrl: 'https://example.com/alex.jpg',
-            age: 28,
-            bio: 'Coffee and coastlines.',
-          },
-          revealAcknowledged: true,
-          revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
-        }),
-      ),
-      http.get(`${API_URL}/matches/:matchId/messages`, () =>
-        HttpResponse.json([
-          {
-            id: 'msg-1',
-            matchId: 'match-1',
-            senderId: 'user-2',
-            text: 'Hello there',
-            createdAt: '2025-01-01T00:00:00.000Z',
-          },
-        ]),
-      ),
-      http.get(`${API_URL}/matches`, () =>
-        HttpResponse.json([
-          {
-            matchId: 'match-1',
-            partnerRevealVersion: 1,
-            revealAcknowledged: true,
-            revealAcknowledgedAt: '2025-01-01T00:00:00.000Z',
-            partnerReveal: {
-              id: 'user-2',
-              displayName: 'Alex',
-              primaryPhotoUrl: 'https://example.com/alex.jpg',
-              age: 28,
-              bio: 'Coffee and coastlines.',
-            },
-          },
-        ]),
-      ),
-      http.post(`${API_URL}/matches/:matchId/messages`, async ({ request, params }) => {
-        const body = (await request.json()) as { text: string };
-        return HttpResponse.json({
-          id: 'msg-2',
-          matchId: String(params.matchId),
-          senderId: 'user-1',
-          text: body.text,
-          createdAt: '2025-01-01T00:00:05.000Z',
-        });
-      }),
-      http.post(`${API_URL}/moderation/blocks`, () =>
-        HttpResponse.json({ status: 'blocked' }),
-      ),
-    );
+    mockChatApi();
   });
 
   it('renders message history from the API', async () => {
@@ -154,24 +220,23 @@ describe('Chat', () => {
   });
 
   it('sends a message, applies optimistic UI, and clears the input', async () => {
-    let releaseSend: (() => void) | null = null;
+    let releaseSend: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
       releaseSend = resolve;
     });
 
-    server.use(
-      http.post(`${API_URL}/matches/:matchId/messages`, async ({ request, params }) => {
-        const body = (await request.json()) as { text: string };
+    mockChatApi({
+      onPostMessage: async (text) => {
         await gate;
-        return HttpResponse.json({
+        return {
           id: 'msg-2',
-          matchId: String(params.matchId),
+          matchId: 'match-1',
           senderId: 'user-1',
-          text: body.text,
+          text,
           createdAt: '2025-01-01T00:00:05.000Z',
-        });
-      }),
-    );
+        };
+      },
+    });
 
     renderWithProviders(<Chat />, {
       route: '/chat/match-1',
@@ -192,7 +257,7 @@ describe('Chat', () => {
       expect(screen.getByText('Hey!')).toBeInTheDocument();
     });
 
-    releaseSend?.();
+    releaseSend();
 
     await waitFor(() => {
       expect(trackEventMock).toHaveBeenCalledWith('message_sent', {
@@ -204,9 +269,7 @@ describe('Chat', () => {
   });
 
   it('adds incoming messages from the chat socket', async () => {
-    server.use(
-      http.get(`${API_URL}/matches/:matchId/messages`, () => HttpResponse.json([])),
-    );
+    mockChatApi({ messages: [] });
 
     renderWithProviders(<Chat />, {
       route: '/chat/match-1',
@@ -233,35 +296,12 @@ describe('Chat', () => {
   it('keeps chat locked until reveal is acknowledged', async () => {
     let messagesRequested = false;
 
-    server.use(
-      http.get(`${API_URL}/matches/:matchId/reveal`, ({ params }) =>
-        HttpResponse.json({
-          matchId: String(params.matchId),
-          partnerRevealVersion: 1,
-          partnerReveal: {
-            id: 'user-2',
-            displayName: 'Alex',
-            primaryPhotoUrl: 'https://example.com/alex.jpg',
-            age: 28,
-            bio: 'Coffee and coastlines.',
-          },
-          revealAcknowledged: false,
-          revealAcknowledgedAt: null,
-        }),
-      ),
-      http.get(`${API_URL}/matches/:matchId/messages`, () => {
+    mockChatApi({
+      revealAcknowledged: false,
+      onMessagesRequest: () => {
         messagesRequested = true;
-        return HttpResponse.json([
-          {
-            id: 'msg-1',
-            matchId: 'match-1',
-            senderId: 'user-2',
-            text: 'Hello there',
-            createdAt: '2025-01-01T00:00:00.000Z',
-          },
-        ]);
-      }),
-    );
+      },
+    });
 
     renderWithProviders(<Chat />, {
       route: '/chat/match-1',

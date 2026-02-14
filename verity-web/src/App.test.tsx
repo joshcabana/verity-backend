@@ -32,7 +32,7 @@ describe('App routing', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { name: /real-time matches/i }),
+      await screen.findByRole('heading', { name: /no profiles\.?\s*just chemistry\.?/i }),
     ).toBeInTheDocument();
   });
 });

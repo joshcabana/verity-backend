@@ -1,19 +1,53 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth } from './useAuth';
 
 const apiJsonMock = vi.fn();
+let accessTokenState: string | null = null;
 
-vi.mock('../api/client', async () => {
-  const actual = await vi.importActual<typeof import('../api/client')>(
-    '../api/client',
-  );
-  return {
-    ...actual,
-    apiJson: (...args: unknown[]) => apiJsonMock(...args),
-  };
-});
+const localStorageData = new Map<string, string>();
+const localStorageMock: Storage = {
+  getItem: (key: string) => localStorageData.get(key) ?? null,
+  setItem: (key: string, value: string) => {
+    localStorageData.set(key, String(value));
+  },
+  removeItem: (key: string) => {
+    localStorageData.delete(key);
+  },
+  clear: () => {
+    localStorageData.clear();
+  },
+  key: (index: number) => Array.from(localStorageData.keys())[index] ?? null,
+  get length() {
+    return localStorageData.size;
+  },
+};
+
+vi.mock('../api/client', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  apiJson: (...args: unknown[]) => apiJsonMock(...args),
+  decodeToken: (token: string) => {
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) {
+        return {};
+      }
+      return JSON.parse(atob(payload)) as { sub?: string };
+    } catch {
+      return {};
+    }
+  },
+  getAccessToken: () => accessTokenState,
+  setAccessToken: (token: string | null) => {
+    accessTokenState = token;
+    if (token) {
+      localStorageMock.setItem('verity_access_token', token);
+    } else {
+      localStorageMock.removeItem('verity_access_token');
+    }
+  },
+}));
 
 function authToken(userId: string) {
   const payload = btoa(JSON.stringify({ sub: userId }));
@@ -31,14 +65,24 @@ const Probe: React.FC = () => {
 };
 
 describe('useAuth', () => {
+  beforeAll(() => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: localStorageMock,
+    });
+  });
+
   beforeEach(() => {
     localStorage.clear();
+    accessTokenState = null;
     apiJsonMock.mockReset();
     apiJsonMock.mockResolvedValue({ ok: true, status: 200, data: {} });
   });
 
   it('registers web push token when authenticated', async () => {
-    localStorage.setItem('verity_access_token', authToken('user-1'));
+    const token = authToken('user-1');
+    localStorage.setItem('verity_access_token', token);
+    accessTokenState = token;
     localStorage.setItem('verity_web_push_token', 'web-token-123456');
 
     render(
@@ -60,7 +104,9 @@ describe('useAuth', () => {
   });
 
   it('logs out server session, revokes token, and clears access token', async () => {
-    localStorage.setItem('verity_access_token', authToken('user-1'));
+    const token = authToken('user-1');
+    localStorage.setItem('verity_access_token', token);
+    accessTokenState = token;
     localStorage.setItem('verity_web_push_token', 'web-token-654321');
 
     render(
