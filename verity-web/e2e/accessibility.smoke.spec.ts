@@ -32,7 +32,9 @@ test('onboarding has no serious/critical accessibility violations', async ({
   page,
 }) => {
   await page.goto('/onboarding');
-  await expect(page.getByRole('heading', { name: /real-time matches/i })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: /no profiles\.?\s*just chemistry\.?/i }),
+  ).toBeVisible();
   await page.locator('input[type="date"]').fill('1995-01-01');
   await expectNoSeriousViolations(page);
 });
@@ -42,9 +44,9 @@ test('home has no serious/critical accessibility violations', async ({ page }) =
   await mockApi(page);
   await page.goto('/home');
   await expect(
-    page.getByRole('heading', { name: /meet first\.\s*reveal later\./i }),
+    page.getByRole('heading', { name: /no profiles\.?\s*just chemistry\.?/i }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: /go live now/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /go live/i }).first()).toBeVisible();
   await expectNoSeriousViolations(page);
 });
 
