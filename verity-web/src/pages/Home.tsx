@@ -97,10 +97,10 @@ export const Home: React.FC = () => {
             Instant connection, zero swipe fatigue.
           </p>
           
-          <div className="card" style={{ maxWidth: '400px', padding: '24px' }}>
-            <div className="flex-center" style={{ justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div className="card auth-card">
+            <div className="flex-between mb-md">
               <span className="caption">Select City</span>
-              <span className="caption" style={{ color: 'var(--lux-gold)' }}>
+              <span className="caption text-gold">
                 {tokenBalance} Tokens Available
               </span>
             </div>
@@ -109,6 +109,7 @@ export const Home: React.FC = () => {
               className="input mb-md"
               value={city}
               onChange={(e) => setCity(e.target.value)}
+              aria-label="Select City"
             >
               {CITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -118,8 +119,7 @@ export const Home: React.FC = () => {
             </select>
             
             <button 
-              className="btn btn-primary animate-pulse" 
-              style={{ width: '100%' }}
+              className="btn btn-primary animate-pulse w-full" 
               onClick={handleJoin}
               disabled={!canJoin}
             >
@@ -138,7 +138,7 @@ export const Home: React.FC = () => {
             )}
           </div>
           
-          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '8px' }}>
+          <div className="flex-start">
             <span className="caption">10k+ matches today</span>
           </div>
         </div>
@@ -175,7 +175,7 @@ export const Home: React.FC = () => {
                 <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
               </svg>
             </div>
-            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>Join The Queue</h3>
+            <h3 className="body-large text-white-bold">Join The Queue</h3>
             <p className="body-standard mt-md">
               Enter the live waiting room for your city. No browsing, just join.
             </p>
@@ -188,7 +188,7 @@ export const Home: React.FC = () => {
                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
             </div>
-            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>45s Date</h3>
+            <h3 className="body-large text-white-bold">45s Date</h3>
             <p className="body-standard mt-md">
               Connect instantly via video. Audio on. No filters. Pure chemistry.
             </p>
@@ -200,7 +200,7 @@ export const Home: React.FC = () => {
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             </div>
-            <h3 className="body-large" style={{ fontWeight: 600, color: 'var(--paper-white)' }}>Decide</h3>
+            <h3 className="body-large text-white-bold">Decide</h3>
             <p className="body-standard mt-md">
               Private decision. Only a mutual match reveals identities and unlocks chat.
             </p>
@@ -209,17 +209,17 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Safety Section */}
-      <section className="card mb-md mt-lg" style={{ background: 'var(--charcoal)', border: '1px solid var(--asphalt)' }}>
-        <div className="grid-3" style={{ alignItems: 'center' }}>
+      <section className="card mb-md mt-lg">
+        <div className="grid-3 items-center">
           <div>
             <h2 className="section-title">Unrecorded.<br/>Private.<br/>Safe.</h2>
-            <div className="flex-center" style={{ justifyContent: 'flex-start', marginTop: '16px' }}>
+            <div className="flex-start mt-md">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
           </div>
-          <div style={{ gridColumn: 'span 2' }}>
+          <div className="span-2">
             <p className="body-large mb-md">
               Safety is built into the core. Video calls are never recorded.
               Real-time AI moderation detects and blocks unsafe behavior instantly.
@@ -234,12 +234,12 @@ export const Home: React.FC = () => {
       
       {/* Footer */}
       <footer className="text-center mt-lg mb-md">
-        <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', marginBottom: '16px' }}>
-          <a href="#" className="caption" style={{ textDecoration: 'none' }}>Support</a>
-          <a href="#" className="caption" style={{ textDecoration: 'none' }}>Privacy</a>
-          <a href="#" className="caption" style={{ textDecoration: 'none' }}>Terms</a>
+        <div className="footer-links">
+          <a href="#" className="caption no-underline">Support</a>
+          <a href="#" className="caption no-underline">Privacy</a>
+          <a href="#" className="caption no-underline">Terms</a>
         </div>
-        <div className="caption" style={{ color: 'var(--asphalt)' }}>
+        <div className="caption text-asphalt">
           © 2026 Verity Inc.
         </div>
       </footer>

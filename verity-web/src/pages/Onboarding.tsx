@@ -58,65 +58,63 @@ export const Onboarding: React.FC = () => {
             Mutual reveal only. Instant connection.
           </p>
 
-          <div className="card" style={{ maxWidth: '440px' }}>
-            <h2 className="section-title" style={{ fontSize: '1.5rem', marginBottom: '16px' }}>Start Anonymously</h2>
+          <div className="card auth-card-wide">
+            <h2 className="section-title section-title-sm">Start Anonymously</h2>
             
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <label className="body-standard flex-center" style={{ justifyContent: 'space-between' }}>
+            <div className="grid-gap-sm">
+              <label className="body-standard flex-between">
                 <span className="caption">Date of Birth (18+)</span>
                 <input
-                  className="input"
-                  style={{ width: 'auto' }}
+                  className="input w-auto"
                   type="date"
                   value={dateOfBirth}
                   onChange={(event) => setDateOfBirth(event.target.value)}
                 />
               </label>
 
-              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label className="body-standard flex-center checkbox-label">
                 <input
                   type="checkbox"
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  className="checkbox-input"
                   checked={ageConfirmed}
                   onChange={(event) => setAgeConfirmed(event.target.checked)}
                 />
                 I am 18 years or older
               </label>
 
-              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label className="body-standard flex-center checkbox-label">
                 <input
                   type="checkbox"
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  className="checkbox-input"
                   checked={videoConsent}
                   onChange={(event) => setVideoConsent(event.target.checked)}
                 />
                 I consent to 45s video calls (unrecorded)
               </label>
 
-              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label className="body-standard flex-center checkbox-label">
                 <input
                   type="checkbox"
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  className="checkbox-input"
                   checked={aiConsent}
                   onChange={(event) => setAiConsent(event.target.checked)}
                 />
                 I consent to real-time AI moderation
               </label>
               
-              <label className="body-standard flex-center" style={{ justifyContent: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label className="body-standard flex-center checkbox-label">
                 <input
                   type="checkbox"
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--lux-gold)' }}
+                  className="checkbox-input"
                   checked={termsAccepted}
                   onChange={(event) => setTermsAccepted(event.target.checked)}
                 />
-                <span>I agree to the <Link to="/legal/terms" style={{ color: 'var(--lux-gold)' }}>Terms</Link> & <Link to="/legal/privacy" style={{ color: 'var(--lux-gold)' }}>Privacy</Link></span>
+                <span>I agree to the <Link to="/legal/terms" className="text-gold">Terms</Link> & <Link to="/legal/privacy" className="text-gold">Privacy</Link></span>
               </label>
             </div>
 
             <button
-              className="btn btn-primary animate-pulse mt-lg"
-              style={{ width: '100%' }}
+              className="btn btn-primary animate-pulse mt-lg w-full"
               onClick={() => void handleStart()}
               disabled={loading || !ready}
             >
@@ -158,27 +156,27 @@ export const Onboarding: React.FC = () => {
         <h2 className="section-title text-center">How It Works</h2>
         <div className="grid-3">
           <div className="card text-center">
-             <h3 className="body-large" style={{ color: 'var(--paper-white)', fontWeight: 600 }}>1. Join The Queue</h3>
+             <h3 className="body-large text-white-bold">1. Join The Queue</h3>
              <p className="body-standard mt-md">Enter the live waiting room. No browsing, just join.</p>
           </div>
           <div className="card text-center">
-             <h3 className="body-large" style={{ color: 'var(--paper-white)', fontWeight: 600 }}>2. {flags.sessionDurationSeconds}s Date</h3>
+             <h3 className="body-large text-white-bold">2. {flags.sessionDurationSeconds}s Date</h3>
              <p className="body-standard mt-md">Connect instantly via video. Audio on. No filters.</p>
           </div>
            <div className="card text-center">
-             <h3 className="body-large" style={{ color: 'var(--paper-white)', fontWeight: 600 }}>3. Decide</h3>
+             <h3 className="body-large text-white-bold">3. Decide</h3>
              <p className="body-standard mt-md">Private decision. Mutual match reveals identities.</p>
           </div>
         </div>
       </section>
 
       {/* Safety */}
-       <section className="card mb-md mt-lg" style={{ background: 'var(--charcoal)', border: '1px solid var(--asphalt)' }}>
-        <div className="grid-3" style={{ alignItems: 'center' }}>
+       <section className="card mb-md mt-lg">
+        <div className="grid-3 items-center">
           <div>
             <h2 className="section-title">Safety by Design</h2>
           </div>
-          <div style={{ gridColumn: 'span 2' }}>
+          <div className="span-2">
             <p className="body-large mb-md">
               Calls are never recorded. Real-time AI moderation detects and blocks unsafe behavior instantly.
             </p>

@@ -229,7 +229,80 @@ header {
 /* Utilities */
 .text-center { text-align: center; }
 .mb-md { margin-bottom: var(--space-md); }
+.mt-md { margin-top: var(--space-md); }
 .mt-lg { margin-top: var(--space-lg); }
+.mt-xs { margin-top: var(--space-sm); }
+.mt-subtle { margin-top: 12px; }
+
+.w-full { width: 100%; }
+.w-auto { width: auto; }
+.max-w-400 { max-width: 400px; }
+.max-w-440 { max-width: 440px; }
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-sm);
+}
+
+.items-center { align-items: center; }
+
+.text-gold { color: var(--lux-gold); }
+.text-danger { color: #dc2626; }
+.text-asphalt { color: var(--asphalt); }
+.text-white-bold {
+  color: var(--paper-white);
+  font-weight: 600;
+}
+
+.no-underline { text-decoration: none; }
+
+.span-2 { grid-column: span 2; }
+
+.auth-card {
+  max-width: 400px;
+  padding: 24px;
+}
+
+.auth-card-wide {
+  max-width: 440px;
+}
+
+.section-title-sm {
+  font-size: 1.5rem;
+  margin-bottom: var(--space-md);
+}
+
+.grid-gap-sm {
+  display: grid;
+  gap: 12px;
+}
+
+.checkbox-label {
+  justify-content: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  accentColor: var(--lux-gold);
+}
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+}
 
 .grid-3 {
   display: grid;

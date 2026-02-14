@@ -93,7 +93,7 @@ export const Settings: React.FC = () => {
         <p className="subtle">
           Download a copy of your data or permanently delete your account.
         </p>
-        <div className="stack tight" style={{ marginTop: '16px' }}>
+        <div className="stack tight mt-md">
           <button className="button secondary" onClick={handleExport} disabled={exporting}>
             {exporting ? 'Preparing download...' : 'Download my data'}
           </button>
@@ -101,14 +101,14 @@ export const Settings: React.FC = () => {
             {deleting ? 'Deleting...' : 'Delete account'}
           </button>
         </div>
-        {error && <p className="subtle" style={{ color: '#dc2626' }}>{error}</p>}
+        {error && <p className="subtle text-danger">{error}</p>}
       </div>
       <div className="card">
         <h2 className="section-title">Safety</h2>
         {blocksQuery.isLoading ? (
           <p className="subtle">Loading blocked users…</p>
         ) : blocksQuery.isError ? (
-          <p className="subtle" style={{ color: '#dc2626' }}>
+          <p className="subtle text-danger">
             Unable to load blocked users right now.
           </p>
         ) : blockedUsers.length === 0 ? (
@@ -133,7 +133,7 @@ export const Settings: React.FC = () => {
           </div>
         )}
         {blockError && (
-          <p className="subtle" style={{ color: '#dc2626', marginTop: '8px' }}>
+          <p className="subtle text-danger mt-xs">
             {blockError}
           </p>
         )}
@@ -154,7 +154,7 @@ export const Settings: React.FC = () => {
             <Link to="/legal/cookies">Cookie Notice</Link>
           </li>
         </ul>
-        <div className="callout safety" style={{ marginTop: '16px' }}>
+        <div className="callout safety mt-md">
           <strong>Support</strong>
           <p className="subtle">Email support@verity.app for account help.</p>
         </div>

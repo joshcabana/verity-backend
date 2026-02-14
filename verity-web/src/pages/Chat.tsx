@@ -359,7 +359,7 @@ export const Chat: React.FC = () => {
   return (
     <section className="grid">
       <div className="card">
-        <div className="inline" style={{ justifyContent: 'space-between' }}>
+        <div className="flex-between">
           <h2 className="section-title">Chat with {partnerName}</h2>
           <div className="inline">
             <button
@@ -375,38 +375,37 @@ export const Chat: React.FC = () => {
           </div>
         </div>
         {matchWarning && (
-          <div className="callout" style={{ marginTop: '12px' }}>
+          <div className="callout mt-subtle">
             <strong>Match details unavailable</strong>
             <p className="subtle">{matchWarning}</p>
           </div>
         )}
         {chatLocked && (
-          <div className="callout" style={{ marginTop: '12px' }}>
+          <div className="callout mt-subtle">
             <strong>Review profile to unlock chat</strong>
-            <p className="subtle" style={{ marginTop: '8px' }}>
+            <p className="subtle mt-xs">
               Chat unlocks after you acknowledge the mutual profile reveal.
             </p>
-            <div style={{ marginTop: '12px' }}>
+            <div className="mt-subtle">
               <p className="subtle">
                 <strong>{partnerName}</strong>
                 {partnerReveal?.age ? `, ${partnerReveal.age}` : ''}
               </p>
               {partnerReveal?.bio && (
-                <p className="subtle" style={{ marginTop: '8px' }}>
+                <p className="subtle mt-xs">
                   {partnerReveal.bio}
                 </p>
               )}
             </div>
             <button
-              className="button"
-              style={{ marginTop: '12px' }}
+              className="button mt-subtle"
               onClick={acknowledgeReveal}
               disabled={acknowledgingReveal}
             >
               {acknowledgingReveal ? 'Continuing…' : 'Continue to chat'}
             </button>
             {revealError && (
-              <p className="subtle" style={{ color: '#dc2626', marginTop: '8px' }}>
+              <p className="subtle text-danger mt-xs">
                 {revealError}
               </p>
             )}
@@ -428,7 +427,7 @@ export const Chat: React.FC = () => {
           </div>
         )}
         {blocked && (
-          <div className="callout" style={{ marginTop: '16px' }}>
+          <div className="callout mt-md">
             <strong>Conversation blocked</strong>
             <p className="subtle">
               Chat is unavailable because one of you has blocked the other.
@@ -436,11 +435,11 @@ export const Chat: React.FC = () => {
           </div>
         )}
         {blockError && (
-          <p className="subtle" style={{ color: '#dc2626' }}>
+          <p className="subtle text-danger">
             {blockError}
           </p>
         )}
-        <div className="inline" style={{ marginTop: '16px' }}>
+        <div className="inline mt-md">
           <input
             className="input"
             value={draft}
@@ -463,11 +462,11 @@ export const Chat: React.FC = () => {
           </button>
         </div>
         {sendError && (
-          <p className="subtle" style={{ color: '#dc2626' }}>
+          <p className="subtle text-danger">
             {sendError}
           </p>
         )}
-        <div className="callout safety" style={{ marginTop: '16px' }}>
+        <div className="callout safety mt-md">
           <strong>Stay respectful</strong>
           <p className="subtle">
             If you receive anything unsafe, use the report button and we will review it.
