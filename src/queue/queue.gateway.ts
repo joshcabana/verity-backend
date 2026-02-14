@@ -58,8 +58,8 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = data.userId;
     if (userId) {
       const remainingConnections =
-        this.server?.sockets?.adapter?.rooms?.get(this.userRoom(userId))?.size ??
-        0;
+        this.server?.sockets?.adapter?.rooms?.get(this.userRoom(userId))
+          ?.size ?? 0;
       if (remainingConnections > 0) {
         return;
       }

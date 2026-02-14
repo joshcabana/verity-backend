@@ -49,17 +49,17 @@ describe('PaymentsService (unit)', () => {
   });
 
   it('throws for unknown token pack', async () => {
-    await expect(service.createCheckoutSession('user-1', 'invalid')).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.createCheckoutSession('user-1', 'invalid'),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('throws when price env is missing', async () => {
     delete process.env.STRIPE_PRICE_STARTER;
 
-    await expect(service.createCheckoutSession('user-1', 'starter')).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.createCheckoutSession('user-1', 'starter'),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('creates checkout session with metadata', async () => {

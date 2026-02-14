@@ -121,9 +121,7 @@ describe('SessionService (unit)', () => {
   });
 
   it('calls endSession on token error', async () => {
-    const endSpy = jest
-      .spyOn(service, 'endSession')
-      .mockResolvedValue();
+    const endSpy = jest.spyOn(service, 'endSession').mockResolvedValue();
     videoService.buildSessionTokens.mockImplementation(() => {
       throw new Error('token error');
     });
@@ -494,19 +492,21 @@ describe('SessionService (unit)', () => {
     const warnSpy = jest.spyOn(logger, 'warn').mockImplementation();
     const logSpy = jest.spyOn(logger, 'log').mockImplementation();
     const baseScan = (redis as any).scan.bind(redis);
-    jest.spyOn(redis as any, 'scan').mockImplementation(
-      async (cursor: string | number, ...args: Array<string | number>) => {
-        const pattern = String(args[1] ?? '');
-        if (pattern === 'session:state:*' && String(cursor) === '0') {
-          const oversized = Array.from(
-            { length: 10_050 },
-            (_, index) => `session:state:session-${index}`,
-          );
-          return ['0', oversized] as [string, string[]];
-        }
-        return baseScan(cursor, ...args);
-      },
-    );
+    jest
+      .spyOn(redis as any, 'scan')
+      .mockImplementation(
+        async (cursor: string | number, ...args: Array<string | number>) => {
+          const pattern = String(args[1] ?? '');
+          if (pattern === 'session:state:*' && String(cursor) === '0') {
+            const oversized = Array.from(
+              { length: 10_050 },
+              (_, index) => `session:state:session-${index}`,
+            );
+            return ['0', oversized] as [string, string[]];
+          }
+          return baseScan(cursor, ...args);
+        },
+      );
 
     await service.onModuleInit();
 

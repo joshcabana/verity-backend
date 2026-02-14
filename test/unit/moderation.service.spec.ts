@@ -95,16 +95,14 @@ describe('ModerationService (unit)', () => {
   });
 
   it('creates and reopens blocks', async () => {
-    prisma.block.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: 'block-1',
-        blockerId: 'user-1',
-        blockedId: 'user-2',
-        liftedAt: new Date('2026-01-01T00:00:00Z'),
-        createdAt: new Date('2026-01-01T00:00:00Z'),
-        updatedAt: new Date('2026-01-01T00:00:00Z'),
-      });
+    prisma.block.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'block-1',
+      blockerId: 'user-1',
+      blockedId: 'user-2',
+      liftedAt: new Date('2026-01-01T00:00:00Z'),
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    });
 
     prisma.block.create.mockResolvedValue({
       id: 'block-1',
@@ -188,9 +186,9 @@ describe('ModerationService (unit)', () => {
 
   it('validates webhook signature requirements', () => {
     delete process.env.HIVE_WEBHOOK_SECRET;
-    expect(() => service.verifyWebhookSignature(Buffer.from('a'), 'sig')).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      service.verifyWebhookSignature(Buffer.from('a'), 'sig'),
+    ).toThrow(BadRequestException);
 
     process.env.HIVE_WEBHOOK_SECRET = 'secret';
     expect(() => service.verifyWebhookSignature(Buffer.from('a'))).toThrow(
@@ -224,9 +222,7 @@ describe('ModerationService (unit)', () => {
   it('accepts webhook signature with valid timestamp', () => {
     process.env.HIVE_WEBHOOK_SECRET = 'secret';
     const raw = Buffer.from('payload');
-    const signature = createHmac('sha256', 'secret')
-      .update(raw)
-      .digest('hex');
+    const signature = createHmac('sha256', 'secret').update(raw).digest('hex');
     const timestamp = Date.now().toString();
     const secondTimestamp = Math.floor(Date.now() / 1000).toString();
 
@@ -234,16 +230,18 @@ describe('ModerationService (unit)', () => {
       service.verifyWebhookSignature(raw, `sha256=${signature}`, timestamp),
     ).not.toThrow();
     expect(() =>
-      service.verifyWebhookSignature(raw, `sha256=${signature}`, secondTimestamp),
+      service.verifyWebhookSignature(
+        raw,
+        `sha256=${signature}`,
+        secondTimestamp,
+      ),
     ).not.toThrow();
   });
 
   it('rejects missing webhook timestamp even when signature is valid', () => {
     process.env.HIVE_WEBHOOK_SECRET = 'secret';
     const raw = Buffer.from('payload');
-    const signature = createHmac('sha256', 'secret')
-      .update(raw)
-      .digest('hex');
+    const signature = createHmac('sha256', 'secret').update(raw).digest('hex');
 
     expect(() =>
       service.verifyWebhookSignature(raw, `sha256=${signature}`),

@@ -79,9 +79,9 @@ describe('ChatService (unit)', () => {
       userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
     });
 
-    await expect(service.sendMessage('match-1', 'user-a', '  ')).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.sendMessage('match-1', 'user-a', '  '),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('rejects missing match and non-participants', async () => {
@@ -220,7 +220,9 @@ describe('ChatService (unit)', () => {
       userBRevealAcknowledgedAt: new Date('2024-01-01T00:00:00Z'),
     });
 
-    await expect(service.listMessages('match-1', 'user-a')).rejects.toMatchObject({
+    await expect(
+      service.listMessages('match-1', 'user-a'),
+    ).rejects.toMatchObject({
       response: expect.objectContaining({
         code: 'REVEAL_ACK_REQUIRED',
       }),

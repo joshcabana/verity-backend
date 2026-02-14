@@ -32,7 +32,10 @@ const buildService = () => {
   return { service, prisma, redis, sessionService, emitted };
 };
 
-const seedSession = (prisma: ReturnType<typeof createPrismaMock>, testCase: ModerationTestCase) => {
+const seedSession = (
+  prisma: ReturnType<typeof createPrismaMock>,
+  testCase: ModerationTestCase,
+) => {
   const userId = testCase.payload.userId ?? 'user-a';
   prisma.session.findUnique.mockResolvedValue({
     id: testCase.payload.sessionId,
@@ -65,9 +68,9 @@ describe('Moderation Accuracy Suite', () => {
       }
 
       if (testCase.expectedAction === 'ban') {
-        expect(await redis.get(`moderation:ban:${testCase.payload.userId}`)).toBe(
-          '1',
-        );
+        expect(
+          await redis.get(`moderation:ban:${testCase.payload.userId}`),
+        ).toBe('1');
       }
     },
   );
@@ -108,7 +111,8 @@ describe('Moderation Accuracy Suite', () => {
       }
     }
 
-    const rate = nonViolationCount === 0 ? 0 : falsePositives / nonViolationCount;
+    const rate =
+      nonViolationCount === 0 ? 0 : falsePositives / nonViolationCount;
     expect(rate).toBeLessThan(0.05);
   });
 

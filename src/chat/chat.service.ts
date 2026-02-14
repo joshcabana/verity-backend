@@ -93,7 +93,8 @@ export class ChatService {
       this.gateway.emitMessage(match.userBId, payload);
     }
 
-    const recipientId = match.userAId === userId ? match.userBId : match.userAId;
+    const recipientId =
+      match.userAId === userId ? match.userBId : match.userAId;
     const recipientRevealAcknowledged = this.hasRevealAcknowledged(
       match,
       recipientId,

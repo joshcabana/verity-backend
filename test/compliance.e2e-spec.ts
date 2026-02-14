@@ -337,7 +337,9 @@ describe('Compliance (e2e)', () => {
       data: { role: 'ADMIN' },
     });
 
-    const setCookies = adminSignup.headers['set-cookie'] as string[] | undefined;
+    const setCookies = adminSignup.headers['set-cookie'] as
+      | string[]
+      | undefined;
     const refreshCookie = setCookies?.find((value) =>
       value.startsWith('refresh_token='),
     );
@@ -354,7 +356,11 @@ describe('Compliance (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
     expect(Array.isArray(listResponse.body)).toBe(true);
-    expect(listResponse.body.some((item: { reporterId?: string }) => item.reporterId === reporterUser.id)).toBe(true);
+    expect(
+      listResponse.body.some(
+        (item: { reporterId?: string }) => item.reporterId === reporterUser.id,
+      ),
+    ).toBe(true);
   });
 
   it('blocks queue join when user is banned', async () => {

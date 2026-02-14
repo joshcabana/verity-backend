@@ -138,6 +138,7 @@ It builds, deploys, and updates the container apps.
 The workflow is `workflow_dispatch` only and does not auto‑deploy.
 
 Secrets are stored in Azure Key Vault and accessed by the Container Apps via a user-assigned managed identity.
+The deploy workflow now validates required deploy inputs before running Bicep.
 
 ## Key Vault RBAC & Rotation
 
@@ -218,6 +219,14 @@ Staging helpers:
 - `scripts/generate-staging-params.sh`
 - `scripts/preflight-env.sh`
 - `scripts/deploy-staging.sh`
+
+`scripts/preflight-env.sh` enforces required secret env vars and rejects placeholder values (`REPLACE_ME`, `change_me`).
+`scripts/deploy-staging.sh` also rejects unresolved `STG_SUFFIX` placeholders and supports optional env overrides for:
+- `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
+- `PUSH_DISPATCH_WEBHOOK_URL`, `MODERATION_ADMIN_KEY_FALLBACK`
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`
+- `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`
+- `HIVE_STREAM_URL`, `HIVE_SCREENSHOT_URL`
 
 ### Post-Deploy Checks
 

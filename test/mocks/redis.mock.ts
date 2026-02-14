@@ -262,7 +262,8 @@ class InMemoryRedis {
       })
       .map(([member]) => member);
 
-    const normalizedStart = start < 0 ? Math.max(sorted.length + start, 0) : start;
+    const normalizedStart =
+      start < 0 ? Math.max(sorted.length + start, 0) : start;
     const normalizedEnd = end < 0 ? sorted.length + end : end;
     if (normalizedStart > normalizedEnd || normalizedStart >= sorted.length) {
       return [];

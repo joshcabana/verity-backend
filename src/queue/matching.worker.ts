@@ -152,6 +152,8 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
       return true;
     }
     const value = raw.trim().toLowerCase();
-    return value === '1' || value === 'true' || value === 'yes' || value === 'on';
+    return (
+      value === '1' || value === 'true' || value === 'yes' || value === 'on'
+    );
   }
 }

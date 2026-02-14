@@ -211,12 +211,7 @@ describe('Queue -> Session -> Decision (e2e)', () => {
       return;
     }
 
-    await redis.set(
-      `session:ended:${session.id}`,
-      '1',
-      'PX',
-      60 * 60 * 1000,
-    );
+    await redis.set(`session:ended:${session.id}`, '1', 'PX', 60 * 60 * 1000);
 
     const choiceA = await request(app.getHttpServer())
       .post(`/sessions/${session.id}/choice`)

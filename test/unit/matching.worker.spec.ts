@@ -91,9 +91,7 @@ describe('MatchingWorker (unit)', () => {
       id: 'session-1',
       queueKey: 'au:hash',
     });
-    queueService.getQueueSize
-      .mockResolvedValueOnce(2)
-      .mockResolvedValueOnce(0);
+    queueService.getQueueSize.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
 
     await (worker as unknown as { tick: () => Promise<void> }).tick();
 
@@ -116,9 +114,7 @@ describe('MatchingWorker (unit)', () => {
   it('does not emit queue status when queue size is unchanged', async () => {
     redis.smembers.mockResolvedValue(['au:hash']);
     queueService.popPair.mockResolvedValue(null);
-    queueService.getQueueSize
-      .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce(1);
+    queueService.getQueueSize.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
 
     await (worker as unknown as { tick: () => Promise<void> }).tick();
 

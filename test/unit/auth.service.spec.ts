@@ -10,7 +10,10 @@ import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { AuthService } from '../../src/auth/auth.service';
 import { AppService } from '../../src/app.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
-import { createPrismaMock, createPrismaUniqueError } from '../mocks/prisma.mock';
+import {
+  createPrismaMock,
+  createPrismaUniqueError,
+} from '../mocks/prisma.mock';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 
@@ -47,7 +50,9 @@ describe('AuthService (unit)', () => {
 
   it('rejects invalid or underage date of birth', async () => {
     await expect(
-      service.signupAnonymous(undefined, undefined, { dateOfBirth: 'not-a-date' }),
+      service.signupAnonymous(undefined, undefined, {
+        dateOfBirth: 'not-a-date',
+      }),
     ).rejects.toThrow(BadRequestException);
 
     const underage = new Date();
@@ -81,9 +86,9 @@ describe('AuthService (unit)', () => {
   });
 
   it('validates phone/email and handles unique conflicts', async () => {
-    await expect(
-      service.verifyPhone('user-1', 'abc', '1234'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.verifyPhone('user-1', 'abc', '1234')).rejects.toThrow(
+      BadRequestException,
+    );
 
     await expect(
       service.verifyEmail('user-1', 'test@example.com', ' '),
@@ -216,9 +221,9 @@ describe('AuthService (unit)', () => {
   });
 
   it('rejects invalid refresh token', async () => {
-    await expect(
-      service.refreshSession('bad-token'),
-    ).rejects.toThrow(UnauthorizedException);
+    await expect(service.refreshSession('bad-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 
   it('rejects refresh tokens with invalid type', async () => {
@@ -325,9 +330,9 @@ describe('AuthService (unit)', () => {
       expiresAt: new Date(Date.now() + 60_000),
     });
 
-    await expect(
-      service.refreshSession(refreshToken),
-    ).rejects.toThrow(UnauthorizedException);
+    await expect(service.refreshSession(refreshToken)).rejects.toThrow(
+      UnauthorizedException,
+    );
 
     expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
   });
@@ -433,7 +438,9 @@ describe('AuthService (unit)', () => {
     expect(prisma.pushToken.deleteMany).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
     });
-    expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+    expect(prisma.user.delete).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+    });
   });
 });
 

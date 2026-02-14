@@ -48,7 +48,10 @@ describe('NotificationsService (unit)', () => {
   it('unregisters active token for user', async () => {
     prisma.pushToken.updateMany.mockResolvedValue({ count: 1 });
 
-    const result = await service.unregisterPushToken('user-1', ' token-12345678 ');
+    const result = await service.unregisterPushToken(
+      'user-1',
+      ' token-12345678 ',
+    );
 
     expect(prisma.pushToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -71,17 +74,16 @@ describe('NotificationsService (unit)', () => {
       },
     ]);
 
-    const result = await service.notifyUsers(
-      ['user-1'],
-      'match_mutual',
-      { matchId: 'match-1' },
-    );
+    const result = await service.notifyUsers(['user-1'], 'match_mutual', {
+      matchId: 'match-1',
+    });
 
     expect(result).toEqual({ attemptedUsers: 1, tokenCount: 1 });
   });
 
   it('posts payload to dispatch webhook when configured', async () => {
-    process.env.PUSH_DISPATCH_WEBHOOK_URL = 'https://push.example.test/dispatch';
+    process.env.PUSH_DISPATCH_WEBHOOK_URL =
+      'https://push.example.test/dispatch';
     prisma.pushToken.findMany.mockResolvedValue([
       {
         userId: 'user-1',
@@ -96,11 +98,10 @@ describe('NotificationsService (unit)', () => {
     });
     (global as { fetch?: unknown }).fetch = fetchMock;
 
-    const result = await service.notifyUsers(
-      ['user-1'],
-      'chat_message_new',
-      { matchId: 'match-1', messageId: 'msg-1' },
-    );
+    const result = await service.notifyUsers(['user-1'], 'chat_message_new', {
+      matchId: 'match-1',
+      messageId: 'msg-1',
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://push.example.test/dispatch',

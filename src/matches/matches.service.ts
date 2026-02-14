@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   buildPartnerReveal,
@@ -84,7 +88,9 @@ export class MatchesService {
           matchId: match.id,
           partnerUserId,
           revealAcknowledged: Boolean(acknowledgedAt),
-          revealAcknowledgedAt: acknowledgedAt ? acknowledgedAt.toISOString() : null,
+          revealAcknowledgedAt: acknowledgedAt
+            ? acknowledgedAt.toISOString()
+            : null,
         };
       })
       .filter((match) => !blockedUserIds.has(match.partnerUserId));
@@ -106,7 +112,10 @@ export class MatchesService {
         select: REVEAL_PROFILE_FIELDS,
       });
       partnerRevealById = new Map(
-        partnerProfiles.map((profile) => [profile.id, buildPartnerReveal(profile)]),
+        partnerProfiles.map((profile) => [
+          profile.id,
+          buildPartnerReveal(profile),
+        ]),
       );
     }
 
@@ -123,7 +132,10 @@ export class MatchesService {
     });
   }
 
-  async getReveal(matchId: string, userId: string): Promise<MatchRevealPayload> {
+  async getReveal(
+    matchId: string,
+    userId: string,
+  ): Promise<MatchRevealPayload> {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
       include: {
@@ -147,7 +159,9 @@ export class MatchesService {
       partnerRevealVersion: PARTNER_REVEAL_VERSION,
       partnerReveal: buildPartnerReveal(partner),
       revealAcknowledged: Boolean(acknowledgedAt),
-      revealAcknowledgedAt: acknowledgedAt ? acknowledgedAt.toISOString() : null,
+      revealAcknowledgedAt: acknowledgedAt
+        ? acknowledgedAt.toISOString()
+        : null,
     };
   }
 
@@ -187,7 +201,10 @@ export class MatchesService {
     return this.getReveal(matchId, userId);
   }
 
-  async isRevealAcknowledged(matchId: string, userId: string): Promise<boolean> {
+  async isRevealAcknowledged(
+    matchId: string,
+    userId: string,
+  ): Promise<boolean> {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
       select: {

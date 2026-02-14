@@ -41,7 +41,10 @@ describe('VideoService (unit)', () => {
       .spyOn(ModerationService, 'startStreamMonitoring')
       .mockResolvedValue();
 
-    const result = service.buildSessionTokens('session-1', ['user-1', 'user-2']);
+    const result = service.buildSessionTokens('session-1', [
+      'user-1',
+      'user-2',
+    ]);
 
     expect(result.channelName).toBe('session_session-1');
     expect(result.expiresAt).toBeInstanceOf(Date);

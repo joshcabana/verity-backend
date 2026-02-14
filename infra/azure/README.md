@@ -75,6 +75,11 @@ scripts/generate-staging-params.sh
 AZURE_RG=verity-staging scripts/deploy-staging.sh
 ```
 
+Deploy script contracts:
+- `scripts/preflight-env.sh` enforces required secret env vars and rejects placeholder values (`REPLACE_ME`, `change_me`).
+- `scripts/deploy-staging.sh` requires Azure login (`az login`) and fails if `STG_SUFFIX` is unresolved in params.
+- Optional env overrides are supported for app origins/cookies, push webhook, Twilio, moderation fallback, Stripe URLs, and Hive endpoint URLs.
+
 ## Managed Identity + Key Vault
 
 - Container Apps use a user-assigned managed identity.

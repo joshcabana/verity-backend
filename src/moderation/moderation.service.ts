@@ -57,7 +57,9 @@ export class ModerationService {
 
     const details = input.details?.trim();
     if (details && details.length > 500) {
-      throw new BadRequestException('Report details must be 500 characters or fewer');
+      throw new BadRequestException(
+        'Report details must be 500 characters or fewer',
+      );
     }
 
     const reportWindowStart = new Date(Date.now() - REPORT_SPAM_WINDOW_MS);

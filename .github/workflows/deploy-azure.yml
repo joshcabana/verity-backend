@@ -20,6 +20,32 @@ jobs:
       ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
       API_APP_NAME: ${{ secrets.AZURE_API_APP_NAME }}
       WORKER_APP_NAME: ${{ secrets.AZURE_WORKER_APP_NAME }}
+      POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      STRIPE_PRICE_STARTER: ${{ secrets.STRIPE_PRICE_STARTER }}
+      STRIPE_PRICE_PLUS: ${{ secrets.STRIPE_PRICE_PLUS }}
+      STRIPE_PRICE_PRO: ${{ secrets.STRIPE_PRICE_PRO }}
+      AGORA_APP_ID: ${{ secrets.AGORA_APP_ID }}
+      AGORA_APP_CERTIFICATE: ${{ secrets.AGORA_APP_CERTIFICATE }}
+      HIVE_API_KEY: ${{ secrets.HIVE_API_KEY }}
+      HIVE_WEBHOOK_SECRET: ${{ secrets.HIVE_WEBHOOK_SECRET }}
+      MODERATION_ADMIN_KEY: ${{ secrets.MODERATION_ADMIN_KEY }}
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_VERIFY_SERVICE_SID: ${{ secrets.TWILIO_VERIFY_SERVICE_SID }}
+      PUSH_DISPATCH_WEBHOOK_URL: ${{ secrets.PUSH_DISPATCH_WEBHOOK_URL }}
+      APP_ORIGINS: ${{ vars.APP_ORIGINS }}
+      REFRESH_COOKIE_SAMESITE: ${{ vars.REFRESH_COOKIE_SAMESITE }}
+      REFRESH_COOKIE_DOMAIN: ${{ vars.REFRESH_COOKIE_DOMAIN }}
+      MODERATION_ADMIN_KEY_FALLBACK: ${{ vars.MODERATION_ADMIN_KEY_FALLBACK }}
+      STRIPE_SUCCESS_URL: ${{ vars.STRIPE_SUCCESS_URL }}
+      STRIPE_CANCEL_URL: ${{ vars.STRIPE_CANCEL_URL }}
+      HIVE_STREAM_URL: ${{ vars.HIVE_STREAM_URL }}
+      HIVE_SCREENSHOT_URL: ${{ vars.HIVE_SCREENSHOT_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,28 +63,92 @@ jobs:
       - name: Install Container Apps extension
         run: az extension add --name containerapp --upgrade
 
+      - name: Validate required deploy inputs
+        run: |
+          set -euo pipefail
+          required=(
+            RESOURCE_GROUP
+            ACR_NAME
+            API_APP_NAME
+            WORKER_APP_NAME
+            POSTGRES_ADMIN_PASSWORD
+            JWT_SECRET
+            JWT_ACCESS_SECRET
+            JWT_REFRESH_SECRET
+            STRIPE_SECRET_KEY
+            STRIPE_WEBHOOK_SECRET
+            STRIPE_PRICE_STARTER
+            STRIPE_PRICE_PLUS
+            STRIPE_PRICE_PRO
+            AGORA_APP_ID
+            AGORA_APP_CERTIFICATE
+            HIVE_API_KEY
+            HIVE_WEBHOOK_SECRET
+            MODERATION_ADMIN_KEY
+            TWILIO_ACCOUNT_SID
+            TWILIO_AUTH_TOKEN
+            TWILIO_VERIFY_SERVICE_SID
+          )
+          missing=()
+          for var in "${required[@]}"; do
+            if [[ -z "${!var:-}" ]]; then
+              missing+=("$var")
+            fi
+          done
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "Missing required deploy inputs:"
+            printf '  - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
       - name: Deploy infrastructure (Bicep)
         run: |
           set -euo pipefail
-          az deployment group create \
-            --resource-group "$RESOURCE_GROUP" \
-            --template-file infra/azure/main.bicep \
-            --parameters @"${{ inputs.paramFile }}" \
-            --parameters apiImage="$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}" \
-            --parameters workerImage="$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}" \
-            --parameters postgresAdminPassword='${{ secrets.POSTGRES_ADMIN_PASSWORD }}' \
-            --parameters jwtSecret='${{ secrets.JWT_SECRET }}' \
-            --parameters jwtAccessSecret='${{ secrets.JWT_ACCESS_SECRET }}' \
-            --parameters jwtRefreshSecret='${{ secrets.JWT_REFRESH_SECRET }}' \
-            --parameters stripeSecretKey='${{ secrets.STRIPE_SECRET_KEY }}' \
-            --parameters stripeWebhookSecret='${{ secrets.STRIPE_WEBHOOK_SECRET }}' \
-            --parameters stripePriceStarter='${{ secrets.STRIPE_PRICE_STARTER }}' \
-            --parameters stripePricePlus='${{ secrets.STRIPE_PRICE_PLUS }}' \
-            --parameters stripePricePro='${{ secrets.STRIPE_PRICE_PRO }}' \
-            --parameters agoraAppId='${{ secrets.AGORA_APP_ID }}' \
-            --parameters agoraAppCertificate='${{ secrets.AGORA_APP_CERTIFICATE }}' \
-            --parameters hiveApiKey='${{ secrets.HIVE_API_KEY }}' \
-            --parameters hiveWebhookSecret='${{ secrets.HIVE_WEBHOOK_SECRET }}'
+          api_image="$ACR_NAME.azurecr.io/verity-api:${{ github.sha }}"
+          deploy_args=(
+            --resource-group "$RESOURCE_GROUP"
+            --template-file infra/azure/main.bicep
+            --parameters @"${{ inputs.paramFile }}"
+            --parameters "apiImage=$api_image"
+            --parameters "workerImage=$api_image"
+            --parameters "postgresAdminPassword=$POSTGRES_ADMIN_PASSWORD"
+            --parameters "jwtSecret=$JWT_SECRET"
+            --parameters "jwtAccessSecret=$JWT_ACCESS_SECRET"
+            --parameters "jwtRefreshSecret=$JWT_REFRESH_SECRET"
+            --parameters "stripeSecretKey=$STRIPE_SECRET_KEY"
+            --parameters "stripeWebhookSecret=$STRIPE_WEBHOOK_SECRET"
+            --parameters "stripePriceStarter=$STRIPE_PRICE_STARTER"
+            --parameters "stripePricePlus=$STRIPE_PRICE_PLUS"
+            --parameters "stripePricePro=$STRIPE_PRICE_PRO"
+            --parameters "agoraAppId=$AGORA_APP_ID"
+            --parameters "agoraAppCertificate=$AGORA_APP_CERTIFICATE"
+            --parameters "hiveApiKey=$HIVE_API_KEY"
+            --parameters "hiveWebhookSecret=$HIVE_WEBHOOK_SECRET"
+            --parameters "moderationAdminKey=$MODERATION_ADMIN_KEY"
+            --parameters "twilioAccountSid=$TWILIO_ACCOUNT_SID"
+            --parameters "twilioAuthToken=$TWILIO_AUTH_TOKEN"
+            --parameters "twilioVerifyServiceSid=$TWILIO_VERIFY_SERVICE_SID"
+          )
+
+          add_param_if_set() {
+            local key="$1"
+            local value="$2"
+            if [[ -n "$value" ]]; then
+              deploy_args+=(--parameters "${key}=${value}")
+            fi
+          }
+
+          add_param_if_set appOrigins "${APP_ORIGINS:-}"
+          add_param_if_set refreshCookieSameSite "${REFRESH_COOKIE_SAMESITE:-}"
+          add_param_if_set refreshCookieDomain "${REFRESH_COOKIE_DOMAIN:-}"
+          add_param_if_set pushDispatchWebhookUrl "${PUSH_DISPATCH_WEBHOOK_URL:-}"
+          add_param_if_set moderationAdminKeyFallback "${MODERATION_ADMIN_KEY_FALLBACK:-}"
+          add_param_if_set stripeSuccessUrl "${STRIPE_SUCCESS_URL:-}"
+          add_param_if_set stripeCancelUrl "${STRIPE_CANCEL_URL:-}"
+          add_param_if_set hiveStreamUrl "${HIVE_STREAM_URL:-}"
+          add_param_if_set hiveScreenshotUrl "${HIVE_SCREENSHOT_URL:-}"
+
+          az deployment group create "${deploy_args[@]}"
 
       - name: Build and push image (ACR)
         run: |

@@ -195,6 +195,8 @@ export class PaymentsService {
       return false;
     }
     const candidate = value as { checkout?: unknown };
-    return typeof candidate.checkout === 'object' && candidate.checkout !== null;
+    return (
+      typeof candidate.checkout === 'object' && candidate.checkout !== null
+    );
   }
 }

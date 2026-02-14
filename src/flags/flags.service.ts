@@ -26,7 +26,7 @@ export class FlagsService {
     const onboardingVariant =
       this.envString('FEATURE_FLAG_ONBOARDING_VARIANT') ??
       (byKey.get('onboarding_variant')?.enabled
-        ? byKey.get('onboarding_variant')?.variant ?? 'control'
+        ? (byKey.get('onboarding_variant')?.variant ?? 'control')
         : 'control');
 
     const sessionDurationSeconds =
@@ -35,11 +35,15 @@ export class FlagsService {
 
     const reportDialogEnabled =
       this.envBoolean('FEATURE_FLAG_REPORT_DIALOG_ENABLED') ??
-      (byKey.get('report_dialog_enabled')?.enabled ?? true);
+      byKey.get('report_dialog_enabled')?.enabled ??
+      true;
 
     return {
       onboardingVariant,
-      sessionDurationSeconds: Math.max(15, Math.min(sessionDurationSeconds, 180)),
+      sessionDurationSeconds: Math.max(
+        15,
+        Math.min(sessionDurationSeconds, 180),
+      ),
       reportDialogEnabled,
     };
   }

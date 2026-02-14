@@ -119,8 +119,11 @@ export class AnalyticsService {
         continue;
       }
       if (typeof rawValue === 'boolean' || typeof rawValue === 'number') {
-        if (Number.isFinite(rawValue as number) || typeof rawValue === 'boolean') {
-          output[key] = rawValue as boolean | number;
+        if (
+          Number.isFinite(rawValue as number) ||
+          typeof rawValue === 'boolean'
+        ) {
+          output[key] = rawValue;
           continue;
         }
         throw new BadRequestException(`Property "${key}" must be finite`);

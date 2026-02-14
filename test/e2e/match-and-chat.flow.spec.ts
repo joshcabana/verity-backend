@@ -90,11 +90,7 @@ describe('Match + chat flow (e2e)', () => {
 
     await (context.worker as any).processQueueKey?.(joinA.body.queueKey);
 
-    const session = await waitForSession(
-      context.prisma,
-      userA.id,
-      userB.id,
-    );
+    const session = await waitForSession(context.prisma, userA.id, userB.id);
 
     const sessionService = context.app.get(SessionService);
     await sessionService.endSession(session, 'ended');

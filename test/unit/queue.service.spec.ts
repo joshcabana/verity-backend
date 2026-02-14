@@ -17,7 +17,10 @@ describe('QueueService (unit)', () => {
   let service: QueueService;
   let prisma: ReturnType<typeof createPrismaMock>;
   let redis: ReturnType<typeof createRedisMock>;
-  let sessionService: { handleSessionCreated: jest.Mock; cleanupExpiredSessions: jest.Mock };
+  let sessionService: {
+    handleSessionCreated: jest.Mock;
+    cleanupExpiredSessions: jest.Mock;
+  };
   let analyticsService: { trackServerEvent: jest.Mock };
 
   beforeEach(async () => {
@@ -49,9 +52,9 @@ describe('QueueService (unit)', () => {
   it('blocks banned users from joining', async () => {
     await redis.set('moderation:ban:user-1', '1');
 
-    await expect(
-      service.joinQueue('user-1', { region: 'na' }),
-    ).rejects.toThrow(UnauthorizedException);
+    await expect(service.joinQueue('user-1', { region: 'na' })).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 
   it('returns already_queued when lock contention and state exists', async () => {
@@ -73,9 +76,9 @@ describe('QueueService (unit)', () => {
   it('throws conflict when lock contention and no state', async () => {
     await redis.set(`queue:lock:user-1`, 'locked', 'PX', 3000, 'NX');
 
-    await expect(
-      service.joinQueue('user-1', { region: 'na' }),
-    ).rejects.toThrow(ConflictException);
+    await expect(service.joinQueue('user-1', { region: 'na' })).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('returns already_queued when already in queue after lock acquired', async () => {
@@ -96,9 +99,9 @@ describe('QueueService (unit)', () => {
   it('throws when insufficient token balance', async () => {
     prisma.user.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(
-      service.joinQueue('user-1', { region: 'na' }),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.joinQueue('user-1', { region: 'na' })).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('joins queue and returns position on success', async () => {
@@ -116,9 +119,9 @@ describe('QueueService (unit)', () => {
     prisma.user.update.mockResolvedValue({ id: 'user-1' });
     redis.failExec = true;
 
-    await expect(
-      service.joinQueue('user-1', { region: 'na' }),
-    ).rejects.toThrow(Error);
+    await expect(service.joinQueue('user-1', { region: 'na' })).rejects.toThrow(
+      Error,
+    );
 
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },
@@ -417,8 +420,14 @@ describe('QueueService (unit)', () => {
   });
 
   it('marks users as matched and clears queue state', async () => {
-    await redis.set('queue:user:user-a', JSON.stringify({ queueKey: 'na:1', joinedAt: 1 }));
-    await redis.set('queue:user:user-b', JSON.stringify({ queueKey: 'na:1', joinedAt: 1 }));
+    await redis.set(
+      'queue:user:user-a',
+      JSON.stringify({ queueKey: 'na:1', joinedAt: 1 }),
+    );
+    await redis.set(
+      'queue:user:user-b',
+      JSON.stringify({ queueKey: 'na:1', joinedAt: 1 }),
+    );
 
     await service.markMatched('user-a', 'user-b', 'session-1');
 
@@ -436,7 +445,9 @@ describe('QueueService (unit)', () => {
   it('throws conflict when leaveQueue cannot acquire lock', async () => {
     await redis.set('queue:lock:user-1', 'locked', 'PX', 3000, 'NX');
 
-    await expect(service.leaveQueue('user-1')).rejects.toThrow(ConflictException);
+    await expect(service.leaveQueue('user-1')).rejects.toThrow(
+      ConflictException,
+    );
   });
 });
 
@@ -536,7 +547,9 @@ describe('QueueGateway (unit)', () => {
     expect(queueService.getQueueSize).toHaveBeenCalledWith('na:test');
     expect((gateway.server as any).to).toHaveBeenCalledWith('user:user-a');
     expect((gateway.server as any).to).toHaveBeenCalledWith('user:user-b');
-    expect(emitMock).toHaveBeenCalledWith('queue:status', { usersSearching: 2 });
+    expect(emitMock).toHaveBeenCalledWith('queue:status', {
+      usersSearching: 2,
+    });
   });
 
   it('skips leaveQueue when another socket for the user is still connected', async () => {

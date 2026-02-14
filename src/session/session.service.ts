@@ -138,20 +138,31 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       const endAt = this.parseIsoDate(state.endAt);
       if (!endAt) {
         invalidState += 1;
-        this.logger.warn(`Skipping invalid session endAt for ${state.sessionId}`);
+        this.logger.warn(
+          `Skipping invalid session endAt for ${state.sessionId}`,
+        );
         continue;
       }
 
       if (endAt.getTime() <= Date.now()) {
         await this.endSession(
-          this.buildSyntheticSession(state.sessionId, state.userAId, state.userBId),
+          this.buildSyntheticSession(
+            state.sessionId,
+            state.userAId,
+            state.userBId,
+          ),
           'timeout',
         );
         finalizedOverdue += 1;
         continue;
       }
 
-      this.scheduleSessionEnd(state.sessionId, state.userAId, state.userBId, endAt);
+      this.scheduleSessionEnd(
+        state.sessionId,
+        state.userAId,
+        state.userBId,
+        endAt,
+      );
       rescheduled += 1;
     }
 
@@ -228,7 +239,11 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
 
       if (deadline.getTime() <= Date.now()) {
         await this.finalizeDecision(
-          this.buildSyntheticSession(sessionId, participants.userAId, participants.userBId),
+          this.buildSyntheticSession(
+            sessionId,
+            participants.userAId,
+            participants.userBId,
+          ),
           'PASS',
           'PASS',
         );
@@ -595,7 +610,9 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (outcome === 'mutual' && !matchId) {
-      throw new Error(`Mutual decision missing matchId for session ${session.id}`);
+      throw new Error(
+        `Mutual decision missing matchId for session ${session.id}`,
+      );
     }
 
     const payload: ChoiceResult =
@@ -720,7 +737,11 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     this.emitToUser(session.userBId, event, payload);
   }
 
-  private emitToUser(userId: string, event: string, payload: Record<string, unknown>) {
+  private emitToUser(
+    userId: string,
+    event: string,
+    payload: Record<string, unknown>,
+  ) {
     if (!this.videoGateway.server) {
       return;
     }
@@ -870,7 +891,9 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       select: { userAId: true, userBId: true },
     });
     if (!session) {
-      this.logger.warn(`Skipping choice recovery for missing session ${sessionId}`);
+      this.logger.warn(
+        `Skipping choice recovery for missing session ${sessionId}`,
+      );
       return null;
     }
 

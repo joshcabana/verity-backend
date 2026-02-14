@@ -84,11 +84,7 @@ describe('Moderation flow (e2e)', () => {
 
     await (context.worker as any).processQueueKey?.(joinA.body.queueKey);
 
-    const session = await waitForSession(
-      context.prisma,
-      userA.id,
-      userB.id,
-    );
+    const session = await waitForSession(context.prisma, userA.id, userB.id);
 
     const secret = process.env.HIVE_WEBHOOK_SECRET ?? 'hive_test_secret';
     let timestamp = Date.now();
@@ -103,9 +99,7 @@ describe('Moderation flow (e2e)', () => {
       const deliveryTimestamp = String(timestamp);
       timestamp += 1;
       const raw = Buffer.from(JSON.stringify(payload));
-      const signature = createHmac('sha256', secret)
-        .update(raw)
-        .digest('hex');
+      const signature = createHmac('sha256', secret).update(raw).digest('hex');
 
       return request(context.app.getHttpServer())
         .post('/webhooks/hive')
