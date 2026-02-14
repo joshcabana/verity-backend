@@ -68,6 +68,22 @@ function parseApiErrorCode(data: unknown): string | null {
   return null;
 }
 
+function getConnectionStrength(messageCount: number): string {
+  if (messageCount >= 14) {
+    return 'Electric';
+  }
+  if (messageCount >= 8) {
+    return 'Strong';
+  }
+  if (messageCount >= 4) {
+    return 'Warm';
+  }
+  if (messageCount >= 1) {
+    return 'Sparking';
+  }
+  return 'Starting';
+}
+
 export const Chat: React.FC = () => {
   const { matchId } = useParams();
   const location = useLocation();
@@ -75,6 +91,7 @@ export const Chat: React.FC = () => {
   const { token, userId } = useAuth();
   const { flags } = useFlags();
   const socket = useSocket('/chat', token);
+
   const [draft, setDraft] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const [blockError, setBlockError] = useState<string | null>(null);
@@ -87,6 +104,7 @@ export const Chat: React.FC = () => {
     const state = location.state as ChatLocationState | null;
     return state?.partnerReveal ?? null;
   });
+
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const offline = typeof navigator !== 'undefined' && !navigator.onLine;
 
@@ -107,9 +125,7 @@ export const Chat: React.FC = () => {
   });
 
   const revealAcknowledged = Boolean(revealQuery.data?.revealAcknowledged);
-  const partnerReveal =
-    revealQuery.data?.partnerReveal ??
-    hydratedPartnerReveal;
+  const partnerReveal = revealQuery.data?.partnerReveal ?? hydratedPartnerReveal;
 
   const messagesQuery = useQuery({
     queryKey: ['messages', matchId],
@@ -212,6 +228,7 @@ export const Chat: React.FC = () => {
     setDraft('');
     setSendError(null);
     setLiveMessages((prev) => [...prev, optimisticMessage]);
+
     try {
       const response = await apiJson<Message>(`/matches/${matchId}/messages`, {
         method: 'POST',
@@ -219,12 +236,8 @@ export const Chat: React.FC = () => {
       });
       if (response.ok && response.data) {
         setLiveMessages((prev) => {
-          const withoutOptimistic = prev.filter(
-            (message) => message.id !== optimisticId,
-          );
-          if (
-            withoutOptimistic.some((message) => message.id === response.data?.id)
-          ) {
+          const withoutOptimistic = prev.filter((message) => message.id !== optimisticId);
+          if (withoutOptimistic.some((message) => message.id === response.data?.id)) {
             return withoutOptimistic;
           }
           return [...withoutOptimistic, response.data as Message];
@@ -237,29 +250,21 @@ export const Chat: React.FC = () => {
       if (response.status === 403) {
         const code = parseApiErrorCode(response.data);
         if (code === REVEAL_ACK_REQUIRED_CODE) {
-          setLiveMessages((prev) =>
-            prev.filter((message) => message.id !== optimisticId),
-          );
+          setLiveMessages((prev) => prev.filter((message) => message.id !== optimisticId));
           setSendError('Acknowledge the profile reveal before sending messages.');
           void revealQuery.refetch();
           return;
         }
-        setLiveMessages((prev) =>
-          prev.filter((message) => message.id !== optimisticId),
-        );
+        setLiveMessages((prev) => prev.filter((message) => message.id !== optimisticId));
         setLocallyBlocked(true);
         setSendError('Chat is unavailable because one of you has blocked the other.');
         return;
       }
-      setLiveMessages((prev) =>
-        prev.filter((message) => message.id !== optimisticId),
-      );
+      setLiveMessages((prev) => prev.filter((message) => message.id !== optimisticId));
       setSendError('Unable to send message. Try again.');
       setDraft(content);
     } catch {
-      setLiveMessages((prev) =>
-        prev.filter((message) => message.id !== optimisticId),
-      );
+      setLiveMessages((prev) => prev.filter((message) => message.id !== optimisticId));
       setSendError(
         offline
           ? 'You appear to be offline. Message not sent.'
@@ -301,8 +306,7 @@ export const Chat: React.FC = () => {
 
   const messageError = messagesQuery.error as Error | null;
   const blockedByServer = messageError?.message === 'BLOCKED';
-  const revealRequiredByServer =
-    messageError?.message === REVEAL_ACK_REQUIRED_CODE;
+  const revealRequiredByServer = messageError?.message === REVEAL_ACK_REQUIRED_CODE;
   const blocked = blockedByServer || locallyBlocked;
 
   if (revealRequiredByServer) {
@@ -324,6 +328,8 @@ export const Chat: React.FC = () => {
       ? 'You appear to be offline. Match details are unavailable.'
       : 'Unable to load match details right now.'
     : null;
+
+  const connectionStrength = getConnectionStrength(messages.length);
 
   const handleBlock = async () => {
     if (!partnerId || blocking) {
@@ -362,6 +368,7 @@ export const Chat: React.FC = () => {
         <div className="flex-between">
           <h2 className="section-title">Chat with {partnerName}</h2>
           <div className="inline">
+            <span className="pill">Connection: {connectionStrength}</span>
             <button
               className="button ghost"
               onClick={handleBlock}
@@ -374,12 +381,14 @@ export const Chat: React.FC = () => {
             )}
           </div>
         </div>
+
         {matchWarning && (
           <div className="callout mt-subtle">
             <strong>Match details unavailable</strong>
-            <p className="subtle">{matchWarning}</p>
+            <p className="subtle mt-xs">{matchWarning}</p>
           </div>
         )}
+
         {chatLocked && (
           <div className="callout mt-subtle">
             <strong>Review profile to unlock chat</strong>
@@ -392,25 +401,22 @@ export const Chat: React.FC = () => {
                 {partnerReveal?.age ? `, ${partnerReveal.age}` : ''}
               </p>
               {partnerReveal?.bio && (
-                <p className="subtle mt-xs">
-                  {partnerReveal.bio}
-                </p>
+                <p className="subtle mt-xs">{partnerReveal.bio}</p>
               )}
             </div>
             <button
               className="button mt-subtle"
-              onClick={acknowledgeReveal}
+              onClick={() => void acknowledgeReveal()}
               disabled={acknowledgingReveal}
             >
               {acknowledgingReveal ? 'Continuing…' : 'Continue to chat'}
             </button>
             {revealError && (
-              <p className="subtle text-danger mt-xs">
-                {revealError}
-              </p>
+              <p className="subtle text-danger mt-xs">{revealError}</p>
             )}
           </div>
         )}
+
         {revealAcknowledged && (
           <div className="chat-list">
             {messages.map((message) => (
@@ -426,19 +432,18 @@ export const Chat: React.FC = () => {
             <div ref={bottomRef} />
           </div>
         )}
+
         {blocked && (
           <div className="callout mt-md">
             <strong>Conversation blocked</strong>
-            <p className="subtle">
+            <p className="subtle mt-xs">
               Chat is unavailable because one of you has blocked the other.
             </p>
           </div>
         )}
-        {blockError && (
-          <p className="subtle text-danger">
-            {blockError}
-          </p>
-        )}
+
+        {blockError && <p className="subtle text-danger mt-xs">{blockError}</p>}
+
         <div className="inline mt-md">
           <input
             className="input"
@@ -455,21 +460,19 @@ export const Chat: React.FC = () => {
           />
           <button
             className="button"
-            onClick={sendMessage}
+            onClick={() => void sendMessage()}
             disabled={!draft.trim() || blocked || chatLocked || acknowledgingReveal}
           >
             Send
           </button>
         </div>
-        {sendError && (
-          <p className="subtle text-danger">
-            {sendError}
-          </p>
-        )}
+
+        {sendError && <p className="subtle text-danger mt-xs">{sendError}</p>}
+
         <div className="callout safety mt-md">
           <strong>Stay respectful</strong>
-          <p className="subtle">
-            If you receive anything unsafe, use the report button and we will review it.
+          <p className="subtle mt-xs">
+            If you receive anything unsafe, use report and we will review it.
           </p>
         </div>
       </div>

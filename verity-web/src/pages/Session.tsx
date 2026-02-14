@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { IAgoraRTCClient, ILocalTrack } from 'agora-rtc-sdk-ng';
 import { trackEvent } from '../analytics/events';
+import { ICEBREAKER_PROMPTS } from '../content/prompts';
 import { useFlags } from '../hooks/useFlags';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
@@ -32,6 +33,7 @@ export const Session: React.FC = () => {
   const { flags } = useFlags();
   const { token } = useAuth();
   const socket = useSocket('/video', token);
+
   const [session, setSession] = useState<SessionStartPayload | null>(null);
   const [status, setStatus] = useState<'waiting' | 'live' | 'ended'>('waiting');
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -140,11 +142,11 @@ export const Session: React.FC = () => {
         }
 
         await client.publish(tracks);
-      } catch (err) {
+      } catch {
         if (!mounted) {
           return;
         }
-        setError('Unable to connect to Agora. Check your app ID and tokens.');
+        setError('Unable to connect to live video. Check camera/mic permissions.');
       }
     };
 
@@ -175,55 +177,74 @@ export const Session: React.FC = () => {
     if (secondsLeft !== null) {
       return `Session live · ${secondsLeft}s remaining`;
     }
-    return 'Session live';
-  }, [status, secondsLeft]);
+    return `Session live · ${flags.sessionDurationSeconds}s`;
+  }, [status, secondsLeft, flags.sessionDurationSeconds]);
+
+  const icebreaker = useMemo(() => {
+    if (!session) {
+      return ICEBREAKER_PROMPTS[0];
+    }
+    const secondsElapsed = Math.max(0, (session.durationSeconds ?? 45) - (secondsLeft ?? 45));
+    const idx = Math.floor(secondsElapsed / 8) % ICEBREAKER_PROMPTS.length;
+    return ICEBREAKER_PROMPTS[idx] ?? ICEBREAKER_PROMPTS[0];
+  }, [session, secondsLeft]);
 
   return (
-    <section className="grid" style={{ gap: '24px' }}>
+    <section className="grid gap-4">
       <div className="card">
-        <div className="inline" style={{ justifyContent: 'space-between' }}>
-          <h2 className="section-title">Video session</h2>
-          <span
-            className={`pill ${status === 'ended' ? 'warning' : 'success'}`}
-          >
-            {status === 'waiting'
-              ? 'Connecting'
-              : status === 'ended'
-                ? 'Ended'
-                : 'Live'}
+        <div className="inline flex-between">
+          <h2 className="section-title">Live date</h2>
+          <span className={`pill ${status === 'ended' ? 'warning' : 'success'}`}>
+            {status === 'waiting' ? 'Connecting' : status === 'ended' ? 'Ended' : 'Live'}
           </span>
         </div>
-        <p className="subtle">{callStatus}</p>
-        {error && <p className="subtle">{error}</p>}
-        <div className="video-grid" style={{ marginTop: '20px' }}>
+        <p className="subtle mt-xs">{callStatus}</p>
+
+        {error && (
+          <p className="subtle text-danger mt-xs" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className="video-grid mt-md">
           <div className="video-tile" ref={localVideoRef}>
+            <div className="identity-veil" />
             <span className="video-label">You</span>
           </div>
           <div className="video-tile" ref={remoteVideoRef}>
+            <div className="identity-veil" />
             <span className="video-label">Match</span>
           </div>
         </div>
-        <div className="callout safety" style={{ marginTop: '20px' }}>
-          <strong>Safety reminder</strong>
-          <p className="subtle">
-            This session is not recorded. You can report any unsafe behavior at
-            any time.
+
+        <div className="callout mt-md">
+          <strong>Prompt</strong>
+          <p className="subtle mt-xs">{icebreaker}</p>
+        </div>
+
+        <div className="callout safety mt-md">
+          <strong>Identity shield active</strong>
+          <p className="subtle mt-xs">
+            Faces stay intentionally obscured during the timed call to keep focus
+            on vibe and presence.
           </p>
         </div>
+
         {status === 'ended' && sessionId && (
           <button
-            className="button"
-            style={{ marginTop: '20px' }}
+            className="button mt-md"
             onClick={() => navigate(`/decision/${sessionId}`)}
           >
             Continue to decision
           </button>
         )}
+
         {flags.reportDialogEnabled && (
-          <div style={{ marginTop: '16px' }}>
+          <div className="mt-md">
             <ReportDialog
               reportedUserId={null}
-              contextLabel="Reports are reviewed by our safety team."
+              buttonLabel="Report safety issue"
+              contextLabel="Reports are reviewed quickly by the Verity safety team."
             />
           </div>
         )}

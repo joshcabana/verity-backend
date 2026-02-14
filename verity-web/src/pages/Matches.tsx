@@ -35,26 +35,27 @@ export const Matches: React.FC = () => {
   });
 
   if (matchesQuery.isLoading) {
-    return <section className="card">Loading matches…</section>;
+    return (
+      <section className="card inline">
+        <div className="spinner" />
+        <p className="subtle">Loading matches…</p>
+      </section>
+    );
   }
 
   if (matchesQuery.isError) {
     return (
       <section className="card">
         <h2 className="section-title">Your matches</h2>
-        <div className="callout" style={{ marginTop: '12px' }}>
+        <div className="callout mt-md">
           <strong>Unable to load matches</strong>
-          <p className="subtle">
+          <p className="subtle mt-xs">
             {offline
               ? 'You appear to be offline. Reconnect and try again.'
               : 'Check your connection and try again.'}
           </p>
         </div>
-        <button
-          className="button secondary"
-          style={{ marginTop: '12px' }}
-          onClick={() => matchesQuery.refetch()}
-        >
+        <button className="button secondary mt-md" onClick={() => matchesQuery.refetch()}>
           Retry
         </button>
       </section>
@@ -64,22 +65,23 @@ export const Matches: React.FC = () => {
   const matches = matchesQuery.data ?? [];
 
   return (
-    <section className="grid">
+    <section className="grid gap-4">
       <div className="card">
-        <div className="inline" style={{ justifyContent: 'space-between' }}>
+        <div className="inline flex-between">
           <h2 className="section-title">Your matches</h2>
           <span className="pill">{matches.length} total</span>
         </div>
+
         {matches.length === 0 ? (
-          <div className="callout" style={{ marginTop: '12px' }}>
+          <div className="callout mt-md">
             <strong>No matches yet</strong>
-            <p className="subtle">Join the queue to get paired.</p>
+            <p className="subtle mt-xs">Join the queue to get paired.</p>
           </div>
         ) : (
-          <div className="grid" style={{ gap: '12px', marginTop: '12px' }}>
+          <div className="grid mt-md" style={{ gap: '12px' }}>
             {matches.map((match) => (
               <div key={match.matchId} className="card soft">
-                <div className="inline" style={{ justifyContent: 'space-between' }}>
+                <div className="inline flex-between">
                   <h3 style={{ margin: 0 }}>
                     {match.partnerReveal?.displayName ?? 'New match'}
                   </h3>
@@ -87,19 +89,19 @@ export const Matches: React.FC = () => {
                     {match.revealAcknowledged ? 'Reveal complete' : 'Reveal required'}
                   </span>
                 </div>
+
                 {match.partnerReveal?.bio && match.revealAcknowledged && (
-                  <p className="subtle" style={{ marginTop: '8px' }}>
-                    {match.partnerReveal.bio}
-                  </p>
+                  <p className="subtle mt-xs">{match.partnerReveal.bio}</p>
                 )}
+
                 {!match.revealAcknowledged && (
-                  <p className="subtle" style={{ marginTop: '8px' }}>
+                  <p className="subtle mt-xs">
                     Open this match to view the profile reveal.
                   </p>
                 )}
+
                 <button
-                  className="button secondary"
-                  style={{ marginTop: '12px' }}
+                  className="button secondary mt-md"
                   onClick={() => navigate(`/chat/${match.matchId}`)}
                 >
                   Open chat

@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '../api/client';
 import { trackEvent } from '../analytics/events';
+import { getDailyIntention } from '../content/prompts';
+import { useFlags } from '../hooks/useFlags';
 
 const CITY_OPTIONS = [
   { value: 'canberra', label: 'Canberra' },
@@ -15,13 +17,41 @@ const CITY_OPTIONS = [
 
 type BalanceResponse = { tokenBalance: number };
 type PurchaseResponse = { url?: string };
+type CurrentUser = {
+  id: string;
+  displayName?: string | null;
+  age?: number | null;
+  bio?: string | null;
+  interests?: string[] | null;
+  photos?: string[] | null;
+  phone?: string | null;
+  email?: string | null;
+};
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { flags } = useFlags();
+
   const [city, setCity] = useState('canberra');
   const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // Fetch token balance
+  const [displayName, setDisplayName] = useState('');
+  const [age, setAge] = useState('');
+  const [bio, setBio] = useState('');
+  const [interestsText, setInterestsText] = useState('');
+  const [photosText, setPhotosText] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
+
+  const [phone, setPhone] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [emailCode, setEmailCode] = useState('');
+  const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
+  const [verificationBusy, setVerificationBusy] = useState<'phone' | 'email' | null>(null);
+
   const balanceQuery = useQuery({
     queryKey: ['token-balance'],
     queryFn: async () => {
@@ -33,16 +63,45 @@ export const Home: React.FC = () => {
     },
   });
 
+  const profileQuery = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const response = await apiJson<CurrentUser>('/users/me');
+      if (!response.ok || !response.data) {
+        throw new Error('Failed to load profile');
+      }
+      return response.data;
+    },
+  });
+
+  useEffect(() => {
+    const profile = profileQuery.data;
+    if (!profile) {
+      return;
+    }
+    setDisplayName(profile.displayName ?? '');
+    setAge(profile.age ? String(profile.age) : '');
+    setBio(profile.bio ?? '');
+    setInterestsText((profile.interests ?? []).join(', '));
+    setPhotosText((profile.photos ?? []).join('\n'));
+    setPhone(profile.phone ?? '');
+    setEmail(profile.email ?? '');
+  }, [profileQuery.data]);
+
   const tokenBalance = balanceQuery.data ?? 0;
   const canJoin = tokenBalance > 0 && !joining;
 
-  // Handle joining queue
+  const dailyIntention = useMemo(() => getDailyIntention(), []);
+
   const handleJoin = async () => {
-    if (!canJoin) return;
-    
+    if (!canJoin) {
+      return;
+    }
+
+    setJoinError(null);
     trackEvent('queue_join_requested', { city });
     setJoining(true);
-    
+
     const response = await apiJson<{ queueKey?: string; position?: number }>(
       '/queue/join',
       {
@@ -50,65 +109,146 @@ export const Home: React.FC = () => {
         body: { city, preferences: {} },
       },
     );
-    
+
     setJoining(false);
-    
+
     if (!response.ok) {
-      alert('Unable to join queue. Check your token balance.');
+      setJoinError('Unable to join queue. Check your token balance and try again.');
       return;
     }
-    
+
     trackEvent('queue_joined', {
       city,
       queueKey: response.data?.queueKey ?? '',
       position: response.data?.position ?? -1,
     });
-    
+
     navigate('/waiting');
   };
 
-  // Handle purchasing tokens
-  const handlePurchase = async (packId: string) => {
+  const handlePurchase = async (packId: 'starter' | 'plus' | 'pro') => {
+    setCheckoutError(null);
     trackEvent('token_purchase_started', { packId });
+
     const response = await apiJson<PurchaseResponse>('/tokens/purchase', {
       method: 'POST',
       body: { packId },
     });
-    
+
     if (response.ok && response.data?.url) {
       window.location.href = response.data.url;
       return;
     }
-    
-    alert('Stripe checkout is not configured yet.');
+
+    setCheckoutError('Stripe checkout is not configured right now.');
+  };
+
+  const handleProfileSave = async () => {
+    setProfileNotice(null);
+    setProfileSaving(true);
+
+    const interests = interestsText
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .slice(0, 12);
+
+    const photos = photosText
+      .split('\n')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .slice(0, 6);
+
+    const response = await apiJson('/users/me', {
+      method: 'PATCH',
+      body: {
+        displayName: displayName.trim() || undefined,
+        age: age.trim() ? Number(age.trim()) : undefined,
+        bio: bio.trim() || undefined,
+        interests,
+        photos,
+      },
+    });
+
+    setProfileSaving(false);
+    if (!response.ok) {
+      setProfileNotice('Could not save profile details.');
+      return;
+    }
+
+    setProfileNotice('Profile updated.');
+    await profileQuery.refetch();
+  };
+
+  const verifyPhone = async () => {
+    if (!phone.trim() || !phoneCode.trim()) {
+      setVerificationNotice('Enter phone number and code first.');
+      return;
+    }
+    setVerificationNotice(null);
+    setVerificationBusy('phone');
+    const response = await apiJson('/auth/verify-phone', {
+      method: 'POST',
+      body: {
+        phone: phone.trim(),
+        code: phoneCode.trim(),
+      },
+    });
+    setVerificationBusy(null);
+    setVerificationNotice(
+      response.ok
+        ? 'Phone verification submitted.'
+        : 'Phone verification failed. Check format/code.',
+    );
+  };
+
+  const verifyEmail = async () => {
+    if (!email.trim() || !emailCode.trim()) {
+      setVerificationNotice('Enter email and code first.');
+      return;
+    }
+    setVerificationNotice(null);
+    setVerificationBusy('email');
+    const response = await apiJson('/auth/verify-email', {
+      method: 'POST',
+      body: {
+        email: email.trim(),
+        code: emailCode.trim(),
+      },
+    });
+    setVerificationBusy(null);
+    setVerificationNotice(
+      response.ok
+        ? 'Email verification submitted.'
+        : 'Email verification failed. Check address/code.',
+    );
   };
 
   return (
-    <>
-      {/* Hero Section */}
-      <section className="hero-split">
+    <section className="grid gap-6">
+      <div className="hero-split">
         <div className="hero-content">
+          <span className="pill">No swiping. Real presence.</span>
           <h1 className="hero-title">
-            No Profiles.<br />
+            No Profiles.
+            <br />
             Just Chemistry.
           </h1>
           <p className="body-large">
-            45-second live video dates. Mutual reveal only.<br />
-            Instant connection, zero swipe fatigue.
+            Enter a live queue, meet for {flags.sessionDurationSeconds} seconds,
+            and decide privately. Mutual match unlocks reveal and chat.
           </p>
-          
-          <div className="card auth-card">
+
+          <div className="callout" id="home-primary-live">
             <div className="flex-between mb-md">
               <span className="caption">Select City</span>
-              <span className="caption text-gold">
-                {tokenBalance} Tokens Available
-              </span>
+              <span className="caption text-gold">{tokenBalance} tokens available</span>
             </div>
-            
+
             <select
               className="input mb-md"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(event) => setCity(event.target.value)}
               aria-label="Select City"
             >
               {CITY_OPTIONS.map((opt) => (
@@ -117,132 +257,134 @@ export const Home: React.FC = () => {
                 </option>
               ))}
             </select>
-            
-            <button 
-              className="btn btn-primary animate-pulse w-full" 
-              onClick={handleJoin}
-              disabled={!canJoin}
-            >
+
+            <button className="button w-full" onClick={() => void handleJoin()} disabled={!canJoin}>
               {joining ? 'Connecting...' : 'Go Live'}
             </button>
-            
-            {tokenBalance === 0 && (
-              <div className="text-center mt-lg">
-                <button 
-                  className="btn btn-ghost"
-                  onClick={() => handlePurchase('starter')}
-                >
-                  Get Tokens
-                </button>
-              </div>
+
+            {joinError && (
+              <p className="subtle text-danger mt-xs" role="alert">
+                {joinError}
+              </p>
             )}
           </div>
-          
-          <div className="flex-start">
-            <span className="caption">10k+ matches today</span>
-          </div>
         </div>
-        
-        <div className="hero-visual">
-          {/* Abstract Connection Visual */}
-          <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="150" cy="150" r="100" stroke="var(--lux-gold)" strokeWidth="2" opacity="0.5">
-              <animate attributeName="r" values="100;120;100" dur="4s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.5;0.2;0.5" dur="4s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="150" cy="150" r="70" stroke="var(--paper-white)" strokeWidth="1" opacity="0.8">
-              <animate attributeName="r" values="70;80;70" dur="3s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="150" cy="150" r="10" fill="var(--lux-gold)">
-              <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
-            </circle>
-            <path d="M150 50 L150 250" stroke="var(--charcoal)" strokeDasharray="4 4" />
-            <path d="M50 150 L250 150" stroke="var(--charcoal)" strokeDasharray="4 4" />
-          </svg>
-        </div>
-      </section>
 
-      {/* How It Works */}
-      <section className="mt-lg mb-md">
-        <h2 className="section-title text-center">How It Works</h2>
-        <div className="grid-3">
-          <div className="card text-center">
-            <div className="flex-center mb-md">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 22h14" />
-                <path d="M5 2h14" />
-                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
-                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
-              </svg>
-            </div>
-            <h3 className="body-large text-white-bold">Join The Queue</h3>
-            <p className="body-standard mt-md">
-              Enter the live waiting room for your city. No browsing, just join.
-            </p>
-          </div>
-          
-          <div className="card text-center">
-             <div className="flex-center mb-md">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 7l-7 5 7 5V7z" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-            </div>
-            <h3 className="body-large text-white-bold">45s Date</h3>
-            <p className="body-standard mt-md">
-              Connect instantly via video. Audio on. No filters. Pure chemistry.
-            </p>
-          </div>
-          
-          <div className="card text-center">
-             <div className="flex-center mb-md">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
-            </div>
-            <h3 className="body-large text-white-bold">Decide</h3>
-            <p className="body-standard mt-md">
-              Private decision. Only a mutual match reveals identities and unlocks chat.
-            </p>
+        <div className="card" id="home-how-it-works">
+          <h2 className="section-title section-title-sm">How Verity works</h2>
+          <ol className="list subtle mt-xs">
+            <li>Spend one token to join the live city queue.</li>
+            <li>Meet on an anonymous 45s real-time video date.</li>
+            <li>Both privately choose match or pass.</li>
+            <li>Mutual match reveals identities and unlocks chat.</li>
+          </ol>
+          <div className="callout safety mt-md" id="home-safety">
+            <strong>Daily intention</strong>
+            <p className="subtle mt-xs">“{dailyIntention}”</p>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Safety Section */}
-      <section className="card mb-md mt-lg">
-        <div className="grid-3 items-center">
-          <div>
-            <h2 className="section-title">Unrecorded.<br/>Private.<br/>Safe.</h2>
-            <div className="flex-start mt-md">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--lux-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-            </div>
-          </div>
-          <div className="span-2">
-            <p className="body-large mb-md">
-              Safety is built into the core. Video calls are never recorded.
-              Real-time AI moderation detects and blocks unsafe behavior instantly.
-            </p>
-            <p className="body-standard">
-              You are always in control. Report or block any user with a single tap.
-              Your location is never shared.
-            </p>
-          </div>
+      <div className="grid-3" id="home-pricing">
+        <div className="card text-center">
+          <p className="caption">Starter</p>
+          <h3 className="section-title section-title-sm">3 Tokens</h3>
+          <button className="button w-full" onClick={() => void handlePurchase('starter')}>
+            Buy Starter
+          </button>
         </div>
-      </section>
-      
-      {/* Footer */}
-      <footer className="text-center mt-lg mb-md">
-        <div className="footer-links">
-          <a href="#" className="caption no-underline">Support</a>
-          <a href="#" className="caption no-underline">Privacy</a>
-          <a href="#" className="caption no-underline">Terms</a>
+        <div className="card text-center soft">
+          <p className="caption">Plus</p>
+          <h3 className="section-title section-title-sm">10 Tokens</h3>
+          <button className="button w-full" onClick={() => void handlePurchase('plus')}>
+            Buy Plus
+          </button>
         </div>
-        <div className="caption text-asphalt">
-          © 2026 Verity Inc.
+        <div className="card text-center">
+          <p className="caption">Pro</p>
+          <h3 className="section-title section-title-sm">30 Tokens</h3>
+          <button className="button w-full" onClick={() => void handlePurchase('pro')}>
+            Buy Pro
+          </button>
         </div>
-      </footer>
-    </>
+      </div>
+
+      {checkoutError && (
+        <p className="subtle text-danger" role="alert">
+          {checkoutError}
+        </p>
+      )}
+
+      <div className="two" id="home-profile">
+        <div className="card stack">
+          <h2 className="section-title section-title-sm">Your profile</h2>
+          <label className="subtle">
+            Display name
+            <input className="input mt-xs" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+          </label>
+          <label className="subtle">
+            Age
+            <input className="input mt-xs" inputMode="numeric" value={age} onChange={(event) => setAge(event.target.value)} />
+          </label>
+          <label className="subtle">
+            Bio
+            <textarea className="textarea mt-xs" value={bio} onChange={(event) => setBio(event.target.value)} />
+          </label>
+          <label className="subtle">
+            Interests (comma separated)
+            <input className="input mt-xs" value={interestsText} onChange={(event) => setInterestsText(event.target.value)} />
+          </label>
+          <label className="subtle">
+            Photo URLs (one per line)
+            <textarea className="textarea mt-xs" value={photosText} onChange={(event) => setPhotosText(event.target.value)} />
+          </label>
+          <button className="button" onClick={() => void handleProfileSave()} disabled={profileSaving}>
+            {profileSaving ? 'Saving...' : 'Save profile'}
+          </button>
+          {profileNotice && <p className="subtle">{profileNotice}</p>}
+          {profileQuery.isError && (
+            <p className="subtle text-danger">Unable to load current profile. You can still save updates.</p>
+          )}
+        </div>
+
+        <div className="card stack">
+          <h2 className="section-title section-title-sm">Verification</h2>
+          <p className="subtle">
+            Optional: verify phone/email to strengthen trust signals.
+          </p>
+
+          <label className="subtle">
+            Phone (E.164)
+            <input className="input mt-xs" placeholder="+614xxxxxxxx" value={phone} onChange={(event) => setPhone(event.target.value)} />
+          </label>
+          <label className="subtle">
+            Phone code
+            <input className="input mt-xs" value={phoneCode} onChange={(event) => setPhoneCode(event.target.value)} />
+          </label>
+          <button className="button secondary" onClick={() => void verifyPhone()} disabled={verificationBusy !== null}>
+            {verificationBusy === 'phone' ? 'Verifying phone…' : 'Verify phone'}
+          </button>
+
+          <label className="subtle">
+            Email
+            <input className="input mt-xs" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </label>
+          <label className="subtle">
+            Email code
+            <input className="input mt-xs" value={emailCode} onChange={(event) => setEmailCode(event.target.value)} />
+          </label>
+          <button className="button secondary" onClick={() => void verifyEmail()} disabled={verificationBusy !== null}>
+            {verificationBusy === 'email' ? 'Verifying email…' : 'Verify email'}
+          </button>
+
+          {verificationNotice && <p className="subtle">{verificationNotice}</p>}
+
+          <p className="subtle">
+            Need policy details? <Link to="/legal/privacy">Privacy</Link> ·{' '}
+            <Link to="/legal/terms">Terms</Link>
+          </p>
+        </div>
+      </div>
+    </section>
   );
 };

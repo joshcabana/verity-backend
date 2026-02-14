@@ -24,15 +24,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   };
 
   return (
-    <main>
-      <header>
-        <Link className="brand" to={token ? '/home' : '/onboarding'}>
-          Verity
-        </Link>
-        <nav className="nav">
-          {token ? (
-            <>
-              {showMarketingHomeNav ? (
+    <>
+      <header className="top-nav">
+        <div className="top-nav-inner">
+          <Link className="brand" to={token ? '/home' : '/onboarding'}>
+            Verity<span className="ml-1 text-rose">♥</span>
+          </Link>
+          <nav className="nav">
+            {token ? (
+              showMarketingHomeNav ? (
                 <>
                   <a className="nav-link" href="#home-how-it-works">
                     How It Works
@@ -40,8 +40,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <a className="nav-link" href="#home-safety">
                     Safety
                   </a>
-                  <a className="nav-link" href="#home-pricing">
-                    Pricing
+                  <a className="nav-link" href="#home-profile">
+                    Profile
                   </a>
                   <a className="button" href="#home-primary-live">
                     Go Live
@@ -93,23 +93,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     Sign out
                   </button>
                 </>
-              )}
-            </>
-          ) : (
-            <NavLink
-              to="/onboarding"
-              className={({ isActive }) =>
-                `nav-link${isActive ? ' active' : ''}`
-              }
-              onMouseEnter={() => prefetchRoute('/onboarding')}
-              onFocus={() => prefetchRoute('/onboarding')}
-            >
-              Get started
-            </NavLink>
-          )}
-        </nav>
+              )
+            ) : (
+              <NavLink
+                to="/onboarding"
+                className={({ isActive }) =>
+                  `nav-link${isActive ? ' active' : ''}`
+                }
+                onMouseEnter={() => prefetchRoute('/onboarding')}
+                onFocus={() => prefetchRoute('/onboarding')}
+              >
+                Get started
+              </NavLink>
+            )}
+          </nav>
+        </div>
       </header>
-      {children}
-    </main>
+      <main className="app-shell">{children}</main>
+    </>
   );
 };

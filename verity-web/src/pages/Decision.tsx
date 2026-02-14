@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiJson } from '../api/client';
 import { trackEvent } from '../analytics/events';
+import { SparkBurst } from '../components/SparkBurst';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
 
@@ -35,8 +36,10 @@ export const Decision: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
   const socket = useSocket('/video', token);
+
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showSpark, setShowSpark] = useState(false);
 
   useEffect(() => {
     if (!socket) {
@@ -51,7 +54,8 @@ export const Decision: React.FC = () => {
         sessionId: payload.sessionId,
         outcome: 'mutual',
       });
-      setMessage('It’s a match! Redirecting to chat.');
+      setShowSpark(true);
+      setMessage('It’s a match! Opening chat…');
       setTimeout(
         () =>
           navigate(`/chat/${payload.matchId}`, {
@@ -72,7 +76,8 @@ export const Decision: React.FC = () => {
         sessionId: payload.sessionId,
         outcome: 'non_mutual',
       });
-      setMessage('No mutual match this time.');
+      setShowSpark(false);
+      setMessage('No mutual match this round.');
       setTimeout(() => navigate('/home'), 1200);
     };
 
@@ -114,6 +119,7 @@ export const Decision: React.FC = () => {
           sessionId,
           outcome: 'mutual',
         });
+        setShowSpark(true);
         navigate(`/chat/${response.data.matchId}`, {
           state: {
             partnerRevealVersion: response.data.partnerRevealVersion,
@@ -125,53 +131,55 @@ export const Decision: React.FC = () => {
           sessionId,
           outcome: 'non_mutual',
         });
+        setShowSpark(false);
         navigate('/home');
       }
     } else {
-      setMessage('Choice saved. Waiting for the other user.');
+      setMessage('Choice saved. Waiting for the other person.');
     }
   };
 
   return (
-    <section className="grid two">
+    <section className="two relative">
+      <SparkBurst active={showSpark} />
+
       <div className="card">
-        <h2 className="section-title">Decision time</h2>
-        <p className="subtle">Choose MATCH or PASS once the call ends.</p>
-        <div className="inline" style={{ marginTop: '16px' }}>
+        <h2 className="section-title">How did that feel?</h2>
+        <p className="subtle mt-xs">
+          Choose once. Mutual match reveals profile + opens chat.
+        </p>
+
+        <div className="inline mt-md" style={{ gap: '12px' }}>
           <button
             className="button"
-            onClick={() => submitChoice('MATCH')}
+            onClick={() => void submitChoice('MATCH')}
             disabled={submitting}
           >
             Match
           </button>
           <button
             className="button secondary"
-            onClick={() => submitChoice('PASS')}
+            onClick={() => void submitChoice('PASS')}
             disabled={submitting}
           >
             Pass
           </button>
         </div>
+
         {message && (
-          <p className="subtle" style={{ marginTop: '12px' }}>
+          <p className="subtle mt-md" role="status">
             {message}
           </p>
         )}
       </div>
+
       <div className="card soft">
-        <h3 className="section-title">What happens next</h3>
-        <ul className="list subtle">
-          <li>Mutual MATCH unlocks profiles and chat.</li>
-          <li>PASS keeps your details private.</li>
-          <li>You can rejoin the queue anytime.</li>
+        <h3 className="section-title section-title-sm">Decision guide</h3>
+        <ul className="list subtle mt-xs">
+          <li>Match if you’d genuinely like another conversation.</li>
+          <li>Pass if the chemistry wasn’t there — no hard feelings.</li>
+          <li>Your choice remains private unless both say match.</li>
         </ul>
-        <div className="callout safety" style={{ marginTop: '16px' }}>
-          <strong>Safety matters</strong>
-          <p className="subtle">
-            If anything felt off, report the user from the session or chat screen.
-          </p>
-        </div>
       </div>
     </section>
   );
