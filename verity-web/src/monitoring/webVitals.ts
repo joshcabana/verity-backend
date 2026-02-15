@@ -6,7 +6,9 @@ const VITALS_ENDPOINT = import.meta.env.VITE_WEB_VITALS_ENDPOINT as
 
 function publish(metric: Metric) {
   if (!VITALS_ENDPOINT) {
-    console.info('[web-vitals]', metric.name, metric.value);
+    if (import.meta.env.DEV) {
+      console.info('[web-vitals]', metric.name, metric.value);
+    }
     return;
   }
 

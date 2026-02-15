@@ -34,6 +34,8 @@ export const Waiting: React.FC = () => {
   const [queueKey, setQueueKey] = React.useState<string | null>(initialQueueKey);
   const [seconds, setSeconds] = React.useState(0);
   const [showTimeoutPrompt, setShowTimeoutPrompt] = React.useState(false);
+  const [leaving, setLeaving] = React.useState(false);
+  const [leaveError, setLeaveError] = React.useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -119,24 +121,50 @@ export const Waiting: React.FC = () => {
   }, [seconds]);
 
   const handleCancel = async (origin: 'manual' | 'timeout') => {
-    const response = await apiJson<{
-      refunded?: boolean;
-      status?: string;
-      queueKey?: string;
-    }>('/queue/leave', {
-      method: 'DELETE',
-    });
-    const resolvedQueueKey = response.data?.queueKey ?? queueKey ?? '';
-
-    if (origin === 'timeout') {
-      trackEvent('queue_timeout_leave', {
-        queueKey: resolvedQueueKey,
-        elapsedSeconds: seconds,
-        refunded: Boolean(response.data?.refunded),
-      });
+    if (leaving) {
+      return;
     }
 
-    navigate('/home');
+    setLeaving(true);
+    setLeaveError(null);
+
+    try {
+      const response = await apiJson<{
+        refunded?: boolean;
+        status?: string;
+        queueKey?: string;
+      }>('/queue/leave', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        setLeaveError('Could not leave queue right now. Please try again.');
+        return;
+      }
+
+      const resolvedQueueKey = response.data?.queueKey ?? queueKey ?? '';
+
+      if (origin === 'timeout') {
+        trackEvent('queue_timeout_leave', {
+          queueKey: resolvedQueueKey,
+          elapsedSeconds: seconds,
+          refunded: Boolean(response.data?.refunded),
+        });
+      }
+
+      navigate('/home');
+    } catch {
+      if (origin === 'timeout') {
+        trackEvent('queue_timeout_leave', {
+          queueKey: queueKey ?? '',
+          elapsedSeconds: seconds,
+          refunded: false,
+        });
+      }
+      setLeaveError('Could not reach queue service. Check your connection and try again.');
+    } finally {
+      setLeaving(false);
+    }
   };
 
   const handleKeepSearching = () => {
@@ -182,18 +210,32 @@ export const Waiting: React.FC = () => {
             <h3 className="timeout-title">Still looking...</h3>
             <p className="body-standard mb-md">Top tier matches are worth the wait.</p>
             <div className="flex-center" style={{ gap: '12px' }}>
-              <button className="button" onClick={handleKeepSearching}>
+              <button className="button" onClick={handleKeepSearching} disabled={leaving}>
                 Wait
               </button>
-              <button className="button secondary" onClick={() => void handleCancel('timeout')}>
-                Leave
+              <button
+                className="button secondary"
+                onClick={() => void handleCancel('timeout')}
+                disabled={leaving}
+              >
+                {leaving ? 'Leaving…' : 'Leave'}
               </button>
             </div>
           </div>
         ) : (
-          <button className="button secondary cancel-btn mt-md" onClick={() => void handleCancel('manual')}>
-            Cancel
+          <button
+            className="button secondary cancel-btn mt-md"
+            onClick={() => void handleCancel('manual')}
+            disabled={leaving}
+          >
+            {leaving ? 'Cancelling…' : 'Cancel'}
           </button>
+        )}
+
+        {leaveError && (
+          <p className="subtle text-danger mt-xs" role="alert">
+            {leaveError}
+          </p>
         )}
       </div>
     </section>

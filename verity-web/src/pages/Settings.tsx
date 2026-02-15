@@ -36,52 +36,75 @@ export const Settings: React.FC = () => {
     if (!confirmed) {
       return;
     }
+
     setDeleting(true);
-    await deleteAccount();
-    signOut();
+    setError(null);
+
+    try {
+      await deleteAccount();
+      signOut();
+    } catch {
+      setError('Unable to delete your account right now. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleExport = async () => {
     if (exporting) {
       return;
     }
+
     setExporting(true);
     setError(null);
-    const response = await apiJson('/users/me/export');
-    setExporting(false);
-    if (!response.ok || !response.data) {
-      setError('Unable to export your data. Try again.');
-      return;
+
+    try {
+      const response = await apiJson('/users/me/export');
+      if (!response.ok || !response.data) {
+        setError('Unable to export your data. Try again.');
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `verity-data-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Unable to export your data. Check your connection and try again.');
+    } finally {
+      setExporting(false);
     }
-    const blob = new Blob([JSON.stringify(response.data, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `verity-data-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   const handleUnblock = async (blockedUserId: string) => {
     if (unblockingId) {
       return;
     }
+
     setUnblockingId(blockedUserId);
     setBlockError(null);
 
-    const response = await apiJson(`/moderation/blocks/${blockedUserId}`, {
-      method: 'DELETE',
-    });
+    try {
+      const response = await apiJson(`/moderation/blocks/${blockedUserId}`, {
+        method: 'DELETE',
+      });
 
-    setUnblockingId(null);
-    if (!response.ok) {
-      setBlockError('Unable to unblock right now. Try again.');
-      return;
+      if (!response.ok) {
+        setBlockError('Unable to unblock right now. Try again.');
+        return;
+      }
+
+      await blocksQuery.refetch();
+    } catch {
+      setBlockError('Unable to unblock right now. Check your connection and try again.');
+    } finally {
+      setUnblockingId(null);
     }
-
-    await blocksQuery.refetch();
   };
 
   const blockedUsers = blocksQuery.data ?? [];

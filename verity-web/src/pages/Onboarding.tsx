@@ -2,6 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useFlags } from '../hooks/useFlags';
+import { legalDocs } from '../legal/generated';
+
+function toLegalVersion(value: string): string {
+  const timestamp = Date.parse(value);
+  if (!Number.isNaN(timestamp)) {
+    return new Date(timestamp).toISOString().slice(0, 10);
+  }
+  return value;
+}
 
 export const Onboarding: React.FC = () => {
   const { signUp, loading } = useAuth();
@@ -15,8 +24,8 @@ export const Onboarding: React.FC = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const privacyVersion = '2026-02-04';
-  const tosVersion = '2026-02-04';
+  const privacyVersion = toLegalVersion(legalDocs.privacy.updated);
+  const tosVersion = toLegalVersion(legalDocs.terms.updated);
 
   const ready = useMemo(
     () =>
@@ -138,7 +147,7 @@ export const Onboarding: React.FC = () => {
         </label>
 
         <button
-          className="button animate-pulse w-full"
+          className="button w-full"
           disabled={loading || !ready}
           type="submit"
         >

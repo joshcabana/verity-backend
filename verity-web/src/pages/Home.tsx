@@ -102,45 +102,53 @@ export const Home: React.FC = () => {
     trackEvent('queue_join_requested', { city });
     setJoining(true);
 
-    const response = await apiJson<{ queueKey?: string; position?: number }>(
-      '/queue/join',
-      {
-        method: 'POST',
-        body: { city, preferences: {} },
-      },
-    );
+    try {
+      const response = await apiJson<{ queueKey?: string; position?: number }>(
+        '/queue/join',
+        {
+          method: 'POST',
+          body: { city, preferences: {} },
+        },
+      );
 
-    setJoining(false);
+      if (!response.ok) {
+        setJoinError('Unable to join queue. Check your token balance and try again.');
+        return;
+      }
 
-    if (!response.ok) {
-      setJoinError('Unable to join queue. Check your token balance and try again.');
-      return;
+      trackEvent('queue_joined', {
+        city,
+        queueKey: response.data?.queueKey ?? '',
+        position: response.data?.position ?? -1,
+      });
+
+      navigate('/waiting');
+    } catch {
+      setJoinError('Unable to join queue. Check your network and try again.');
+    } finally {
+      setJoining(false);
     }
-
-    trackEvent('queue_joined', {
-      city,
-      queueKey: response.data?.queueKey ?? '',
-      position: response.data?.position ?? -1,
-    });
-
-    navigate('/waiting');
   };
 
   const handlePurchase = async (packId: 'starter' | 'plus' | 'pro') => {
     setCheckoutError(null);
     trackEvent('token_purchase_started', { packId });
 
-    const response = await apiJson<PurchaseResponse>('/tokens/purchase', {
-      method: 'POST',
-      body: { packId },
-    });
+    try {
+      const response = await apiJson<PurchaseResponse>('/tokens/purchase', {
+        method: 'POST',
+        body: { packId },
+      });
 
-    if (response.ok && response.data?.url) {
-      window.location.href = response.data.url;
-      return;
+      if (response.ok && response.data?.url) {
+        window.location.href = response.data.url;
+        return;
+      }
+
+      setCheckoutError('Stripe checkout is not configured right now.');
+    } catch {
+      setCheckoutError('Unable to start checkout right now. Try again.');
     }
-
-    setCheckoutError('Stripe checkout is not configured right now.');
   };
 
   const handleProfileSave = async () => {
@@ -159,25 +167,41 @@ export const Home: React.FC = () => {
       .filter((item) => item.length > 0)
       .slice(0, 6);
 
-    const response = await apiJson('/users/me', {
-      method: 'PATCH',
-      body: {
-        displayName: displayName.trim() || undefined,
-        age: age.trim() ? Number(age.trim()) : undefined,
-        bio: bio.trim() || undefined,
-        interests,
-        photos,
-      },
-    });
+    const normalizedAge = Number.parseInt(age.trim(), 10);
+    const hasAgeInput = age.trim().length > 0;
+    const ageIsValid =
+      Number.isFinite(normalizedAge) && normalizedAge >= 18 && normalizedAge <= 120;
 
-    setProfileSaving(false);
-    if (!response.ok) {
-      setProfileNotice('Could not save profile details.');
+    if (hasAgeInput && !ageIsValid) {
+      setProfileNotice('Please enter a valid age between 18 and 120.');
+      setProfileSaving(false);
       return;
     }
 
-    setProfileNotice('Profile updated.');
-    await profileQuery.refetch();
+    try {
+      const response = await apiJson('/users/me', {
+        method: 'PATCH',
+        body: {
+          displayName: displayName.trim() || undefined,
+          age: ageIsValid ? normalizedAge : undefined,
+          bio: bio.trim() || undefined,
+          interests,
+          photos,
+        },
+      });
+
+      if (!response.ok) {
+        setProfileNotice('Could not save profile details.');
+        return;
+      }
+
+      setProfileNotice('Profile updated.');
+      await profileQuery.refetch();
+    } catch {
+      setProfileNotice('Could not save profile details. Check your connection and try again.');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const verifyPhone = async () => {
@@ -187,19 +211,24 @@ export const Home: React.FC = () => {
     }
     setVerificationNotice(null);
     setVerificationBusy('phone');
-    const response = await apiJson('/auth/verify-phone', {
-      method: 'POST',
-      body: {
-        phone: phone.trim(),
-        code: phoneCode.trim(),
-      },
-    });
-    setVerificationBusy(null);
-    setVerificationNotice(
-      response.ok
-        ? 'Phone verification submitted.'
-        : 'Phone verification failed. Check format/code.',
-    );
+    try {
+      const response = await apiJson('/auth/verify-phone', {
+        method: 'POST',
+        body: {
+          phone: phone.trim(),
+          code: phoneCode.trim(),
+        },
+      });
+      setVerificationNotice(
+        response.ok
+          ? 'Phone verification submitted.'
+          : 'Phone verification failed. Check format/code.',
+      );
+    } catch {
+      setVerificationNotice('Phone verification failed. Check your connection and try again.');
+    } finally {
+      setVerificationBusy(null);
+    }
   };
 
   const verifyEmail = async () => {
@@ -209,19 +238,24 @@ export const Home: React.FC = () => {
     }
     setVerificationNotice(null);
     setVerificationBusy('email');
-    const response = await apiJson('/auth/verify-email', {
-      method: 'POST',
-      body: {
-        email: email.trim(),
-        code: emailCode.trim(),
-      },
-    });
-    setVerificationBusy(null);
-    setVerificationNotice(
-      response.ok
-        ? 'Email verification submitted.'
-        : 'Email verification failed. Check address/code.',
-    );
+    try {
+      const response = await apiJson('/auth/verify-email', {
+        method: 'POST',
+        body: {
+          email: email.trim(),
+          code: emailCode.trim(),
+        },
+      });
+      setVerificationNotice(
+        response.ok
+          ? 'Email verification submitted.'
+          : 'Email verification failed. Check address/code.',
+      );
+    } catch {
+      setVerificationNotice('Email verification failed. Check your connection and try again.');
+    } finally {
+      setVerificationBusy(null);
+    }
   };
 
   return (
@@ -355,7 +389,7 @@ export const Home: React.FC = () => {
 
           <label className="subtle">
             Phone (E.164)
-            <input className="input mt-xs" placeholder="+614xxxxxxxx" value={phone} onChange={(event) => setPhone(event.target.value)} />
+            <input className="input mt-xs" placeholder="+61400 000 000" value={phone} onChange={(event) => setPhone(event.target.value)} />
           </label>
           <label className="subtle">
             Phone code
@@ -367,7 +401,7 @@ export const Home: React.FC = () => {
 
           <label className="subtle">
             Email
-            <input className="input mt-xs" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input className="input mt-xs" placeholder="spark@moonlight.mail" value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
           <label className="subtle">
             Email code

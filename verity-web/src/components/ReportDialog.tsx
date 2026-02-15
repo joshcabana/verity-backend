@@ -9,6 +9,8 @@ const REASONS = [
   { value: 'Other safety concern', label: 'Other safety concern' },
 ] as const;
 
+type ReportReason = (typeof REASONS)[number]['value'];
+
 type ReportDialogProps = {
   reportedUserId?: string | null;
   contextLabel?: string;
@@ -26,7 +28,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
   const modalRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState(REASONS[0].value);
+  const [reason, setReason] = useState<ReportReason>(REASONS[0].value);
   const [details, setDetails] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>(
     'idle',
@@ -189,7 +191,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 className="input"
                 value={reason}
                 onChange={(event) =>
-                  setReason(event.target.value as (typeof REASONS)[number]['value'])
+                  setReason(event.target.value as ReportReason)
                 }
               >
                 {REASONS.map((item) => (
@@ -206,7 +208,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                 rows={4}
                 value={details}
                 onChange={(event) => setDetails(event.target.value)}
-                placeholder="Share any helpful context"
+                placeholder="Share what happened so our safety team can review quickly"
               />
             </label>
             {status === 'error' && (

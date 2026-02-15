@@ -4,7 +4,9 @@ const ERROR_ENDPOINT = import.meta.env.VITE_FRONTEND_ERROR_ENDPOINT as
 
 function report(payload: Record<string, unknown>) {
   if (!ERROR_ENDPOINT) {
-    console.error('[frontend-error]', payload);
+    if (import.meta.env.DEV) {
+      console.error('[frontend-error]', payload);
+    }
     return;
   }
 

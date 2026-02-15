@@ -6,7 +6,6 @@ import { ICEBREAKER_PROMPTS } from '../content/prompts';
 import { useFlags } from '../hooks/useFlags';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
-import { ReportDialog } from '../components/ReportDialog';
 
 const AGORA_APP_ID = import.meta.env.VITE_AGORA_APP_ID as string | undefined;
 
@@ -55,6 +54,7 @@ export const Session: React.FC = () => {
       }
       setSession(payload);
       setStatus('live');
+      setError(null);
       trackEvent('session_started', {
         sessionId: payload.sessionId,
         durationSeconds: payload.durationSeconds,
@@ -96,7 +96,19 @@ export const Session: React.FC = () => {
   }, [session]);
 
   useEffect(() => {
-    if (!session || !AGORA_APP_ID) {
+    if (status !== 'live' || secondsLeft !== 0) {
+      return;
+    }
+    setStatus('ended');
+  }, [secondsLeft, status]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    if (!AGORA_APP_ID) {
+      setError('Live video is temporarily unavailable. Please try again shortly.');
       return;
     }
 
@@ -240,12 +252,11 @@ export const Session: React.FC = () => {
         )}
 
         {flags.reportDialogEnabled && (
-          <div className="mt-md">
-            <ReportDialog
-              reportedUserId={null}
-              buttonLabel="Report safety issue"
-              contextLabel="Reports are reviewed quickly by the Verity safety team."
-            />
+          <div className="callout mt-md">
+            <strong>Need to report something from this live date?</strong>
+            <p className="subtle mt-xs">
+              You can report from the decision or chat screen once the match context is available.
+            </p>
           </div>
         )}
       </div>

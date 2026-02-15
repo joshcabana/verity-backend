@@ -203,7 +203,16 @@ export const Chat: React.FC = () => {
 
   const messages = useMemo(() => {
     const base = messagesQuery.data ?? [];
-    return [...base, ...liveMessages];
+    const all = [...base, ...liveMessages];
+    const uniqueById = new Map<string, Message>();
+
+    all.forEach((message) => {
+      uniqueById.set(message.id, message);
+    });
+
+    return Array.from(uniqueById.values()).sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt),
+    );
   }, [messagesQuery.data, liveMessages]);
 
   useEffect(() => {
@@ -449,7 +458,7 @@ export const Chat: React.FC = () => {
             className="input"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Say something kind"
+            placeholder="Send a thoughtful spark"
             disabled={blocked || chatLocked}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {

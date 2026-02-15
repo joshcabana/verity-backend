@@ -20,9 +20,9 @@ export const AdminModeration: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const headers = useMemo(() => {
+  const headers = useMemo<HeadersInit | undefined>(() => {
     const key = adminKey.trim();
-    return key ? { 'x-admin-key': key } : {};
+    return key ? { 'x-admin-key': key } : undefined;
   }, [adminKey]);
 
   const fetchReports = async () => {

@@ -245,7 +245,7 @@ describe('Chat', () => {
 
     await screen.findByText('Hello there');
 
-    const input = screen.getByPlaceholderText(/say something kind/i);
+    const input = screen.getByPlaceholderText(/send a thoughtful spark/i);
     fireEvent.change(input, { target: { value: 'Hey!' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
