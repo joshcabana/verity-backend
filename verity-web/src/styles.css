@@ -59,6 +59,10 @@ p {
     padding: 5.25rem 1rem 2rem;
   }
 
+  .app-shell > section {
+    animation: fade-in-up 320ms ease-out;
+  }
+
   .top-nav,
   header {
     position: fixed;
@@ -99,6 +103,7 @@ p {
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 500;
+    transition: color 0.18s ease;
   }
 
   .nav-link:hover,
@@ -169,6 +174,7 @@ p {
     background: var(--card);
     backdrop-filter: blur(8px);
     padding: 1rem;
+    transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
   }
 
   .soft,
@@ -208,13 +214,20 @@ p {
     box-shadow: 0 8px 28px rgba(255, 107, 157, 0.26);
     cursor: pointer;
     text-decoration: none;
-    transition: transform 0.12s ease, filter 0.12s ease;
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
   }
 
   .button:hover,
   .btn:hover {
     transform: translateY(-1px);
     filter: brightness(1.03);
+    box-shadow: 0 10px 30px rgba(255, 107, 157, 0.33);
+  }
+
+  .button:active,
+  .btn:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
   }
 
   .button:disabled,
@@ -240,6 +253,12 @@ p {
     border: 1px solid rgba(239, 68, 68, 0.5);
     background: rgba(239, 68, 68, 0.2);
     color: var(--paper);
+  }
+
+  .button:focus-visible,
+  .nav-link:focus-visible {
+    outline: 2px solid rgba(212, 175, 55, 0.8);
+    outline-offset: 2px;
   }
 
   .pill,
@@ -556,6 +575,14 @@ p {
 
   .w-full { width: 100%; }
   .w-auto { width: auto; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(212, 175, 55, 0.24);
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
 }
 
 @media (min-width: 768px) {
@@ -585,8 +612,27 @@ p {
   }
 }
 
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell > section,
+  .spinner,
+  .animate-heart-float {
+    animation: none !important;
   }
 }
