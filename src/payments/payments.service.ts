@@ -52,6 +52,15 @@ export class PaymentsService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
+
+    this.analyticsService?.trackServerEvent({
+      userId,
+      name: 'token_balance_viewed',
+      properties: {
+        tokenBalance: user.tokenBalance,
+      },
+    });
+
     return { tokenBalance: user.tokenBalance };
   }
 
@@ -82,7 +91,7 @@ export class PaymentsService {
       userId,
       name: 'token_purchase_started',
       properties: {
-        packId: pack.id,
+        pack: pack.id,
         tokenAmount: pack.tokens,
         checkoutSessionId: session.id,
       },
@@ -152,14 +161,23 @@ export class PaymentsService {
       });
     });
 
+    const purchaseProperties = {
+      pack: packId,
+      tokenAmount: tokens,
+      stripeSessionId: session.id,
+      currency: session.currency ?? null,
+    };
+
     this.analyticsService?.trackServerEvent({
       userId,
       name: 'token_purchase_succeeded',
-      properties: {
-        packId,
-        tokenAmount: tokens,
-        stripeSessionId: session.id,
-      },
+      properties: purchaseProperties,
+    });
+
+    this.analyticsService?.trackServerEvent({
+      userId,
+      name: 'token_purchase_completed',
+      properties: purchaseProperties,
     });
 
     return { received: true };

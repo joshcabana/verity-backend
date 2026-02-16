@@ -155,6 +155,15 @@ export class QueueService {
           position: position ?? -1,
         },
       });
+      this.analyticsService.trackServerEvent({
+        userId,
+        name: 'token_spent',
+        properties: {
+          spendReason: 'queue_entry',
+          amount: 1,
+          queueKey,
+        },
+      });
       return { status: 'queued', queueKey, position };
     } finally {
       await this.releaseLock(this.userLockKey(userId), lockValue);

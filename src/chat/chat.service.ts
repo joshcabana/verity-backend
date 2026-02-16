@@ -44,6 +44,15 @@ export class ChatService {
       take: safeLimit,
     });
 
+    this.analyticsService?.trackServerEvent({
+      userId,
+      name: 'match_chat_opened',
+      properties: {
+        matchId,
+        messageCount: messages.length,
+      },
+    });
+
     return messages.reverse();
   }
 
@@ -140,6 +149,15 @@ export class ChatService {
       properties: {
         matchId,
         messageId: message.id,
+      },
+    });
+    this.analyticsService?.trackServerEvent({
+      userId,
+      name: 'match_message_sent',
+      properties: {
+        matchId,
+        messageId: message.id,
+        isFirstMessage: existingCount === 0,
       },
     });
 

@@ -651,6 +651,9 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    const resolvedResult = outcome === 'mutual' ? 'mutual_match' : 'non_mutual';
+    const bothPassed = choiceA === 'PASS' && choiceB === 'PASS';
+
     this.analyticsService?.trackServerEvent({
       userId: session.userAId,
       name: 'session_choice_resolved',
@@ -661,11 +664,31 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       },
     });
     this.analyticsService?.trackServerEvent({
+      userId: session.userAId,
+      name: 'session_result',
+      properties: {
+        sessionId: session.id,
+        result: resolvedResult,
+        bothPassed,
+        hasMatch: Boolean(matchId),
+      },
+    });
+    this.analyticsService?.trackServerEvent({
       userId: session.userBId,
       name: 'session_choice_resolved',
       properties: {
         sessionId: session.id,
         outcome,
+        hasMatch: Boolean(matchId),
+      },
+    });
+    this.analyticsService?.trackServerEvent({
+      userId: session.userBId,
+      name: 'session_result',
+      properties: {
+        sessionId: session.id,
+        result: resolvedResult,
+        bothPassed,
         hasMatch: Boolean(matchId),
       },
     });

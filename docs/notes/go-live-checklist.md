@@ -25,3 +25,18 @@
 - Rollback image tag and command documented.
 - Incident owner and contact path assigned.
 - Support path published in web settings and legal docs.
+
+## Stage-Gate Controls (Required)
+
+- Stage gate dashboard is live and reviewed before each live window.
+- Liquidity gates configured: p50/p90 wait, abandonment, no-match/refund monitoring.
+- Safety gates configured: severe incidents per 10k, action latency p95, appeal backlog SLA.
+- Product signal gates configured: call completion, mutual match band, chat activation, D7 return.
+- Auto-pause trigger thresholds configured and on-call owner assigned.
+
+## Market Reality Integration (Required)
+
+- Male-skew and safety-friction assumptions are reflected in invite pacing and queue controls.
+- Burnout-risk assumption is reflected in UX (no endless loops, clear session boundaries).
+- Any external doc/deck using market stats has source-lock check against `docs/strategy/verity-market-context-source-register.md`.
+- Unverified numbers are labeled as assumptions in internal docs.
