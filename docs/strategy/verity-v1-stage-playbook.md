@@ -29,7 +29,7 @@ Use this context in planning, launch reviews, and comms:
 - Many users want long-term relationships, not only casual dating.
 
 ### Risk callout
-These are strategy assumptions until source-locked. Do not use hard numbers in investor/legal/public copy until verified in the source register.
+Some claims are now source-locked (Pew U.S. behavior/adoption metrics), while global scale/revenue and broad app-ratio figures remain assumptions pending verification. Do not use non-locked numbers in investor/legal/public copy.
 
 ## 4) Stage map
 
