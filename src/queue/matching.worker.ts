@@ -97,6 +97,8 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
       }
 
       try {
+        const waitSecondsA = this.computeWaitSeconds(pair.scoreA);
+        const waitSecondsB = this.computeWaitSeconds(pair.scoreB);
         const session = await this.queueService.createSession(
           valid.userA,
           valid.userB,
@@ -114,6 +116,7 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
             sessionId: session.id,
             queueKey: session.queueKey ?? '',
             partnerId: valid.userB,
+            waitSeconds: waitSecondsA,
           },
         });
         this.analyticsService.trackServerEvent({
@@ -123,6 +126,7 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
             sessionId: session.id,
             queueKey: session.queueKey ?? '',
             partnerId: valid.userA,
+            waitSeconds: waitSecondsB,
           },
         });
         this.gateway.emitMatch(valid.userA, valid.userB, session);
@@ -155,5 +159,16 @@ export class MatchingWorker implements OnModuleInit, OnModuleDestroy {
     return (
       value === '1' || value === 'true' || value === 'yes' || value === 'on'
     );
+  }
+
+  private computeWaitSeconds(joinedAtMs: number): number {
+    if (!Number.isFinite(joinedAtMs)) {
+      return 0;
+    }
+    const elapsedMs = Date.now() - joinedAtMs;
+    if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {
+      return 0;
+    }
+    return Math.round(elapsedMs / 1000);
   }
 }

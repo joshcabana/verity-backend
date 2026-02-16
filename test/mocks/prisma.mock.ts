@@ -32,6 +32,15 @@ export function createPrismaMock() {
     },
     moderationReport: {
       create: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    moderationAppeal: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
       update: jest.fn(),
@@ -75,6 +84,22 @@ export function createPrismaMock() {
     featureFlag: {
       findMany: jest.fn(),
       upsert: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    analyticsEvent: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    analyticsIngestHourly: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    telemetryGateSnapshot: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
       deleteMany: jest.fn(),
     },
     $transaction: jest.fn(async (fn: (tx: any) => any) => fn(prisma)),

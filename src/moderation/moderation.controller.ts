@@ -17,7 +17,9 @@ import { Roles } from '../auth/roles.decorator';
 import { getRequestUserId } from '../auth/request-user';
 import { ModerationService } from './moderation.service';
 import { BlockUserDto } from './dto/block-user.dto';
+import { CreateAppealDto } from './dto/create-appeal.dto';
 import { ReportUserDto } from './dto/report-user.dto';
+import { ResolveAppealDto } from './dto/resolve-appeal.dto';
 
 @Controller('moderation')
 export class ModerationController {
@@ -43,6 +45,43 @@ export class ModerationController {
       ? parsedLimitRaw
       : undefined;
     return this.moderationService.listReports(status, parsedLimit);
+  }
+
+  @Post('appeals')
+  @UseGuards(AuthGuard('jwt'))
+  async createAppeal(@Req() req: Request, @Body() dto: CreateAppealDto) {
+    const userId = getRequestUserId(req);
+    return this.moderationService.createAppeal(userId, dto);
+  }
+
+  @Get('appeals')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  async listAppeals(
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedLimitRaw = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimit = Number.isFinite(parsedLimitRaw)
+      ? parsedLimitRaw
+      : undefined;
+    return this.moderationService.listAppeals(status, parsedLimit);
+  }
+
+  @Post('appeals/:id/resolve')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  async resolveAppeal(
+    @Req() req: Request,
+    @Param('id') appealId: string,
+    @Body() dto: ResolveAppealDto,
+  ) {
+    const resolverUserId = getRequestUserId(req);
+    return this.moderationService.resolveAppeal(
+      resolverUserId,
+      appealId,
+      dto.resolution,
+    );
   }
 
   @Post('reports/:id/resolve')

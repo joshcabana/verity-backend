@@ -170,11 +170,12 @@ describe('QueueService (unit)', () => {
       expect.objectContaining({
         userId: 'user-1',
         name: 'queue_left',
-        properties: {
+        properties: expect.objectContaining({
           queueKey,
+          reason: 'manual',
           status: 'left',
           refunded: true,
-        },
+        }),
       }),
     );
   });

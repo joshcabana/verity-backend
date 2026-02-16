@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FlagsModule } from './flags/flags.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { FlagsModule } from './flags/flags.module';
     MonitoringModule,
     AnalyticsModule,
     FlagsModule,
+    TelemetryModule,
   ],
   controllers: [AppController],
   providers: [
