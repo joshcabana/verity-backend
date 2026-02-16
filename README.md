@@ -91,6 +91,12 @@ python3 -m http.server 8123
 # open http://127.0.0.1:8123/index.html?variant=F&theme=luxury-dark&intensity=medium
 ```
 
+### Strategy docs (v1 operating plan)
+
+- `docs/strategy/verity-v1-stage-playbook.md`
+- `docs/strategy/verity-v1-priority-backlog.md`
+- `docs/strategy/verity-market-context-source-register.md`
+
 ## Azure Deployment (Canberra or Sydney)
 
 Infra is defined in Bicep under `infra/azure`.
