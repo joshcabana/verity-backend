@@ -99,6 +99,7 @@ python3 -m http.server 8123
 - `docs/strategy/verity-copy-blocks.md`
 - `docs/strategy/verity-v1-telemetry-spec.md`
 - `docs/strategy/verity-14-day-execution-plan.md`
+- `docs/strategy/verity-status-memo-2026-02-16.md`
 
 ## Azure Deployment (Canberra or Sydney)
 

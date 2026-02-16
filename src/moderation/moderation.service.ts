@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,6 +11,7 @@ import { SessionService } from '../session/session.service';
 import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
 import { VideoGateway } from '../video/video.gateway';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ReportUserDto } from './dto/report-user.dto';
 
 const VIOLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -48,6 +50,7 @@ export class ModerationService {
     private readonly sessionService: SessionService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClient,
     private readonly videoGateway: VideoGateway,
+    @Optional() private readonly analyticsService?: AnalyticsService,
   ) {}
 
   async createReport(reporterId: string, input: ReportUserDto) {
@@ -121,6 +124,18 @@ export class ModerationService {
 
     await this.bumpReportEscalation(input.reportedUserId);
     await this.removeFromQueueIfPresent(input.reportedUserId);
+
+    this.analyticsService?.trackServerEvent({
+      userId: reporterId,
+      name: 'safety_report_submitted',
+      properties: {
+        reportId: report.id,
+        reportedUserId: input.reportedUserId,
+        category: input.reason,
+        hasDetails: Boolean(details),
+      },
+    });
+
     return report;
   }
 
@@ -398,14 +413,26 @@ export class ModerationService {
       ? [payload.userId]
       : [session.userAId, session.userBId];
 
+    const policyReason = payload.reason ?? payload.severity ?? 'violation';
+    const detector = payload.event ?? payload.action ?? 'hive_webhook';
+
     await Promise.all(offenderIds.map((id) => this.logModerationEvent(id)));
+
+    for (const offenderId of offenderIds) {
+      this.analyticsService?.trackServerEvent({
+        userId: offenderId,
+        name: 'safety_violation_detected',
+        properties: {
+          sessionId: payload.sessionId,
+          detector,
+          policyType: policyReason,
+          confidenceBand: payload.severity ?? 'unknown',
+        },
+      });
+    }
+
     await Promise.all(
-      offenderIds.map((id) =>
-        this.applyModerationAction(
-          id,
-          payload.reason ?? payload.severity ?? 'violation',
-        ),
-      ),
+      offenderIds.map((id) => this.applyModerationAction(id, policyReason)),
     );
 
     await this.sessionService.endSession(session, 'ended');
@@ -432,7 +459,7 @@ export class ModerationService {
     });
   }
 
-  private async applyModerationAction(userId: string, reason: string) {
+  private async applyModerationAction(userId: string, policyReason: string) {
     const now = new Date();
     const since = new Date(now.getTime() - VIOLATION_WINDOW_MS);
 
@@ -454,12 +481,32 @@ export class ModerationService {
       );
       if (allowed) {
         await this.redis.set(this.banKey(userId), '1', 'PX', BAN_TTL_MS);
-        this.emitModerationAction(userId, 'ban', reason);
+        this.emitModerationAction(userId, 'ban', policyReason);
+        this.analyticsService?.trackServerEvent({
+          userId,
+          name: 'safety_action_taken',
+          properties: {
+            action: 'ban',
+            policyReason,
+            automated: true,
+            violationCount24h: count,
+          },
+        });
       }
       return;
     }
 
-    this.emitModerationAction(userId, 'warn', reason);
+    this.emitModerationAction(userId, 'warn', policyReason);
+    this.analyticsService?.trackServerEvent({
+      userId,
+      name: 'safety_action_taken',
+      properties: {
+        action: 'warn',
+        policyReason,
+        automated: true,
+        violationCount24h: count,
+      },
+    });
   }
 
   private emitModerationAction(
@@ -549,6 +596,16 @@ export class ModerationService {
     }
 
     this.emitModerationAction(report.reportedUserId, action, report.reason);
+    this.analyticsService?.trackServerEvent({
+      userId: report.reportedUserId,
+      name: 'safety_action_taken',
+      properties: {
+        action,
+        policyReason: report.reason,
+        automated: false,
+        source: 'admin_report_resolution',
+      },
+    });
 
     return {
       id: report.id,

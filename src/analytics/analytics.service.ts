@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import {
   ANALYTICS_EVENT_NAMES,
   type AnalyticsEventName,
@@ -9,6 +10,8 @@ const ALLOWED_EVENTS = new Set<AnalyticsEventName>(ANALYTICS_EVENT_NAMES);
 const KEY_PATTERN = /^[a-zA-Z0-9_]+$/;
 const MAX_PROPERTY_COUNT = 24;
 const MAX_STRING_LENGTH = 200;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const BLOCKED_PROPERTY_KEYS = new Set([
   'email',
@@ -28,20 +31,38 @@ const BLOCKED_PROPERTY_KEYS = new Set([
   'cookie',
 ]);
 
+type ClientPlatform = 'web' | 'ios' | 'android';
+type EventSource = ClientPlatform | 'backend';
+
+type ClientContext = {
+  platform?: string;
+  appVersion?: string;
+  buildNumber?: string;
+  requestId?: string;
+  eventId?: string;
+  occurredAt?: string;
+};
+
 @Injectable()
 export class AnalyticsService {
   trackClientEvent(
     userId: string,
     event: { name: string; properties?: Record<string, unknown> },
+    context?: ClientContext,
   ) {
     const name = this.parseEventName(event.name);
     const properties = this.parseProperties(event.properties);
 
     this.emit({
-      source: 'web',
+      source: this.parseClientPlatform(context?.platform),
       userId,
       name,
       properties,
+      appVersion: this.parseMetadataString(context?.appVersion, 64),
+      buildNumber: this.parseMetadataString(context?.buildNumber, 64),
+      requestId: this.parseMetadataString(context?.requestId, 128),
+      eventId: this.parseEventId(context?.eventId),
+      occurredAt: this.parseOccurredAt(context?.occurredAt),
     });
   }
 
@@ -58,24 +79,45 @@ export class AnalyticsService {
       userId: input.userId,
       name,
       properties,
+      appVersion: null,
+      buildNumber: null,
+      requestId: null,
+      eventId: null,
+      occurredAt: null,
     });
   }
 
   private emit(input: {
-    source: 'web' | 'backend';
+    source: EventSource;
     userId?: string;
     name: AnalyticsEventName;
     properties: AnalyticsProperties;
+    appVersion: string | null;
+    buildNumber: string | null;
+    requestId: string | null;
+    eventId: string | null;
+    occurredAt: string | null;
   }) {
-    // Structured log for event pipelines and future sink forwarding.
+    const occurredAt = input.occurredAt ?? new Date().toISOString();
+
+    // Structured log for event pipelines and sink forwarding.
     console.info(
       JSON.stringify({
         channel: 'analytics.event',
+        schemaVersion: 1,
+        eventId: input.eventId ?? randomUUID(),
+        eventName: input.name,
         source: input.source,
+        platform: input.source,
         userId: input.userId ?? null,
         name: input.name,
         properties: input.properties,
-        receivedAt: Date.now(),
+        appVersion: input.appVersion,
+        buildNumber: input.buildNumber,
+        requestId: input.requestId,
+        occurredAt,
+        receivedAt: new Date().toISOString(),
+        receivedAtMs: Date.now(),
       }),
     );
   }
@@ -144,5 +186,58 @@ export class AnalyticsService {
     }
 
     return output;
+  }
+
+  private parseClientPlatform(value: unknown): ClientPlatform {
+    if (typeof value !== 'string') {
+      return 'web';
+    }
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'ios' || normalized === 'android' || normalized === 'web') {
+      return normalized;
+    }
+    return 'web';
+  }
+
+  private parseMetadataString(
+    value: unknown,
+    maxLength: number,
+  ): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (trimmed.length > maxLength) {
+      return trimmed.slice(0, maxLength);
+    }
+    return trimmed;
+  }
+
+  private parseEventId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (!UUID_PATTERN.test(trimmed)) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  private parseOccurredAt(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed.toISOString();
   }
 }

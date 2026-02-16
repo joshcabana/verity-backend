@@ -12,10 +12,21 @@ export const ANALYTICS_EVENT_NAMES = [
   'session_ended',
   'session_choice_submitted',
   'session_choice_resolved',
+  'session_result',
   'message_sent',
   'first_message_sent',
+  'match_chat_opened',
+  'match_message_sent',
+  'token_balance_viewed',
   'token_purchase_started',
   'token_purchase_succeeded',
+  'token_purchase_completed',
+  'token_spent',
+  'safety_report_submitted',
+  'safety_violation_detected',
+  'safety_action_taken',
+  'safety_appeal_opened',
+  'safety_appeal_resolved',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
