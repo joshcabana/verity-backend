@@ -72,6 +72,25 @@ Web environment variables:
 - `VITE_WEB_VITALS_ENDPOINT` (optional; e.g. `http://localhost:3000/monitoring/web-vitals`)
 - `VITE_FRONTEND_ERROR_ENDPOINT` (optional; e.g. `http://localhost:3000/monitoring/frontend-errors`)
 
+### Marketing landing prototype (Luxury Variant F)
+
+A standalone static prototype for premium waitlist experimentation lives at:
+
+- `verity-web/marketing/luxury-landing-f/`
+
+Includes:
+- dark-first luxury styling + intensity presets (`subtle`, `medium`, `bold`)
+- ambient media treatment and theme toggle
+- telemetry/runbook docs (`TELEMETRY.md`, `AB-ROLLOUT.md`)
+
+Preview locally:
+
+```bash
+cd verity-web/marketing/luxury-landing-f
+python3 -m http.server 8123
+# open http://127.0.0.1:8123/index.html?variant=F&theme=luxury-dark&intensity=medium
+```
+
 ## Azure Deployment (Canberra or Sydney)
 
 Infra is defined in Bicep under `infra/azure`.

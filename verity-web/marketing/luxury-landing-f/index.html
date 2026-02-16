@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verity — Real chemistry in 45 seconds</title>
+    <meta
+      name="description"
+      content="Anonymous 45-second video matching with mutual reveal only. No swipe fatigue. No endless texting. Founding launch in Canberra + Sydney."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-telemetry-endpoint="">
+    <header class="site-header">
+      <div class="container row between center">
+        <div class="brand">Verity</div>
+        <div class="header-actions row center">
+          <button
+            type="button"
+            id="themeToggle"
+            class="btn ghost small theme-toggle"
+            data-track="theme_toggle"
+            hidden
+            aria-label="Toggle color theme"
+          >
+            🌙 Dark
+          </button>
+          <a href="#waitlist" class="btn ghost small" data-track="header_waitlist">Join Waitlist</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero section has-geo">
+        <div class="atmo-layer" aria-hidden="true">
+          <span class="atmo-blob atmo-lounge"></span>
+          <span class="atmo-blob atmo-ambient"></span>
+        </div>
+        <video
+          class="hero-ambient-video cinematic-only"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="none"
+          poster="./assets/photo-lounge-gold.jpg"
+          aria-hidden="true"
+        >
+          <source data-src="./assets/gemini-gold-loop.mp4" type="video/mp4" />
+        </video>
+        <span class="geo-corner geo-corner-tl" aria-hidden="true"></span>
+        <span class="geo-corner geo-corner-br" aria-hidden="true"></span>
+        <div class="container hero-grid">
+          <div>
+            <p class="eyebrow">Founding launch • Canberra + Sydney</p>
+            <h1 id="heroTitle">Spark real connections in 45 seconds.</h1>
+            <p class="hero-sub">
+              Verity matches you in anonymous 45-second video rounds — no profile pressure, no endless texting.
+              Reveal + chat unlock only when both people say yes.
+            </p>
+
+            <div class="cta-row">
+              <a href="#waitlist" class="btn primary" data-track="hero_waitlist_primary">Join the founding waitlist</a>
+              <a href="#how" class="btn ghost" data-track="hero_how_secondary">See how Verity works</a>
+            </div>
+
+            <p class="microproof">
+              First <strong>500</strong> founding spots across Canberra + Sydney • Founding members lock lower token pricing at launch
+            </p>
+
+            <div class="chips">
+              <span class="chip">Anonymous until mutual yes</span>
+              <span class="chip">45-second real-time video</span>
+              <span class="chip">Token entry for higher-intent matches</span>
+            </div>
+          </div>
+
+          <aside class="preview-card">
+            <p class="preview-kicker">How it feels</p>
+            <div class="preview-media">
+              <img class="teaser-image" src="./assets/photo-lounge-gold.jpg" alt="Premium lounge ambiance" loading="lazy" />
+              <video
+                class="teaser-video cinematic-only"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="none"
+                poster="./assets/photo-lounge-gold.jpg"
+              >
+                <source src="./assets/hero-loop.mp4" type="video/mp4" />
+              </video>
+              <span class="teaser-badge">Anonymous 45-sec preview</span>
+            </div>
+            <h3>Fast signal, low noise.</h3>
+            <ul>
+              <li>✅ No catfishing profile theatre</li>
+              <li>✅ No week-long text dead ends</li>
+              <li>✅ Privacy-first by default</li>
+              <li>✅ Mutual reveal only</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section vibe-showcase has-geo" id="vibe">
+        <div class="atmo-layer vibe-atmo" aria-hidden="true">
+          <span class="atmo-blob atmo-urban"></span>
+        </div>
+        <span class="geo-corner geo-corner-tl" aria-hidden="true"></span>
+        <span class="geo-corner geo-corner-br" aria-hidden="true"></span>
+        <video
+          class="vibe-bg-video cinematic-only"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="none"
+          poster="./assets/photo-ambient-gold.jpg"
+          aria-hidden="true"
+        >
+          <source src="./assets/ambient-loop.mp4" type="video/mp4" />
+        </video>
+        <div class="container">
+          <p class="eyebrow">Atmosphere preview</p>
+          <h2 class="luxury-underline">Lively, premium energy — still privacy-first.</h2>
+          <div class="media-grid">
+            <figure class="media-card">
+              <img src="./assets/photo-lounge-gold.jpg" alt="Luxury lounge ambiance at night" loading="lazy" />
+              <figcaption>Premium, low-noise setting</figcaption>
+            </figure>
+            <figure class="media-card">
+              <img src="./assets/photo-ambient-gold.jpg" alt="Soft ambient lights with gold tone" loading="lazy" />
+              <figcaption>Warm visual tone, high-trust feel</figcaption>
+            </figure>
+            <figure class="media-card media-dynamic">
+              <img
+                class="media-image-static"
+                src="./assets/photo-urban-gold.jpg"
+                alt="Abstract urban night scene for anonymous vibe preview"
+                loading="lazy"
+              />
+              <video
+                class="media-video-loop cinematic-only"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="none"
+                poster="./assets/photo-lounge-gold.jpg"
+                aria-label="Abstract anonymous matching preview"
+              >
+                <source src="./assets/hero-loop.mp4" type="video/mp4" />
+              </video>
+              <figcaption>Real-time vibe preview (illustrative)</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="problem">
+        <div class="container narrow">
+          <h2 class="luxury-underline">Dating apps made connection feel like admin.</h2>
+          <p>
+            Swipe fatigue. Catfishing anxiety. Endless texting without real vibe. Verity is built to surface chemistry quickly,
+            while keeping identities private until mutual interest is explicit.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="how">
+        <div class="container">
+          <h2 class="luxury-underline">How Verity works</h2>
+          <div class="grid-3">
+            <article class="card">
+              <p class="step-num">01</p>
+              <h3>Enter with one token</h3>
+              <p>Use one token to join an anonymous 45-second video round.</p>
+            </article>
+            <article class="card">
+              <p class="step-num">02</p>
+              <h3>Feel the vibe, fast</h3>
+              <p>No profile performance. Just a focused, real-time chemistry check.</p>
+            </article>
+            <article class="card">
+              <p class="step-num">03</p>
+              <h3>Mutual yes unlocks reveal</h3>
+              <p>If both choose yes, reveal + chat unlock. If not, both stay private.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="why">
+        <div class="container">
+          <h2 class="luxury-underline">Built for real chemistry, not endless scrolling</h2>
+          <div class="grid-3">
+            <article class="card">
+              <h3>Less noise, more signal</h3>
+              <p>45 seconds gives clearer signal than 45 messages.</p>
+            </article>
+            <article class="card">
+              <h3>Privacy first</h3>
+              <p>You stay anonymous until mutual interest is explicit.</p>
+            </article>
+            <article class="card">
+              <h3>Higher intent by design</h3>
+              <p>Token entry helps reduce low-effort behaviour and improves quality.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section safety" id="safety">
+        <div class="container narrow">
+          <h2 class="luxury-underline">Safety is product infrastructure — not a launch add-on.</h2>
+          <ul class="safety-list">
+            <li>Double opt-in reveal (both must choose yes)</li>
+            <li>In-app reporting available from day one</li>
+            <li>Hive moderation support in safety workflows, including pre-launch</li>
+            <li>Ongoing policy and enforcement tuning as the community grows</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="waitlist">
+        <div class="container narrow">
+          <div class="card spotlight">
+            <p class="eyebrow">Founding queue now open</p>
+            <h2 class="luxury-underline">Claim one of the first 500 spots</h2>
+            <p class="spot-sub">
+              Canberra + Sydney launch waves. Founding members get priority invites and locked founding token pricing.
+            </p>
+
+            <form
+              name="waitlist"
+              method="POST"
+              data-netlify="true"
+              netlify-honeypot="bot-field"
+              action="/thanks.html"
+              class="waitlist-form"
+              id="waitlistForm"
+            >
+              <input type="hidden" name="form-name" value="waitlist" />
+              <input type="text" name="bot-field" class="hp" tabindex="-1" autocomplete="off" />
+
+              <div class="form-grid">
+                <label>
+                  Email
+                  <input type="email" name="email" required placeholder="you@example.com" />
+                </label>
+
+                <label>
+                  First name (optional)
+                  <input type="text" name="first_name" placeholder="Josh" />
+                </label>
+
+                <label>
+                  City
+                  <select name="city" required>
+                    <option value="">Select city</option>
+                    <option>Canberra</option>
+                    <option>Sydney</option>
+                    <option>Melbourne</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+
+                <label>
+                  Referral code (optional)
+                  <input type="text" name="referral_code" placeholder="friend123" />
+                </label>
+              </div>
+
+              <input type="hidden" name="hero_variant" value="" />
+              <input type="hidden" name="visual_variant" value="" />
+              <input type="hidden" name="theme_mode" value="" />
+              <input type="hidden" name="luxury_intensity" value="" />
+              <input type="hidden" name="experiment_id" value="hero_h1_v1" />
+              <input type="hidden" name="utm_source" value="" />
+              <input type="hidden" name="utm_medium" value="" />
+              <input type="hidden" name="utm_campaign" value="" />
+              <input type="hidden" name="utm_content" value="" />
+              <input type="hidden" name="utm_term" value="" />
+              <input type="hidden" name="ref" value="" />
+              <input type="hidden" name="landing_path" value="" />
+              <input type="hidden" name="submitted_at_iso" value="" />
+
+              <button type="submit" class="btn primary full" data-track="waitlist_submit">Join the founding waitlist</button>
+              <p class="footnote">No spam. Launch updates + invite timing only.</p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="faq">
+        <div class="container narrow">
+          <h2 class="luxury-underline">FAQ</h2>
+
+          <details class="faq-item" open>
+            <summary>Is Verity anonymous at first?</summary>
+            <p>Yes. You stay anonymous during the 45-second round. Reveal + chat only happen on mutual yes.</p>
+          </details>
+
+          <details class="faq-item">
+            <summary>How does Hive moderation work?</summary>
+            <p>
+              Verity uses Hive moderation support in its safety workflow to help detect harmful or inappropriate behavior early.
+              Flagged activity can be reviewed quickly, and repeat abuse can be restricted or removed.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I refer friends for a queue boost?</summary>
+            <p>
+              Yes. After joining, you’ll get a referral link. Confirmed referrals can improve queue position with a fair cap.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why token entry?</summary>
+            <p>Token entry helps increase intent and reduce low-effort behaviour.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="section final-cta has-geo">
+        <span class="geo-corner geo-corner-tl" aria-hidden="true"></span>
+        <span class="geo-corner geo-corner-br" aria-hidden="true"></span>
+        <div class="container narrow center-text">
+          <h2 class="luxury-underline">Real connection doesn’t need endless swiping.</h2>
+          <p>Join Verity’s founding launch and get priority access in Canberra + Sydney.</p>
+          <a href="#waitlist" class="btn primary" data-track="final_waitlist_primary">Join the founding waitlist</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container row between center">
+        <p>© <span id="year"></span> Verity</p>
+        <p>Privacy-first matching • Australia-first launch</p>
+      </div>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
