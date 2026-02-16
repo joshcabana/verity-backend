@@ -1,11 +1,17 @@
-const API_URL =
-  import.meta.env.VITE_API_URL ??
-  (import.meta.env.DEV
-    ? 'http://localhost:3000'
-    : typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000');
-const WS_URL = import.meta.env.VITE_WS_URL ?? API_URL;
+function normalizeBaseUrl(raw: unknown, fallback: string): string {
+  const candidate = typeof raw === 'string' ? raw.trim() : '';
+  const base = candidate.length > 0 ? candidate : fallback;
+  return base.replace(/\/$/, '');
+}
+
+const defaultApiUrl = import.meta.env.DEV
+  ? 'http://localhost:3000'
+  : typeof window !== 'undefined'
+    ? window.location.origin
+    : 'http://localhost:3000';
+
+const API_URL = normalizeBaseUrl(import.meta.env.VITE_API_URL, defaultApiUrl);
+const WS_URL = normalizeBaseUrl(import.meta.env.VITE_WS_URL, API_URL);
 
 const TOKEN_KEY = 'verity_access_token';
 
@@ -21,7 +27,7 @@ export function setAccessToken(token: string | null) {
   }
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   const response = await fetch(`${API_URL}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
