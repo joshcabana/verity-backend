@@ -97,6 +97,7 @@ python3 -m http.server 8123
 - `docs/strategy/verity-v1-priority-backlog.md`
 - `docs/strategy/verity-market-context-source-register.md`
 - `docs/strategy/verity-copy-blocks.md`
+- `docs/strategy/verity-v1-telemetry-spec.md`
 
 ## Azure Deployment (Canberra or Sydney)
 
