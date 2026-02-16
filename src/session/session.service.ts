@@ -400,12 +400,20 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       endedAt,
     });
 
+    const durationSeconds = Math.max(
+      0,
+      Math.round((Date.now() - session.createdAt.getTime()) / 1000),
+    );
+    const endedBy = this.mapEndedBy(reason);
+
     this.analyticsService?.trackServerEvent({
       userId: session.userAId,
       name: 'session_ended',
       properties: {
         sessionId: session.id,
         endReason: reason,
+        endedBy,
+        durationSeconds,
       },
     });
     this.analyticsService?.trackServerEvent({
@@ -414,6 +422,8 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       properties: {
         sessionId: session.id,
         endReason: reason,
+        endedBy,
+        durationSeconds,
       },
     });
 
@@ -447,6 +457,18 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     }, delay);
 
     this.timers.set(sessionId, timer);
+  }
+
+  private mapEndedBy(
+    reason: 'timeout' | 'ended' | 'token_error',
+  ): 'timer' | 'moderation' | 'error' {
+    if (reason === 'timeout') {
+      return 'timer';
+    }
+    if (reason === 'ended') {
+      return 'moderation';
+    }
+    return 'error';
   }
 
   private async persistSessionState(

@@ -12,6 +12,7 @@ import { REDIS_CLIENT } from '../common/redis.provider';
 import type { RedisClient } from '../common/redis.provider';
 import { VideoGateway } from '../video/video.gateway';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { CreateAppealDto } from './dto/create-appeal.dto';
 import { ReportUserDto } from './dto/report-user.dto';
 
 const VIOLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -415,6 +416,7 @@ export class ModerationService {
 
     const policyReason = payload.reason ?? payload.severity ?? 'violation';
     const detector = payload.event ?? payload.action ?? 'hive_webhook';
+    const actionStartedAtMs = Date.now();
 
     await Promise.all(offenderIds.map((id) => this.logModerationEvent(id)));
 
@@ -432,7 +434,9 @@ export class ModerationService {
     }
 
     await Promise.all(
-      offenderIds.map((id) => this.applyModerationAction(id, policyReason)),
+      offenderIds.map((id) =>
+        this.applyModerationAction(id, policyReason, actionStartedAtMs),
+      ),
     );
 
     await this.sessionService.endSession(session, 'ended');
@@ -459,7 +463,11 @@ export class ModerationService {
     });
   }
 
-  private async applyModerationAction(userId: string, policyReason: string) {
+  private async applyModerationAction(
+    userId: string,
+    policyReason: string,
+    detectedAtMs = Date.now(),
+  ) {
     const now = new Date();
     const since = new Date(now.getTime() - VIOLATION_WINDOW_MS);
 
@@ -490,6 +498,7 @@ export class ModerationService {
             policyReason,
             automated: true,
             violationCount24h: count,
+            actionLatencyMs: Math.max(0, Date.now() - detectedAtMs),
           },
         });
       }
@@ -505,6 +514,7 @@ export class ModerationService {
         policyReason,
         automated: true,
         violationCount24h: count,
+        actionLatencyMs: Math.max(0, Date.now() - detectedAtMs),
       },
     });
   }
@@ -604,6 +614,10 @@ export class ModerationService {
         policyReason: report.reason,
         automated: false,
         source: 'admin_report_resolution',
+        actionLatencyMs: Math.max(
+          0,
+          Date.now() - new Date(report.createdAt).getTime(),
+        ),
       },
     });
 
@@ -612,6 +626,166 @@ export class ModerationService {
       status: report.status,
       action,
     };
+  }
+
+  async createAppeal(userId: string, input: CreateAppealDto) {
+    const reason = input.reason?.trim();
+    if (reason && reason.length > 500) {
+      throw new BadRequestException(
+        'Appeal reason must be 500 characters or fewer',
+      );
+    }
+
+    let reportCreatedAt: Date | null = null;
+    let reportId: string | null = null;
+
+    if (input.moderationReportId) {
+      const report = await this.prisma.moderationReport.findUnique({
+        where: { id: input.moderationReportId },
+        select: {
+          id: true,
+          createdAt: true,
+          reportedUserId: true,
+        },
+      });
+      if (!report) {
+        throw new BadRequestException('Moderation report not found');
+      }
+      if (report.reportedUserId !== userId) {
+        throw new BadRequestException(
+          'Only the reported user can appeal this report',
+        );
+      }
+      reportId = report.id;
+      reportCreatedAt = report.createdAt;
+    }
+
+    const appeal = await this.prisma.moderationAppeal.create({
+      data: {
+        userId,
+        moderationReportId: reportId,
+        actionType: input.actionType,
+        reason: reason ?? null,
+        status: 'OPEN',
+      },
+      select: {
+        id: true,
+        userId: true,
+        moderationReportId: true,
+        actionType: true,
+        reason: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    this.analyticsService?.trackServerEvent({
+      userId,
+      name: 'safety_appeal_opened',
+      properties: {
+        appealId: appeal.id,
+        moderationReportId: appeal.moderationReportId,
+        actionType: appeal.actionType,
+        timeFromActionSec: reportCreatedAt
+          ? Math.max(
+              0,
+              Math.round((Date.now() - reportCreatedAt.getTime()) / 1000),
+            )
+          : null,
+      },
+    });
+
+    return appeal;
+  }
+
+  async listAppeals(status?: string, limit = 50) {
+    const boundedLimit = Number.isFinite(limit) ? limit : 50;
+    const safeLimit = Math.max(1, Math.min(boundedLimit, 200));
+    const normalizedStatus = status?.trim().toUpperCase();
+    return this.prisma.moderationAppeal.findMany({
+      where: normalizedStatus ? { status: normalizedStatus } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+      select: {
+        id: true,
+        userId: true,
+        moderationReportId: true,
+        actionType: true,
+        reason: true,
+        status: true,
+        resolution: true,
+        createdAt: true,
+        resolvedAt: true,
+        resolverUserId: true,
+      },
+    });
+  }
+
+  async resolveAppeal(
+    resolverUserId: string,
+    appealId: string,
+    resolution: 'upheld' | 'overturned',
+  ) {
+    const existing = await this.prisma.moderationAppeal.findUnique({
+      where: { id: appealId },
+      select: {
+        id: true,
+        userId: true,
+        actionType: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    if (!existing) {
+      throw new BadRequestException('Appeal not found');
+    }
+
+    if (existing.status !== 'OPEN') {
+      throw new BadRequestException('Appeal is already resolved');
+    }
+
+    const resolvedAt = new Date();
+    const updated = await this.prisma.moderationAppeal.update({
+      where: { id: existing.id },
+      data: {
+        status: resolution === 'upheld' ? 'UPHELD' : 'OVERTURNED',
+        resolution,
+        resolvedAt,
+        resolverUserId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        moderationReportId: true,
+        actionType: true,
+        status: true,
+        resolution: true,
+        createdAt: true,
+        resolvedAt: true,
+        resolverUserId: true,
+      },
+    });
+
+    if (resolution === 'overturned' && existing.actionType === 'ban') {
+      await this.redis.del(this.banKey(existing.userId));
+    }
+
+    this.analyticsService?.trackServerEvent({
+      userId: existing.userId,
+      name: 'safety_appeal_resolved',
+      properties: {
+        appealId: updated.id,
+        actionType: existing.actionType,
+        resolution,
+        resolutionLatencySec: Math.max(
+          0,
+          Math.round((resolvedAt.getTime() - existing.createdAt.getTime()) / 1000),
+        ),
+      },
+    });
+
+    return updated;
   }
 
   private async removeFromQueueIfPresent(userId: string) {

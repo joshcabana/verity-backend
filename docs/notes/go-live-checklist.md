@@ -33,6 +33,9 @@
 - Safety gates configured: severe incidents per 10k, action latency p95, appeal backlog SLA.
 - Product signal gates configured: call completion, mutual match band, chat activation, D7 return.
 - Auto-pause trigger thresholds configured and on-call owner assigned.
+- Synthetic telemetry dry run executed via `npm run telemetry:synthetic` and verified end-to-end.
+- `/telemetry/stage-gates` returns fresh snapshot and expected metric values after synthetic run.
+- Auto-pause alert routing to configured webhook validated with escalation owner in payload.
 
 ## Market Reality Integration (Required)
 

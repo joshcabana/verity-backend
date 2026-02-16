@@ -34,19 +34,31 @@ type AnalyticsProperties = Record<string, string | number | boolean | null>;
 
 const MOBILE_APP_VERSION =
   process.env.EXPO_PUBLIC_APP_VERSION ?? process.env.EXPO_PUBLIC_VERSION ?? 'mobile-dev';
+const MOBILE_BUILD_NUMBER = process.env.EXPO_PUBLIC_BUILD_NUMBER ?? undefined;
+const MOBILE_REGION = process.env.EXPO_PUBLIC_REGION ?? undefined;
 
 export function trackEvent(
   name: MobileAnalyticsEventName,
   properties: AnalyticsProperties = {},
 ) {
+  const eventId =
+    typeof globalThis.crypto !== 'undefined' &&
+    typeof globalThis.crypto.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : undefined;
+
   void apiJson('/analytics/events', {
     method: 'POST',
     headers: {
       'X-Client-Platform': Platform.OS === 'ios' ? 'ios' : 'android',
       'X-App-Version': MOBILE_APP_VERSION,
+      ...(MOBILE_BUILD_NUMBER ? { 'X-Build-Number': MOBILE_BUILD_NUMBER } : {}),
+      ...(MOBILE_REGION ? { 'X-Region': MOBILE_REGION } : {}),
     },
     body: JSON.stringify({
       name,
+      eventSchemaVersion: 1,
+      eventId,
       occurredAt: new Date().toISOString(),
       properties,
     }),

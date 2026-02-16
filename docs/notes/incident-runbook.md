@@ -37,3 +37,26 @@
 - Core flows stable for 30 minutes.
 - Error rate returned to baseline.
 - Incident summary written with root cause and preventive actions.
+
+## Telemetry Outage Play
+
+1. Detect and classify:
+   - Check `/telemetry/stage-gates` freshness and API health.
+   - Check `analytics.event.drop` and sink write failures in backend logs.
+   - Confirm if outage is ingestion-only, metrics-only, or alert-delivery-only.
+2. Contain impact:
+   - Freeze gate-based expansion decisions while telemetry is degraded.
+   - Keep safety manual review cadence active (do not disable moderation actions).
+   - If alerting is down, assign temporary manual threshold checks every 30 minutes.
+3. Recover ingestion:
+   - Verify Postgres connectivity and Prisma error rate.
+   - Verify Redis connectivity for alert cooldown/breach keys.
+   - Verify `TELEMETRY_ALERT_WEBHOOK_URL` and escalation owner env values.
+4. Replay/backfill:
+   - Replay synthetic events with `npm run telemetry:synthetic`.
+   - Backfill missed windows from persisted `analytics.event` logs where available.
+   - Recompute snapshots by letting worker tick run (5-minute interval) or by forced service restart.
+5. Validate closure:
+   - Confirm stage-gate snapshot updates with current window timestamps.
+   - Confirm auto-pause trigger paths produce Slack alerts.
+   - Record outage window, missing-data impact, and mitigation in postmortem notes.
