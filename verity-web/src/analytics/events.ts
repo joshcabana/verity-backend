@@ -36,6 +36,7 @@ export type WebAnalyticsEventName = (typeof WEB_ANALYTICS_EVENTS)[number];
 type EventProperties = Record<string, string | number | boolean | null>;
 
 const WEB_APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'web-dev';
+const WEB_REGION = import.meta.env.VITE_REGION ?? undefined;
 
 export function trackEvent(
   name: WebAnalyticsEventName,
@@ -46,9 +47,11 @@ export function trackEvent(
     headers: {
       'X-Client-Platform': 'web',
       'X-App-Version': WEB_APP_VERSION,
+      ...(WEB_REGION ? { 'X-Region': WEB_REGION } : {}),
     },
     body: {
       name,
+      eventSchemaVersion: 1,
       eventId:
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()

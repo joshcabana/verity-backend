@@ -14,6 +14,7 @@ import { AnalyticsService } from './analytics.service';
 type ClientEventDto = {
   name: string;
   properties?: Record<string, unknown>;
+  eventSchemaVersion?: number;
   eventId?: string;
   occurredAt?: string;
 };
@@ -25,10 +26,10 @@ export class AnalyticsController {
   @Post('events')
   @HttpCode(202)
   @UseGuards(AuthGuard('jwt'))
-  captureClientEvent(@Req() req: Request, @Body() body: ClientEventDto) {
+  async captureClientEvent(@Req() req: Request, @Body() body: ClientEventDto) {
     const userId = getRequestUserId(req);
 
-    this.analyticsService.trackClientEvent(
+    const result = await this.analyticsService.trackClientEvent(
       userId,
       {
         name: body.name,
@@ -39,11 +40,16 @@ export class AnalyticsController {
         appVersion: req.header('x-app-version') ?? undefined,
         buildNumber: req.header('x-build-number') ?? undefined,
         requestId: req.header('x-request-id') ?? undefined,
+        region: req.header('x-region') ?? undefined,
+        eventSchemaVersion: body.eventSchemaVersion,
         eventId: body.eventId,
         occurredAt: body.occurredAt,
       },
     );
 
-    return { accepted: true };
+    return {
+      accepted: result.accepted,
+      droppedReason: result.droppedReason ?? null,
+    };
   }
 }

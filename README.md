@@ -34,9 +34,12 @@ Key variables used by the backend:
 - `ENABLE_MATCHING_WORKER` (`false` for API app, `true` for dedicated worker app)
 - `postgresPublicNetworkAccess`, `postgresAllowAzureServices`, `postgresFirewallRules` (infra hardening toggles in Bicep params)
 - `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
-- `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
+- `APP_REGION`, `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
 - `MODERATION_ADMIN_KEY`, `MODERATION_ADMIN_KEY_FALLBACK`
 - `PUSH_DISPATCH_WEBHOOK_URL` (optional, server-to-server push dispatch webhook)
+- `TELEMETRY_ALERT_WEBHOOK_URL` (optional, Slack webhook for auto-pause alerts)
+- `TELEMETRY_ALERT_ESCALATION_OWNER` (on-call owner label included in alert payloads)
+- `TELEMETRY_APPEAL_BACKLOG_SLA_HOURS` (defaults to `24`)
 - `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `AGORA_TOKEN_TTL_SECONDS`
 - `HIVE_STREAM_URL`, `HIVE_SCREENSHOT_URL`, `HIVE_API_KEY`, `HIVE_WEBHOOK_SECRET`
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PLUS`, `STRIPE_PRICE_PRO`
@@ -218,14 +221,18 @@ Required secrets (store in Key Vault via Bicep params):
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_VERIFY_SERVICE_SID`
 - `PUSH_DISPATCH_WEBHOOK_URL`
+- `TELEMETRY_ALERT_WEBHOOK_URL`
 
 Non-secret values (safe as plain env vars):
 - `API_URL`
 - `WS_URL`
 - `APP_URL`
+- `APP_REGION`
 - `AGORA_APP_ID`
 - `AGORA_TOKEN_TTL_SECONDS`
 - `MODERATION_ADMIN_KEY_FALLBACK` (recommended: `false`)
+- `TELEMETRY_ALERT_ESCALATION_OWNER`
+- `TELEMETRY_APPEAL_BACKLOG_SLA_HOURS`
 - `HIVE_STREAM_URL`
 - `HIVE_SCREENSHOT_URL`
 - `STRIPE_SUCCESS_URL`
@@ -253,6 +260,7 @@ Staging helpers:
 `scripts/deploy-staging.sh` also rejects unresolved `STG_SUFFIX` placeholders and supports optional env overrides for:
 - `APP_ORIGINS`, `REFRESH_COOKIE_SAMESITE`, `REFRESH_COOKIE_DOMAIN`
 - `PUSH_DISPATCH_WEBHOOK_URL`, `MODERATION_ADMIN_KEY_FALLBACK`
+- `TELEMETRY_ALERT_WEBHOOK_URL`, `TELEMETRY_ALERT_ESCALATION_OWNER`, `TELEMETRY_APPEAL_BACKLOG_SLA_HOURS`
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`
 - `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`
 - `HIVE_STREAM_URL`, `HIVE_SCREENSHOT_URL`
@@ -395,6 +403,19 @@ Backend ingestion endpoints:
 Security behavior:
 - Requests are accepted only from configured app origins when `APP_ORIGINS` (or `APP_URL`) is set.
 - Payloads are validated and emitted as structured logs for downstream log sinks.
+
+## Telemetry Stage Gates
+
+Backend telemetry endpoints:
+- `GET /telemetry/stage-gates` (admin)
+- `POST /telemetry/synthetic/backend` (admin synthetic backend events)
+
+Synthetic dry run:
+- `npm run telemetry:synthetic` emits web/mobile/backend synthetic events and fetches stage-gate output.
+
+Auto-pause alerts:
+- Configure `TELEMETRY_ALERT_WEBHOOK_URL` for Slack delivery.
+- Alert payload includes escalation owner and runbook reference.
 4. `POST /queue/join` succeeds and triggers a queue match event.
 5. `/video` socket receives `session:start`, then `session:end`.
 6. `POST /sessions/:id/choice` yields `match:mutual` on double MATCH.

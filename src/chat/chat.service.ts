@@ -43,6 +43,9 @@ export class ChatService {
       orderBy: { createdAt: 'desc' },
       take: safeLimit,
     });
+    const timeFromMutualMatchSec = this.timeFromMutualMatchSec(
+      match.createdAt,
+    );
 
     this.analyticsService?.trackServerEvent({
       userId,
@@ -50,6 +53,7 @@ export class ChatService {
       properties: {
         matchId,
         messageCount: messages.length,
+        timeFromMutualMatchSec,
       },
     });
 
@@ -78,6 +82,9 @@ export class ChatService {
     }
 
     const existingCount = await this.getExistingMessageCount(matchId);
+    const timeFromMutualMatchSec = this.timeFromMutualMatchSec(
+      match.createdAt,
+    );
 
     const message = await this.prisma.message.create({
       data: {
@@ -158,6 +165,7 @@ export class ChatService {
         matchId,
         messageId: message.id,
         isFirstMessage: existingCount === 0,
+        timeFromMutualMatchSec,
       },
     });
 
@@ -247,5 +255,16 @@ export class ChatService {
       select: { id: true },
     });
     return messages.length;
+  }
+
+  private timeFromMutualMatchSec(matchCreatedAt?: Date | null): number {
+    if (!matchCreatedAt) {
+      return 0;
+    }
+    const elapsedMs = Date.now() - matchCreatedAt.getTime();
+    if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {
+      return 0;
+    }
+    return Math.round(elapsedMs / 1000);
   }
 }

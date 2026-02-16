@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { createHmac } from 'crypto';
 import { ModerationService } from '../../src/moderation/moderation.service';
+import { AnalyticsService } from '../../src/analytics/analytics.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { SessionService } from '../../src/session/session.service';
 import { VideoGateway } from '../../src/video/video.gateway';
@@ -16,11 +17,13 @@ describe('ModerationService (unit)', () => {
   let redis: ReturnType<typeof createRedisMock>;
   let sessionService: { endSession: jest.Mock };
   let videoGateway: any;
+  let analyticsService: { trackServerEvent: jest.Mock };
 
   beforeEach(async () => {
     prisma = createPrismaMock();
     redis = createRedisMock();
     sessionService = { endSession: jest.fn() };
+    analyticsService = { trackServerEvent: jest.fn() };
     videoGateway = {
       server: {
         to: jest.fn(() => ({ emit: jest.fn() })),
@@ -34,6 +37,7 @@ describe('ModerationService (unit)', () => {
         { provide: SessionService, useValue: sessionService },
         { provide: REDIS_CLIENT, useValue: redis },
         { provide: VideoGateway, useValue: videoGateway },
+        { provide: AnalyticsService, useValue: analyticsService },
       ],
     }).compile();
 
@@ -385,6 +389,7 @@ describe('ModerationService (unit)', () => {
       reportedUserId: 'user-1',
       status: 'BANNED',
       reason: 'abuse',
+      createdAt: new Date('2026-02-16T00:00:00.000Z'),
     });
     prisma.block.findUnique.mockResolvedValue({
       id: 'block-1',
@@ -409,6 +414,7 @@ describe('ModerationService (unit)', () => {
       reportedUserId: 'user-2',
       status: 'WARNED',
       reason: 'abuse',
+      createdAt: new Date('2026-02-16T00:00:00.000Z'),
     });
     prisma.block.findUnique.mockResolvedValue({
       id: 'block-2',
@@ -423,5 +429,62 @@ describe('ModerationService (unit)', () => {
 
     expect(result.status).toBe('WARNED');
     expect(await redis.get('moderation:ban:user-2')).toBeNull();
+  });
+
+  it('creates and resolves appeals while emitting analytics events', async () => {
+    const reportCreatedAt = new Date('2026-02-16T00:00:00.000Z');
+    prisma.moderationReport.findUnique.mockResolvedValue({
+      id: 'report-1',
+      createdAt: reportCreatedAt,
+      reportedUserId: 'user-1',
+    });
+    prisma.moderationAppeal.create.mockResolvedValue({
+      id: 'appeal-1',
+      userId: 'user-1',
+      moderationReportId: 'report-1',
+      actionType: 'ban',
+      reason: 'please review',
+      status: 'OPEN',
+      createdAt: new Date('2026-02-16T00:10:00.000Z'),
+    });
+    prisma.moderationAppeal.findUnique.mockResolvedValue({
+      id: 'appeal-1',
+      userId: 'user-1',
+      actionType: 'ban',
+      status: 'OPEN',
+      createdAt: new Date('2026-02-16T00:10:00.000Z'),
+    });
+    prisma.moderationAppeal.update.mockResolvedValue({
+      id: 'appeal-1',
+      userId: 'user-1',
+      moderationReportId: 'report-1',
+      actionType: 'ban',
+      status: 'OVERTURNED',
+      resolution: 'overturned',
+      createdAt: new Date('2026-02-16T00:10:00.000Z'),
+      resolvedAt: new Date('2026-02-16T00:40:00.000Z'),
+      resolverUserId: 'admin-1',
+    });
+
+    const appeal = await service.createAppeal('user-1', {
+      moderationReportId: 'report-1',
+      actionType: 'ban',
+      reason: 'please review',
+    } as any);
+    const resolved = await service.resolveAppeal(
+      'admin-1',
+      'appeal-1',
+      'overturned',
+    );
+
+    expect(appeal.id).toBe('appeal-1');
+    expect(resolved.status).toBe('OVERTURNED');
+    expect(await redis.get('moderation:ban:user-1')).toBeNull();
+    expect(analyticsService.trackServerEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'safety_appeal_opened' }),
+    );
+    expect(analyticsService.trackServerEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'safety_appeal_resolved' }),
+    );
   });
 });

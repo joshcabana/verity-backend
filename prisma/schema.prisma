@@ -38,6 +38,7 @@ model User {
   matchesAsB    Match[]   @relation("UserBMatches")
   tokenTxs      TokenTransaction[]
   moderation    ModerationEvent[]
+  appeals       ModerationAppeal[]
   refreshTokens RefreshToken[]
   messagesSent  Message[]
   reportsMade   ModerationReport[] @relation("ReportsMade")
@@ -170,10 +171,93 @@ model ModerationReport {
 
   reporter    User @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
   reportedUser User @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  appeals     ModerationAppeal[]
 
   @@index([reporterId])
   @@index([reportedUserId])
   @@index([status])
+}
+
+model ModerationAppeal {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  userId             String
+  moderationReportId String?
+  actionType         String
+  reason             String?
+  status             String   @default("OPEN")
+  resolution         String?
+  resolvedAt         DateTime?
+  resolverUserId     String?
+
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report ModerationReport? @relation(fields: [moderationReportId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([moderationReportId])
+}
+
+model AnalyticsEvent {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  eventSchemaVersion Int
+  eventId            String   @unique
+  eventName          String
+  occurredAt         DateTime
+  receivedAt         DateTime @default(now())
+  source             String
+  platform           String
+  appVersion         String?
+  buildNumber        String?
+  region             String?
+  requestId          String?
+  userId             String?
+  sessionId          String?
+  matchId            String?
+  queueKey           String?
+  properties         Json
+
+  @@index([occurredAt])
+  @@index([eventName, occurredAt])
+  @@index([platform, occurredAt])
+}
+
+model AnalyticsIngestHourly {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  hourStart     DateTime
+  eventName     String
+  acceptedCount Int      @default(0)
+  droppedCount  Int      @default(0)
+
+  @@unique([hourStart, eventName])
+  @@index([hourStart])
+}
+
+model TelemetryGateSnapshot {
+  id                     String   @id @default(cuid())
+  createdAt              DateTime @default(now())
+  windowStart            DateTime
+  windowEnd              DateTime
+  waitP50Seconds         Float?
+  waitP90Seconds         Float?
+  abandonmentRate        Float?
+  completionRate         Float?
+  mutualMatchRate        Float?
+  chatActivationRate     Float?
+  severeIncidentPer10k   Float?
+  appealOverturnRate     Float?
+  severeActionLatencyP95 Float?
+  stage0Status           String
+  stage1Status           String
+  stage2Status           String
+  autoPauseTriggered     Boolean  @default(false)
+  autoPauseReasons       Json?
+
+  @@index([windowEnd])
 }
 
 model Block {

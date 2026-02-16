@@ -363,17 +363,6 @@ export class QueueService {
       .set(this.userMatchedKey(userAId), sessionId, 'PX', MATCHED_TTL_MS)
       .set(this.userMatchedKey(userBId), sessionId, 'PX', MATCHED_TTL_MS)
       .exec();
-
-    this.analyticsService.trackServerEvent({
-      userId: userAId,
-      name: 'queue_match_found',
-      properties: { sessionId, partnerId: userBId },
-    });
-    this.analyticsService.trackServerEvent({
-      userId: userBId,
-      name: 'queue_match_found',
-      properties: { sessionId, partnerId: userAId },
-    });
   }
 
   async cleanupExpiredSessions() {
@@ -574,15 +563,32 @@ export class QueueService {
   }
 
   private trackQueueLeft(userId: string, result: QueueLeaveResult) {
+    const reason = this.mapQueueLeftReason(result);
     this.analyticsService.trackServerEvent({
       userId,
       name: 'queue_left',
       properties: {
         queueKey: result.queueKey ?? null,
+        reason,
         status: result.status,
         refunded: result.refunded,
       },
     });
+  }
+
+  private mapQueueLeftReason(
+    result: QueueLeaveResult,
+  ): 'manual' | 'timeout' | 'matched' | 'system' {
+    if (result.status === 'already_matched') {
+      return 'matched';
+    }
+    if (result.status === 'not_queued') {
+      return 'system';
+    }
+    if (result.refunded) {
+      return 'manual';
+    }
+    return 'system';
   }
 }
 
