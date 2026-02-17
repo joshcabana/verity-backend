@@ -6,17 +6,26 @@ Ship a focused follow-up that improves waiting confidence and queue conversion w
 ## Scope
 1. Timeout UX
 - Add explicit timeout threshold to waiting flow.
-- Show decision state when timeout is reached: keep searching vs leave.
+- Show decision state when timeout is reached: wait vs leave.
 - Ensure no token regression when timeout leads to leave.
+- Keep manual pre-timeout exit available via cancel.
 
 2. Waiting Copy Ladder
 - Primary status priority:
-  1. Live queue count (`X users currently searching`)
-  2. ETA fallback (`Estimated wait: Ys`)
-  3. Default fallback (`Hang tight - matching fast.`)
+  1. Live queue count (`X online` on web, `X Online` on mobile)
+  2. ETA fallback (`< Ys wait` on web, `< Ys Wait` on mobile)
+  3. Default fallback (`Matching fast...`)
 - Keep copy stable across web and mobile.
 
-3. Funnel Instrumentation
+3. Timeout Prompt Copy
+- Prompt title: `Still looking...`
+- Continue action: `Wait`
+- Exit action: `Leave`
+- Body copy:
+  - Web: `Top tier matches are worth the wait.`
+  - Mobile: `Top matches are worth the wait. Refund on exit.`
+
+4. Funnel Instrumentation
 - Add/confirm events for:
   - `queue_joined`
   - `queue_timeout_shown`
@@ -35,6 +44,7 @@ Ship a focused follow-up that improves waiting confidence and queue conversion w
 - Timeout prompt appears deterministically after threshold in web and mobile waiting screens.
 - User can continue searching without resetting queue state.
 - User can leave from timeout prompt and refund behavior is preserved.
+- Pre-timeout cancel path remains available and functional.
 - Funnel events fire exactly once per action path.
 - Existing queue + match + waiting tests remain green.
 
